@@ -1,0 +1,41 @@
+{
+  "users": [
+    {
+      "id": "admin",
+      "nickname": "YKadmin",
+      "phone": "18800000000",
+      "role": "admin",
+      "createdAt": "2026-07-08T00:00:00.000Z",
+      "updatedAt": "2026-07-08T00:00:00.000Z"
+    }
+  ],
+  "modules": [
+    {
+      "id": "screening",
+      "name": "有空放映",
+      "description": "电影、纪录片、影像讨论",
+      "createdAt": "2026-07-08T00:00:00.000Z"
+    },
+    {
+      "id": "canteen",
+      "name": "有空食堂",
+      "description": "一起做饭、饭桌与附近小店探索",
+      "createdAt": "2026-07-08T00:00:00.000Z"
+    },
+    {
+      "id": "salon",
+      "name": "公共议题",
+      "description": "讨论、共识辩论和公共生活实践",
+      "createdAt": "2026-07-08T00:00:00.000Z"
+    },
+    {
+      "id": "walk",
+      "name": "城市漫游",
+      "description": "上山下江、菜市场和街区探索",
+      "createdAt": "2026-07-08T00:00:00.000Z"
+    }
+  ],
+  "activities": [],
+  "registrations": [],
+  "sessions": []
+}

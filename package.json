@@ -1,0 +1,19 @@
+{
+  "name": "youkong-living-room",
+  "version": "0.2.0",
+  "private": true,
+  "description": "有空客厅官网与活动系统 MVP",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.4.2",
+    "express": "^4.21.2",
+    "multer": "^2.0.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
+  }
+}

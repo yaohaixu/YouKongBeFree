@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>我的｜有空客厅</title>
+    <meta name="description" content="有空成员发布活动、查看自己发起活动的报名表。" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html"><span class="brand-mark">有空</span><span class="brand-text">有空客厅</span></a>
+        <button class="menu-toggle" type="button" aria-label="打开导航" aria-expanded="false"><span></span><span></span><span></span></button>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="whitepaper.html">社区共识</a>
+          <a href="participate.html">活动与参与</a>
+          <a href="donate.html">捐赠支持</a>
+          <a href="about.html">关于与联系</a>
+          <span class="session-nav" data-session-nav><a class="nav-cta" href="login.html">有空</a></span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="page-hero river">
+        <div class="wrap">
+          <p class="eyebrow">我的客厅</p>
+          <h1><span data-user-name>有空成员</span>，今天想发起什么？</h1>
+          <p>发布后的活动会出现在活动页。未登录的人可以点进活动详情页，填写昵称和手机号报名。</p>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap app-layout">
+          <form class="form-note activity-editor" data-activity-form>
+            <h3>添加活动</h3>
+            <div class="form-grid">
+              <label>对应模块<select name="moduleId" required></select></label>
+              <label>标题<input name="title" required placeholder="比如：有空放映｜重庆森林" /></label>
+              <label>发起人<input name="initiator" required /></label>
+              <label>时间<input name="startsAt" type="datetime-local" required /></label>
+              <label>地点<input name="location" required placeholder="有空客厅 / 流动客厅地址" /></label>
+              <label>人数限额<input name="capacity" type="number" min="1" placeholder="留空表示无上限" /></label>
+            </div>
+            <label>上传首页图<input name="cover" type="file" accept="image/*" /></label>
+            <label>活动描述</label>
+            <textarea name="description" class="rich-textarea" required placeholder="像写一篇公众号短文一样介绍活动：为什么想发起、会发生什么、适合谁来、需要注意什么。可以分段书写。"></textarea>
+            <button class="button primary" type="submit">发布活动</button>
+            <p class="form-message" data-activity-message></p>
+          </form>
+
+          <aside class="side-panel">
+            <div class="panel-block">
+              <p class="section-kicker">我发起过的活动</p>
+              <div class="event-list rows" data-my-activities></div>
+            </div>
+            <div class="panel-block">
+              <p class="section-kicker">报名表</p>
+              <div data-registration-panel>
+                <div class="empty-state"><strong>选择一个活动</strong><p>点击「查看报名表」后，这里会显示报名者昵称和手机号。</p></div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><div class="footer-brand">有空客厅</div><div>有想做的事，也可以从这里开始。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="index.html">首页</a><a href="participate.html">活动与参与</a><a href="admin.html">后台</a></nav>
+      </div>
+    </footer>
+    <script src="script.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

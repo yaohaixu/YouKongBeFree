@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>有空登录｜有空客厅</title>
+    <meta name="description" content="有空成员登录入口。手机号需先由 YKadmin 在后台加入成员名单。" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html"><span class="brand-mark">有空</span><span class="brand-text">有空客厅</span></a>
+        <button class="menu-toggle" type="button" aria-label="打开导航" aria-expanded="false"><span></span><span></span><span></span></button>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="whitepaper.html">社区共识</a>
+          <a href="participate.html">活动与参与</a>
+          <a href="donate.html">捐赠支持</a>
+          <a href="about.html">关于与联系</a>
+          <span class="session-nav" data-session-nav><a class="nav-cta active" href="login.html">有空</a></span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">有空成员入口</p>
+          <h1>用手机号进入客厅后台。</h1>
+          <p>前提是 YKadmin 已经把你的昵称和手机号加入成员名单。这里不做复杂密码，先把发起活动这件事跑起来。</p>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap auth-layout">
+          <form class="form-note auth-card" data-login-form>
+            <h3>登录</h3>
+            <label for="phone">手机号</label>
+            <input id="phone" name="phone" inputmode="tel" autocomplete="tel" placeholder="请输入被添加过的手机号" required />
+            <button class="button primary" type="submit">进入有空</button>
+            <p class="form-message" data-login-message>默认管理员手机号：18800000000</p>
+          </form>
+          <div class="text-stack">
+            <p class="section-kicker">说明</p>
+            <h2>先被看见，再拥有权限。</h2>
+            <p>如果你是新成员，请先联系 YKadmin 或愁备组，让管理员在后台添加你的昵称和手机号。</p>
+            <p>登录后，你可以在「我的」页面发布活动，也能查看自己发起活动的报名表。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><div class="footer-brand">有空客厅</div><div>成员登录后可以发起活动。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="index.html">首页</a><a href="participate.html">活动与参与</a><a href="about.html">关于与联系</a></nav>
+      </div>
+    </footer>
+    <script src="script.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
