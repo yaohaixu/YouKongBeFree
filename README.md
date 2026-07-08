@@ -4,9 +4,27 @@
 
 ## 当前开发状态
 
-当前版本：`0.2.0`
+当前版本：`0.2.1`
 
 状态：MVP 已完成，可本地运行和演示。当前实现使用 Node.js + Express + 本地 JSON 文件持久化，适合内部试用、功能验证和后续迁移到正式数据库前的产品打磨。
+
+## 访问地址
+
+GitHub Pages 静态官网：
+
+- 官网首页：https://yaohaixu.github.io/YouKongBeFree/
+- 登录页：https://yaohaixu.github.io/YouKongBeFree/login.html
+- 后台页面：https://yaohaixu.github.io/YouKongBeFree/admin.html
+- 我的页面：https://yaohaixu.github.io/YouKongBeFree/me.html
+
+本地完整动态功能：
+
+- 官网首页：http://127.0.0.1:8080/
+- 登录页：http://127.0.0.1:8080/login.html
+- 后台：http://127.0.0.1:8080/admin.html
+- 我的：http://127.0.0.1:8080/me.html
+
+重要说明：GitHub Pages 只能托管静态页面，不能运行 `server.js`。因此 GitHub Pages 上可以访问页面外观和静态内容，但登录、后台、活动发布、报名、上传图片等动态功能需要通过 `npm start` 启动 Node 服务，或部署到支持 Node.js 的平台后才能完整使用。
 
 ## 核心功能
 
@@ -92,7 +110,7 @@ YKADMIN_PHONE=18800000000
 npm start
 ```
 
-默认访问：
+本地默认访问：
 
 - 官网首页：http://127.0.0.1:8080/
 - 登录页：http://127.0.0.1:8080/login.html

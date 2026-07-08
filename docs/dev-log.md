@@ -1,5 +1,53 @@
 # 开发日志
 
+## 2026-07-08 - 开启 GitHub Pages 静态外网访问
+
+### 任务目标
+
+为 GitHub 仓库 `YouKongBeFree` 开启 GitHub Pages，使官网静态页面可以通过外网访问，并同步更新项目文档中的访问地址。
+
+### 具体修改内容
+
+- 将项目版本从 `0.2.0` 升级到 `0.2.1`。
+- README 新增 GitHub Pages 静态官网地址：
+  - `https://yaohaixu.github.io/YouKongBeFree/`
+  - `https://yaohaixu.github.io/YouKongBeFree/login.html`
+  - `https://yaohaixu.github.io/YouKongBeFree/admin.html`
+  - `https://yaohaixu.github.io/YouKongBeFree/me.html`
+- README 保留本地完整动态功能地址：
+  - `http://127.0.0.1:8080/`
+  - `http://127.0.0.1:8080/login.html`
+  - `http://127.0.0.1:8080/admin.html`
+  - `http://127.0.0.1:8080/me.html`
+- CHANGELOG 新增 `0.2.1` 版本记录。
+
+### 技术方案选择
+
+本次采用 GitHub Pages 从 `main` 分支根目录发布静态页面。该方案适合低成本展示官网页面，但不能运行 Node.js 后端。
+
+### 设计决策原因
+
+- 用户当前诉求是“打开 GitHub 的网址托管，让项目可以外网访问”，GitHub Pages 是 GitHub 原生的静态托管方案。
+- 当前项目动态功能依赖 Express API、本地 JSON 数据和文件上传，不能仅靠 GitHub Pages 完整运行。
+- 文档中必须明确区分“静态外网访问”和“完整动态功能访问”，避免后续接手者或使用者误解。
+
+### 当前完成情况
+
+- 文档已更新外网访问地址。
+- 版本已升级至 `0.2.1`。
+- 待将本次变更合并到 `main` 并启用 GitHub Pages。
+
+### 遗留问题
+
+- GitHub Pages 上登录、后台、活动发布和报名接口不可用。
+- 完整动态功能仍需部署到支持 Node.js 的平台。
+
+### 下一步建议
+
+1. 选择 Render、Railway、Fly.io、Vercel Serverless 或云服务器部署 Express 后端。
+2. 将数据存储迁移到托管数据库，避免依赖本地 JSON。
+3. 配置正式线上 API 地址，让 GitHub Pages 静态前端调用线上后端。
+
 ## 2026-07-08 - 建立 YouKongBeFree 工程化基线
 
 ### 任务目标

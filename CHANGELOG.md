@@ -2,6 +2,26 @@
 
 所有重要变更都会记录在此文件中。格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循语义化版本思路。
 
+## [0.2.1] - 2026-07-08
+
+### Added
+
+- 开启 GitHub Pages 静态托管说明。
+- README 新增 GitHub Pages 外网访问地址。
+
+### Changed
+
+- README 区分 GitHub Pages 静态访问地址和本地 Node 动态功能地址。
+- package 版本升级至 `0.2.1`。
+
+### Fixed
+
+- 明确说明 GitHub Pages 不能运行 Express 后端，避免误以为外网静态地址支持登录、后台和报名接口。
+
+### Removed
+
+- 无。
+
 ## [0.2.0] - 2026-07-08
 
 ### Added
