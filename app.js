@@ -63,6 +63,33 @@ const actionLabels = {
   withdraw: "撤回",
 };
 
+function showToast(text = "保存成功") {
+  let toast = qs("[data-toast]");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.className = "toast";
+    toast.setAttribute("data-toast", "");
+    document.body.append(toast);
+  }
+  toast.textContent = text;
+  toast.classList.add("show");
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
+}
+
+function revealDynamicContent(root) {
+  if (!root || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const elements = qsa(
+    ".event-card, .event-row, .empty-state, .data-table, .activity-hero, .article-content, .success-card",
+    root
+  );
+  elements.forEach((element, index) => {
+    element.classList.add("dynamic-reveal");
+    element.style.setProperty("--dynamic-delay", `${Math.min(index, 6) * 36}ms`);
+    requestAnimationFrame(() => element.classList.add("is-visible"));
+  });
+}
+
 function qs(selector, root = document) {
   return root.querySelector(selector);
 }
@@ -278,9 +305,11 @@ async function renderActivityLists() {
           <p>等第一位有空成员发布活动，这里就会出现新的接龙。</p>
         </div>
       `;
+      revealDynamicContent(list);
       return;
     }
     list.innerHTML = visible.map(renderActivityCard).join("");
+    revealDynamicContent(list);
   });
 }
 
@@ -296,6 +325,10 @@ async function initMePage() {
 
   mePageState.user = user;
   qs("[data-user-name]").textContent = user.nickname;
+  const pendingSection = qs("[data-my-pending-section]");
+  if (pendingSection && !hasRole(user, "collaborator")) {
+    pendingSection.hidden = true;
+  }
   resetActivityForm(form);
   mePageState.modules = await fillModuleSelect(form.moduleId);
   mePageState.collaborators = await fillCollaboratorSelect(form.collaboratorId);
@@ -319,6 +352,7 @@ async function initMePage() {
         ? await api.put(`/api/activities/${editing.id}`, formData)
         : await api.post("/api/activities", formData);
       setMessage(message, intent === "draft" ? "草稿已保存。" : "活动已提交管理员审核。", "success");
+      showToast("保存成功");
       resetActivityForm(form);
       await renderMineActivities();
     } catch (error) {
@@ -334,7 +368,9 @@ async function initMePage() {
   });
 
   await renderMineActivities();
-  await renderMyPendingTasks();
+  if (!pendingSection?.hidden) {
+    await renderMyPendingTasks();
+  }
 }
 
 function resetActivityForm(form) {
@@ -378,6 +414,7 @@ async function renderMineActivities() {
   const { activities } = await api.get("/api/activities?owner=me");
   if (!activities.length) {
     list.innerHTML = `<div class="empty-state"><strong>还没有发起过活动</strong><p>写下一个小想法，客厅就多一张新纸条。</p></div>`;
+    revealDynamicContent(list);
     return;
   }
   list.innerHTML = activities
@@ -399,6 +436,7 @@ async function renderMineActivities() {
       `
     )
     .join("");
+  revealDynamicContent(list);
 
   qsa("[data-edit-activity-id]", list).forEach((button) => {
     button.addEventListener("click", async () => {
@@ -415,6 +453,7 @@ async function renderMineActivities() {
     button.addEventListener("click", async () => {
       if (!confirm("确定撤回这个活动吗？撤回后会变成草稿。")) return;
       await api.post(`/api/activities/${button.dataset.withdrawActivityId}/withdraw`, {});
+      showToast("保存成功");
       await renderMineActivities();
       await renderActivityLists();
     });
@@ -428,6 +467,10 @@ async function renderMyPendingTasks() {
   renderPendingTasks(panel, activities);
 }
 
+function canRegisterActivity(activity) {
+  return ["published", "full", "ended"].includes(activity.status);
+}
+
 async function renderRegistrations(activityId) {
   const panel = qs("[data-registration-panel]");
   if (!panel) return;
@@ -436,6 +479,7 @@ async function renderRegistrations(activityId) {
     const { registrations } = await api.get(`/api/activities/${activityId}/registrations`);
     if (!registrations.length) {
       panel.innerHTML = `<div class="empty-state"><strong>暂时还没人报名</strong><p>可以把活动链接发到社群里。</p></div>`;
+      revealDynamicContent(panel);
       return;
     }
     panel.innerHTML = `
@@ -457,10 +501,12 @@ async function renderRegistrations(activityId) {
         </tbody>
       </table>
     `;
+    revealDynamicContent(panel);
     qsa("[data-delete-registration]", panel).forEach((button) => {
       button.addEventListener("click", async () => {
         if (!confirm("确定删除这条报名记录吗？")) return;
         await api.delete(`/api/activities/${activityId}/registrations/${button.dataset.deleteRegistration}`);
+        showToast("删除成功");
         await renderRegistrations(activityId);
         await renderMineActivities();
       });
@@ -480,6 +526,7 @@ async function initActivityPage() {
   }
 
   const { activity } = await api.get(`/api/activities/${id}`);
+  const registrationLookupOnly = activity.status === "full" || activity.status === "ended";
   root.innerHTML = `
     <section class="activity-hero">
       <div>
@@ -487,6 +534,7 @@ async function initActivityPage() {
         <h1>${escapeHtml(activity.title)}</h1>
         <p>${escapeHtml(activity.location)} · ${formatDate(activity.startsAt)}</p>
         <div class="event-meta">
+          <span>${escapeHtml(activity.statusLabel || "活动发布")}</span>
           <span>发起人：${escapeHtml(activity.initiator)}</span>
           <span>${activity.capacity ? `限额 ${activity.capacity} 人` : "人数无上限"}</span>
           <span>已报名 ${activity.registrationCount} 人</span>
@@ -501,22 +549,36 @@ async function initActivityPage() {
     <section class="section tight">
       <div class="wrap activity-layout">
         <article class="article-content">${descriptionToHtml(activity.description)}</article>
-        <aside class="form-note">
-          <h3>报名这个活动</h3>
-          <form data-register-form>
-            <label for="nickname">昵称</label>
-            <input id="nickname" name="nickname" required />
-            <label for="phone">手机号</label>
-            <input id="phone" name="phone" inputmode="tel" required />
-            <button class="button primary" type="submit">提交报名</button>
-            <p class="form-message" data-register-message></p>
-          </form>
-        </aside>
+        ${
+          canRegisterActivity(activity)
+            ? `<aside class="form-note">
+                <h3>${registrationLookupOnly ? "查看报名确认" : "报名这个活动"}</h3>
+                ${
+                  registrationLookupOnly
+                    ? `<p class="muted-text">这个活动当前不接受新报名。已经报名的人可以输入原手机号查看确认页。</p>`
+                    : ""
+                }
+                <form data-register-form>
+                  <label for="nickname">昵称</label>
+                  <input id="nickname" name="nickname" required />
+                  <label for="phone">手机号</label>
+                  <input id="phone" name="phone" inputmode="tel" required />
+                  <button class="button primary" type="submit">${registrationLookupOnly ? "查找报名" : "提交报名"}</button>
+                  <p class="form-message" data-register-message></p>
+                </form>
+              </aside>`
+            : `<aside class="form-note">
+                <h3>暂不开放报名</h3>
+                <p class="muted-text">这个活动当前是「${escapeHtml(activity.statusLabel)}」状态，公开发布后才可以报名。</p>
+              </aside>`
+        }
       </div>
     </section>
   `;
+  revealDynamicContent(root);
 
   const form = qs("[data-register-form]");
+  if (!form) return;
   const message = qs("[data-register-message]");
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -572,9 +634,11 @@ async function initSuccessPage() {
         </div>
       </section>
     `;
+    revealDynamicContent(root);
     qs("[data-cancel-registration]", root)?.addEventListener("click", async () => {
       if (!confirm("确定取消这次报名吗？取消后如需参加，需要重新报名。")) return;
       await api.post(`/api/activities/${activityId}/registrations/${registrationId}/cancel`, {});
+      showToast("取消成功");
       root.innerHTML = `
         <section class="success-hero">
           <div class="wrap success-card">
@@ -588,6 +652,7 @@ async function initSuccessPage() {
           </div>
         </section>
       `;
+      revealDynamicContent(root);
     });
   } catch (error) {
     root.innerHTML = `
@@ -603,6 +668,7 @@ async function initSuccessPage() {
         </div>
       </section>
     `;
+    revealDynamicContent(root);
   }
 }
 
@@ -639,6 +705,7 @@ function bindAdminForms() {
       });
       userForm.reset();
       setMessage(userMessage, "成员已添加。", "success");
+      showToast("保存成功");
       await Promise.all([renderUsers(), renderAdminPendingTasks(), renderAllActivities()]);
     } catch (error) {
       setMessage(userMessage, error.message, "error");
@@ -654,6 +721,7 @@ function bindAdminForms() {
       });
       moduleForm.reset();
       setMessage(moduleMessage, "模块已添加。", "success");
+      showToast("保存成功");
       await renderModules();
     } catch (error) {
       setMessage(moduleMessage, error.message, "error");
@@ -693,6 +761,7 @@ async function renderUsers() {
       `
     )
     .join("");
+  revealDynamicContent(list);
 
   qsa("[data-user-id]", list).forEach((row) => {
     qs("[data-save-user]", row).addEventListener("click", async () => {
@@ -701,10 +770,13 @@ async function renderUsers() {
         phone: qs('[name="phone"]', row).value,
         roles: selectedRoles(row),
       });
+      showToast("保存成功");
       await Promise.all([renderUsers(), renderAdminPendingTasks(), renderAllActivities()]);
     });
     qs("[data-delete-user]", row).addEventListener("click", async () => {
+      if (!confirm("确定删除这个成员吗？")) return;
       await api.delete(`/api/users/${row.dataset.userId}`);
+      showToast("删除成功");
       await Promise.all([renderUsers(), renderAdminPendingTasks(), renderAllActivities()]);
     });
   });
@@ -714,9 +786,11 @@ function renderPendingTasks(container, activities) {
   if (!container) return;
   if (!activities.length) {
     container.innerHTML = `<div class="empty-state"><strong>暂无待办</strong><p>需要你审核的活动会出现在这里。</p></div>`;
+    revealDynamicContent(container);
     return;
   }
   container.innerHTML = activities.map(renderReviewTask).join("");
+  revealDynamicContent(container);
   bindReviewButtons(container);
 }
 
@@ -730,6 +804,7 @@ function renderReviewTask(activity) {
         <p>发起人：${escapeHtml(activity.initiator)} · 协作员：${escapeHtml(activity.collaboratorName || "未选择")}</p>
         <details class="review-detail">
           <summary>查看活动详情</summary>
+          ${activity.coverUrl ? `<img class="review-cover" src="${escapeHtml(activity.coverUrl)}" alt="${escapeHtml(activity.title)}" />` : ""}
           <div class="article-content compact">${descriptionToHtml(activity.description || "暂无活动描述")}</div>
           ${renderReviewHistory(activity)}
         </details>
@@ -769,6 +844,7 @@ function bindReviewButtons(container) {
         action: qs("[data-review-action]", row).value,
         comment: qs("[data-review-comment]", row).value,
       });
+      showToast("保存成功");
       await Promise.all([
         renderMyPendingTasks(),
         renderAdminPendingTasks(),
@@ -793,6 +869,7 @@ async function renderAllActivities() {
   const { activities } = await api.get("/api/activities?all=true");
   if (!activities.length) {
     list.innerHTML = `<div class="empty-state"><strong>暂无活动</strong><p>所有状态的活动会显示在这里。</p></div>`;
+    revealDynamicContent(list);
     return;
   }
   list.innerHTML = activities
@@ -809,6 +886,7 @@ async function renderAllActivities() {
       `
     )
     .join("");
+  revealDynamicContent(list);
 }
 
 async function renderModules() {
@@ -827,6 +905,7 @@ async function renderModules() {
       `
     )
     .join("");
+  revealDynamicContent(list);
 
   qsa("[data-module-id]", list).forEach((row) => {
     qs("[data-save-module]", row).addEventListener("click", async () => {
@@ -834,11 +913,14 @@ async function renderModules() {
         name: qs('[name="name"]', row).value,
         description: qs('[name="description"]', row).value,
       });
+      showToast("保存成功");
       await renderModules();
     });
     qs("[data-delete-module]", row).addEventListener("click", async () => {
       try {
+        if (!confirm("确定删除这个活动模块吗？")) return;
         await api.delete(`/api/modules/${row.dataset.moduleId}`);
+        showToast("删除成功");
         await renderModules();
       } catch (error) {
         alert(error.message);
