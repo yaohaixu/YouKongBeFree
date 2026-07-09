@@ -2,6 +2,39 @@
 
 所有重要变更都会记录在此文件中。格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循语义化版本思路。
 
+## [0.3.0] - 2026-07-09
+
+### Added
+
+- 新增腾讯云 CloudBase 动态部署能力。
+- 新增 CloudBase Hosting 静态站点部署脚本。
+- 新增 CloudBase 云函数 `youkongApi` 部署脚本，通过 HTTP 访问服务 `/api` 提供动态接口。
+- 新增 JSON / CloudBase NoSQL 双存储层 `lib/store.js`。
+- 新增共享 Express 应用入口 `lib/app.js`，本地服务和云函数共用同一套路由。
+- 新增 CloudBase Storage 活动封面上传能力。
+- 新增构建脚本 `scripts/build-static.js` 和 `scripts/build-function.js`。
+- 新增 CloudBase 配置文件 `cloudbaserc.json`。
+- 新增 `serverless-http` 和 `ws` 依赖。
+
+### Changed
+
+- 项目版本升级至 `0.3.0`。
+- 默认网站管理员调整为昵称 `有空管理员`、手机号 `13377779999`。
+- 前端在 CloudBase 静态域名下自动调用 CloudBase API 服务域名。
+- 云端 Cookie 使用 `SameSite=None; Secure`，支持静态域名跨域调用 API。
+- README 更新为 CloudBase 动态线上版本说明。
+
+### Fixed
+
+- 修复云函数只读目录中创建 `uploads/` 失败的问题，云端临时目录改为 `/tmp/youkong-uploads`。
+- 修复 CloudBase HTTP 访问服务会剥离 `/api` 前缀导致 Express 路由 404 的问题。
+- 修复部署脚本误用 `--httpFn` 导致函数类型不匹配的问题。
+
+### Removed
+
+- 无。
+
+
 ## [0.2.1] - 2026-07-08
 
 ### Added

@@ -1,8 +1,14 @@
 const api = {
+  baseUrl: location.hostname.endsWith("tcloudbaseapp.com")
+    ? "https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com"
+    : "",
   async request(path, options = {}) {
     let response;
     try {
-      response = await fetch(path, options);
+      response = await fetch(`${this.baseUrl}${path}`, {
+        credentials: "include",
+        ...options,
+      });
     } catch {
       throw new Error("没有连接到有空后台服务。请用 http://127.0.0.1:8080/login.html 打开页面，不要直接双击 HTML 文件。");
     }

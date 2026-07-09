@@ -4,27 +4,25 @@
 
 ## 当前开发状态
 
-当前版本：`0.2.1`
+当前版本：`0.3.0`
 
-状态：MVP 已完成，可本地运行和演示。当前实现使用 Node.js + Express + 本地 JSON 文件持久化，适合内部试用、功能验证和后续迁移到正式数据库前的产品打磨。
+状态：MVP 已完成并已部署到腾讯云 CloudBase。线上版本支持静态官网访问、手机号白名单登录、YKadmin 后台管理、成员发布活动、访客报名、云数据库落库和活动封面对象存储。
 
 ## 访问地址
 
-GitHub Pages 静态官网：
+CloudBase 动态线上站点：
 
-- 官网首页：https://yaohaixu.github.io/YouKongBeFree/
-- 登录页：https://yaohaixu.github.io/YouKongBeFree/login.html
-- 后台页面：https://yaohaixu.github.io/YouKongBeFree/admin.html
-- 我的页面：https://yaohaixu.github.io/YouKongBeFree/me.html
+- 官网首页：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/
+- 登录页：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/login.html
+- 后台：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin.html
+- 我的：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/me.html
+- API 服务：https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api
 
-本地完整动态功能：
+GitHub Pages 静态展示：
 
-- 官网首页：http://127.0.0.1:8080/
-- 登录页：http://127.0.0.1:8080/login.html
-- 后台：http://127.0.0.1:8080/admin.html
-- 我的：http://127.0.0.1:8080/me.html
+- https://yaohaixu.github.io/YouKongBeFree/
 
-重要说明：GitHub Pages 只能托管静态页面，不能运行 `server.js`。因此 GitHub Pages 上可以访问页面外观和静态内容，但登录、后台、活动发布、报名、上传图片等动态功能需要通过 `npm start` 启动 Node 服务，或部署到支持 Node.js 的平台后才能完整使用。
+重要说明：GitHub Pages 只能托管静态页面，不能运行登录、后台、活动发布和报名接口。完整动态功能以 CloudBase 地址为准。
 
 ## 核心功能
 
@@ -35,16 +33,18 @@ GitHub Pages 静态官网：
 - 活动详情页：未登录访客可填写昵称和手机号报名。
 - 报名表查看：活动发起人和管理员可查看报名者列表。
 - 动态活动列表：首页和活动页读取已发布活动。
+- CloudBase NoSQL 落库与 CloudBase Storage 活动封面存储。
 
 ## 技术栈
 
 - 前端：HTML、CSS、Vanilla JavaScript
-- 后端：Node.js、Express
-- 文件上传：Multer
+- 本地后端：Node.js、Express
+- 云端后端：CloudBase 云函数 + `serverless-http`
+- 数据存储：本地 JSON 或 CloudBase NoSQL
+- 文件上传：Multer；线上封面上传至 CloudBase Storage
 - 登录态：HTTP-only Cookie Session
-- 配置：dotenv
-- 当前数据存储：本地 JSON 文件 `data/youkong-db.json`
-- 测试验证：Playwright / `@playwright/test`
+- 配置：dotenv、CloudBase CLI、`cloudbaserc.json`
+- 测试验证：curl API 冒烟、Playwright 浏览器登录验证
 
 ## 项目目录结构
 
@@ -62,19 +62,28 @@ GitHub Pages 静态官网：
 ├── styles.css              # 全站样式
 ├── script.js               # 官网导航、复制、滚动动效
 ├── app.js                  # 登录态、活动、报名、后台交互逻辑
-├── server.js               # Express API 与静态资源服务
+├── server.js               # 本地 Express 启动入口
+├── lib/
+│   ├── app.js              # Express 应用与 API 路由
+│   └── store.js            # JSON / CloudBase 双存储实现
+├── scripts/
+│   ├── build-static.js     # 生成 CloudBase Hosting 静态目录
+│   └── build-function.js   # 生成 CloudBase 云函数部署包
 ├── assets/                 # 官网图片与图标
 ├── data/
 │   └── example-db.json     # 示例数据结构，真实运行数据不提交 Git
 ├── uploads/
-│   └── .gitkeep            # 上传目录占位，真实上传文件不提交 Git
+│   └── .gitkeep            # 本地上传目录占位，真实上传文件不提交 Git
 ├── docs/
 │   └── dev-log.md          # 开发日志
+├── cloudbaserc.json        # CloudBase 环境与云函数配置
 ├── package.json
 ├── package-lock.json
 ├── .env.example
 └── .gitignore
 ```
+
+`dist/` 和 `tmp/` 是构建产物，已被 `.gitignore` 忽略，不提交 Git。
 
 ## 安装方式
 
@@ -94,17 +103,23 @@ cp .env.example .env
 
 ```env
 PORT=8080
-YKADMIN_NICKNAME=YKadmin
-YKADMIN_PHONE=18800000000
+YKADMIN_NICKNAME=有空管理员
+YKADMIN_PHONE=13377779999
+STORE_DRIVER=json
+CLOUDBASE_ENV_ID=youkong-d5gh4x0ayc29a2187
+YK_DB_FILE=
 ```
 
 注意：
 
 - `.env` 不允许提交到 Git。
-- 如果 `data/youkong-db.json` 不存在，服务启动时会根据环境变量创建默认管理员和默认模块。
-- 真实成员手机号、报名记录、活动数据都存放在 `data/youkong-db.json`，该文件已被 `.gitignore` 忽略。
+- 本地默认使用 `STORE_DRIVER=json`，数据写入 `data/youkong-db.json`。
+- 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_activities`、`yk_registrations`、`yk_sessions`。
+- 如果数据不存在，服务会初始化默认管理员和默认活动模块。
 
 ## 运行方式
+
+本地运行：
 
 ```bash
 npm start
@@ -119,8 +134,43 @@ npm start
 
 默认管理员：
 
-- 昵称：`YKadmin`
-- 手机号：`18800000000`
+- 昵称：`有空管理员`
+- 手机号：`13377779999`
+
+## CloudBase 部署
+
+当前 CloudBase 环境：`youkong-d5gh4x0ayc29a2187`
+
+构建静态站点和云函数包：
+
+```bash
+npm run build:cloudbase
+```
+
+部署静态站点：
+
+```bash
+npm run deploy:static
+```
+
+部署动态 API 云函数：
+
+```bash
+npm run deploy:function
+```
+
+完整部署：
+
+```bash
+npm run deploy:cloudbase
+```
+
+部署结构：
+
+- 静态页面通过 CloudBase Hosting 托管。
+- 动态接口通过 HTTP 访问服务 `/api` 绑定云函数 `youkongApi`。
+- 云函数使用 `serverless-http` 复用 Express API。
+- 活动封面在云端写入 CloudBase Storage，本地仍写入 `uploads/`。
 
 ## 已完成功能
 
@@ -134,27 +184,35 @@ npm start
 - 活动详情页和访客报名。
 - 发起人查看自己活动报名表。
 - 首页和活动页动态读取活动列表。
+- CloudBase 动态部署、NoSQL 落库和 Storage 封面上传。
 - 基础工程规范：`.gitignore`、环境变量示例、README、CHANGELOG、开发日志。
+
+## 已验证
+
+- `node --check` 通过：`app.js`、`script.js`、`server.js`、`lib/app.js`、`lib/store.js`、构建脚本。
+- 本地 JSON 模式 API 冒烟通过：管理员登录、成员新增、成员登录、活动发布、访客报名、报名表查看。
+- CloudBase 线上 API 冒烟通过：模块读取、管理员登录、成员新增、成员登录、活动发布、访客报名、报名表查看。
+- CloudBase 静态页浏览器验证通过：登录页输入 `13377779999` 后跳转 `admin.html`，后台内容可见。
+- 线上冒烟产生的测试成员、活动和报名记录已清理。
 
 ## 正在开发 / 待完善
 
-- 生产级数据库迁移：SQLite、PostgreSQL、Supabase 或其他托管数据库。
-- 短信验证码或密码机制，替代当前手机号白名单免密登录。
+- 生产级身份验证：短信验证码、密码或微信登录，替代当前手机号白名单免密登录。
 - 活动编辑、下架、取消、删除。
 - 报名取消、报名导出 CSV。
 - 富文本编辑器和图片排版能力。
 - 管理员仪表盘统计。
 - 自动化测试脚本与 CI。
-- 部署流程与线上备份策略。
+- CloudBase 数据备份、恢复和权限策略文档。
+- 自定义域名和同源 API 路由，减少跨域 Cookie 运维复杂度。
 
 ## 未来规划
 
-- 引入正式身份验证，支持验证码、密码或微信登录。
-- 将本地 JSON 存储迁移到数据库，补充数据迁移脚本。
 - 支持活动审核流和更细权限模型。
 - 支持 Notion / 飞书表格同步活动日历。
 - 增加财务公示模块和捐赠记录管理。
 - 建立 CI 流程，在 dev 合并 main 前自动检查语法、测试和敏感文件。
+- 为 CloudBase NoSQL 增加数据导出和定期备份脚本。
 
 ## Git 分支规范
 
@@ -173,15 +231,7 @@ npm start
 6. 测试通过后，将 `dev` 合并到 `main`。
 7. 推送 `dev` 和 `main` 到 GitHub。
 
-Commit 类型：
-
-- `feat`：新增功能
-- `fix`：修复问题
-- `refactor`：代码重构
-- `style`：样式调整
-- `docs`：文档修改
-- `test`：测试相关
-- `chore`：工程配置修改
+Commit 类型：`feat`、`fix`、`refactor`、`style`、`docs`、`test`、`chore`。
 
 ## 新 Agent 接手须知
 

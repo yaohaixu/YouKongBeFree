@@ -1,0 +1,25 @@
+{
+  "$schema": "https://static.cloudbase.net/cli/cloudbaserc.schema.json",
+  "version": "2.0",
+  "envId": "youkong-d5gh4x0ayc29a2187",
+  "region": "ap-shanghai",
+  "functionRoot": "tmp/cloudfunctions",
+  "functions": [
+    {
+      "name": "youkongApi",
+      "type": "Event",
+      "runtime": "Nodejs20.19",
+      "handler": "index.main",
+      "dir": "tmp/cloudfunctions/youkongApi",
+      "description": "有空客厅官网动态 API",
+      "timeout": 30,
+      "memorySize": 256,
+      "installDependency": true,
+      "envVariables": {
+        "STORE_DRIVER": "cloudbase",
+        "YKADMIN_NICKNAME": "有空管理员",
+        "YKADMIN_PHONE": "13377779999"
+      }
+    }
+  ]
+}

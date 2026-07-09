@@ -156,3 +156,95 @@
 3. 增加活动编辑、取消、删除和报名导出。
 4. 编写 Playwright 测试脚本并接入 GitHub Actions。
 5. 增加部署文档和生产环境备份策略。
+
+## 2026-07-09 - 部署 CloudBase 动态线上版本
+
+### 任务目标
+
+将「有空客厅」从本地 Express + JSON MVP 升级为可外网访问、可动态落库的腾讯云 CloudBase 版本，并保持 Git 双分支、文档、版本记录和可交接工程规范。
+
+### 具体修改内容
+
+- 将项目版本从 `0.2.1` 升级到 `0.3.0`。
+- 新增 `lib/app.js`，抽出 Express 应用、API 路由、CORS、Cookie 和上传处理，让本地服务与云函数复用同一套后端逻辑。
+- 新增 `lib/store.js`，支持 `json` 与 `cloudbase` 两种存储驱动。
+- 新增 CloudBase NoSQL 集合约定：`yk_users`、`yk_modules`、`yk_activities`、`yk_registrations`、`yk_sessions`。
+- 新增 CloudBase Storage 活动封面上传；本地开发仍使用 `uploads/`。
+- 新增 `cloudbaserc.json`，配置环境 `youkong-d5gh4x0ayc29a2187` 与云函数 `youkongApi`。
+- 新增 `scripts/build-static.js`，生成 CloudBase Hosting 静态产物 `dist/`。
+- 新增 `scripts/build-function.js`，生成云函数临时部署包 `tmp/cloudfunctions/youkongApi`。
+- 修改 `app.js`，CloudBase 静态域名下自动调用 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
+- 修改 `.env.example`，默认管理员改为 `有空管理员 / 13377779999`，补充 CloudBase 配置项。
+- 修改 `.gitignore`，忽略 `dist/` 和 `tmp/` 构建产物。
+- 更新 README 和 CHANGELOG。
+
+### 涉及文件
+
+- `server.js`
+- `app.js`
+- `lib/app.js`
+- `lib/store.js`
+- `scripts/build-static.js`
+- `scripts/build-function.js`
+- `cloudbaserc.json`
+- `package.json`
+- `package-lock.json`
+- `.env.example`
+- `.gitignore`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+最终采用 CloudBase Hosting + Event 云函数 + HTTP 访问服务 + CloudBase NoSQL + CloudBase Storage。
+
+尝试过程：
+
+- 评估 CloudRun 承载 Express，但 CloudRun 服务端访问 NoSQL 需要额外凭证与环境配置，且当前免费体验版下管理成本较高。
+- 尝试 HTTP Web 云函数，CloudBase HTTP 访问服务返回 `FunctionType parameter is invalid`，说明当前访问链路更适合 Event 云函数绑定。
+- 改为 Event 云函数并使用 `serverless-http` 包装 Express，成功复用现有 API。
+
+### 设计决策原因
+
+- CloudBase Hosting 适合静态官网，CloudBase 云函数适合低成本动态接口。
+- Event 云函数 + HTTP 访问服务在当前 CLI 与环境下更稳定。
+- `dist/` 和 `tmp/` 作为构建产物不提交 Git，避免污染仓库和误提交依赖。
+- 云函数代码目录只读，云端临时上传目录必须放在 `/tmp`。
+- CloudBase HTTP 访问服务会剥离 `/api` 前缀，因此云函数中在非静态模式下补回 `/api` 路由前缀。
+- 静态域名与 API 域名不同，线上 Cookie 必须使用 `SameSite=None; Secure`，并配置 CORS credentials。
+
+### 当前完成情况
+
+已完成线上部署：
+
+- 静态官网：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/
+- API 服务：https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api
+- 云函数：`youkongApi`
+- CloudBase 环境：`youkong-d5gh4x0ayc29a2187`
+
+已完成验证：
+
+- `node --check` 通过：`app.js`、`script.js`、`server.js`、`lib/app.js`、`lib/store.js`、构建脚本。
+- 本地 JSON 模式 API 冒烟通过。
+- CloudBase 线上 API 冒烟通过：模块读取、管理员登录、成员新增、成员登录、活动发布、访客报名、报名表查看。
+- Playwright 浏览器验证通过：CloudBase 静态登录页输入 `13377779999` 后跳转后台，后台内容可见。
+- 线上冒烟产生的测试成员、活动和报名记录已通过 CloudBase NoSQL 命令清理。
+- 临时探针函数 `ping` 已删除。
+
+### 遗留问题
+
+- 当前登录仍是手机号白名单免密登录，不适合长期直接公网使用。
+- 活动暂不支持编辑、下架、删除。
+- 报名暂不支持取消和导出。
+- CloudBase NoSQL 尚未配置定期备份脚本。
+- 静态站点与 API 当前跨域访问，后续建议绑定自定义域名或配置同源代理，降低 Cookie 运维复杂度。
+- CloudBase 体验版有效期至 2027-01-09 23:59:59，需在到期前确认续费或迁移方案。
+
+### 下一步建议
+
+1. 增加管理员密码或短信验证码，降低手机号免密登录的安全风险。
+2. 增加活动编辑、删除、下架和报名导出功能。
+3. 增加 CloudBase NoSQL 数据导出/备份脚本。
+4. 配置 GitHub Actions，在合并 `dev` 到 `main` 前自动运行语法检查和基础 API 测试。
+5. 绑定自定义域名，让静态页面和 API 尽量同源。

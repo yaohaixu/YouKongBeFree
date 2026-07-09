@@ -1,19 +1,30 @@
 {
   "name": "youkong-living-room",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "description": "有空客厅官网与活动系统 MVP",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build:static": "node scripts/build-static.js",
+    "build:function": "node scripts/build-function.js",
+    "build:cloudbase": "npm run build:static && npm run build:function",
+    "deploy:static": "npm run build:static && tcb hosting deploy dist -e youkong-d5gh4x0ayc29a2187",
+    "deploy:function": "npm run build:function && tcb fn deploy youkongApi --path /api --force",
+    "deploy:cloudbase": "npm run build:cloudbase && tcb hosting deploy dist -e youkong-d5gh4x0ayc29a2187 && tcb fn deploy youkongApi --path /api --force"
   },
   "dependencies": {
+    "@cloudbase/node-sdk": "^3.18.3",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "express": "^4.21.2",
-    "multer": "^2.0.2"
+    "multer": "^2.0.2",
+    "serverless-http": "^4.0.0",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1"
+    "@cloudbase/cli": "^3.5.10",
+    "@playwright/test": "^1.61.1",
+    "nodemon": "^3.1.14"
   }
 }
