@@ -8,12 +8,12 @@ if (menuToggle && navLinks) {
     menuToggle.setAttribute("aria-expanded", String(isOpen));
   });
 
-  navLinks.querySelectorAll("a").forEach((link) => {
-    link.addEventListener("click", () => {
+  navLinks.addEventListener("click", (event) => {
+    if (event.target.closest("a, button")) {
       navLinks.classList.remove("open");
       document.body.classList.remove("menu-open");
       menuToggle.setAttribute("aria-expanded", "false");
-    });
+    }
   });
 }
 

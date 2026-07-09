@@ -300,6 +300,18 @@ textarea {
   margin-top: 30px;
 }
 
+.form-actions,
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.form-actions {
+  margin-top: 18px;
+}
+
 .button {
   position: relative;
   isolation: isolate;
@@ -1289,6 +1301,10 @@ textarea {
   padding: 16px 0;
 }
 
+.event-row .row-actions {
+  justify-content: flex-end;
+}
+
 .event-row:first-child {
   padding-top: 0;
 }
@@ -1419,6 +1435,78 @@ textarea {
 
 .data-table tr:last-child td {
   border-bottom: 0;
+}
+
+.table-action {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #fff;
+  color: #b42318;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.success-hero {
+  padding: clamp(78px, 10vw, 128px) 0 clamp(72px, 8vw, 110px);
+}
+
+.success-card {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: clamp(28px, 5vw, 58px);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow-soft);
+}
+
+.success-card h1 {
+  margin: 12px 0 14px;
+  font-size: clamp(48px, 7vw, 96px);
+  line-height: 1;
+}
+
+.success-card > p {
+  max-width: 640px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.success-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin-top: 32px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--line);
+}
+
+.success-grid > div {
+  padding: 22px;
+  background: var(--panel);
+}
+
+.success-grid span {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--soft);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.success-grid strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: clamp(22px, 3vw, 34px);
+  line-height: 1.15;
+}
+
+.success-grid p {
+  margin: 0;
+  color: var(--muted);
 }
 
 .compact-head {
@@ -1766,6 +1854,7 @@ textarea {
   }
 
   .form-grid,
+  .success-grid,
   .event-card,
   .event-row,
   .manage-row,

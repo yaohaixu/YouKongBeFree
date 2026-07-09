@@ -6,7 +6,7 @@
     <title>我的｜有空客厅</title>
     <meta name="description" content="有空成员发布活动、查看自己发起活动的报名表。" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=0.3.1" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -20,7 +20,7 @@
           <a href="participate.html">活动与参与</a>
           <a href="donate.html">捐赠支持</a>
           <a href="about.html">关于与联系</a>
-          <span class="session-nav" data-session-nav><a class="nav-cta" href="login.html">有空</a></span>
+          <span class="session-nav" data-session-nav><a href="login.html">我的</a></span>
         </nav>
       </div>
     </header>
@@ -37,7 +37,7 @@
       <section class="section alt">
         <div class="wrap app-layout">
           <form class="form-note activity-editor" data-activity-form>
-            <h3>添加活动</h3>
+            <h3 data-activity-form-title>添加活动</h3>
             <div class="form-grid">
               <label>对应模块<select name="moduleId" required></select></label>
               <label>标题<input name="title" required placeholder="比如：有空放映｜重庆森林" /></label>
@@ -49,7 +49,10 @@
             <label>上传首页图<input name="cover" type="file" accept="image/*" /></label>
             <label>活动描述</label>
             <textarea name="description" class="rich-textarea" required placeholder="像写一篇公众号短文一样介绍活动：为什么想发起、会发生什么、适合谁来、需要注意什么。可以分段书写。"></textarea>
-            <button class="button primary" type="submit">发布活动</button>
+            <div class="form-actions">
+              <button class="button primary" type="submit" data-activity-submit>发布活动</button>
+              <button class="button outline" type="button" data-cancel-edit hidden>取消</button>
+            </div>
             <p class="form-message" data-activity-message></p>
           </form>
 
@@ -75,7 +78,7 @@
         <nav class="footer-links"><a href="index.html">首页</a><a href="participate.html">活动与参与</a><a href="admin.html">后台</a></nav>
       </div>
     </footer>
-    <script src="script.js"></script>
-    <script src="app.js"></script>
+    <script src="script.js?v=0.3.1"></script>
+    <script src="app.js?v=0.3.1"></script>
   </body>
 </html>

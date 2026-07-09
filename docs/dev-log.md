@@ -248,3 +248,70 @@
 3. 增加 CloudBase NoSQL 数据导出/备份脚本。
 4. 配置 GitHub Actions，在合并 `dev` 到 `main` 前自动运行语法检查和基础 API 测试。
 5. 绑定自定义域名，让静态页面和 API 尽量同源。
+
+## 2026-07-09 - 优化导航、活动编辑、报名管理和报名成功页
+
+### 任务目标
+
+优化 CloudBase 线上版本的活动管理体验：统一顶部导航展示，允许发起人编辑活动，允许发起人删除报名记录，并在访客报名成功后展示确认页。
+
+### 具体修改内容
+
+- 顶部导航改为由 `app.js` 统一渲染，固定展示：首页、社区共识、活动与参与、捐赠支持、关于与联系、我的、昵称退出。
+- `script.js` 的移动端菜单关闭逻辑改为事件代理，适配动态导航。
+- 新增活动编辑接口 `PUT /api/activities/:id`，仅活动发起人或管理员可编辑。
+- 新增报名记录详情接口 `GET /api/activities/:id/registrations/:registrationId`，供报名成功页读取确认信息。
+- 新增报名删除接口 `DELETE /api/activities/:id/registrations/:registrationId`，仅活动发起人或管理员可删除。
+- 「我的」页面新增活动编辑按钮，支持保存和取消。
+- 「我的」页面报名表新增删除报名人员按钮。
+- 新增 `success.html` 报名成功页，展示活动信息、报名昵称和手机号。
+- 活动报名成功后跳转到 `success.html`。
+- 更新 README、CHANGELOG，并将版本升级到 `0.3.1`。
+
+### 涉及文件
+
+- `app.js`
+- `script.js`
+- `lib/app.js`
+- `me.html`
+- `success.html`
+- `styles.css`
+- `scripts/build-static.js`
+- `scripts/build-function.js`
+- `package.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 活动编辑继续复用现有活动表单，使用前端状态 `editingActivity` 区分新增与编辑，避免新增复杂页面。
+- 报名成功页通过活动 ID 和报名 ID 查询服务端确认信息，不把手机号等确认信息只放在 URL 中。
+- 删除报名记录放在服务端权限校验中，前端只负责触发，确保非发起人不能越权删除。
+- 顶部导航由统一函数渲染，解决不同 HTML 页面手写导航不一致的问题。
+- `.playwright-cli/` 是本地浏览器验证缓存，加入 `.gitignore`，避免自动化产物污染提交。
+- 线上部署后发现 CloudBase CDN 仍返回旧 `app.js`，因此为 `styles.css`、`script.js`、`app.js` 增加 `v=0.3.1` 版本参数，强制页面加载本次静态资源。
+
+### 当前完成情况
+
+已完成开发与本地验证：
+
+- `node --check` 语法检查通过。
+- `npm run build:cloudbase` 构建通过。
+- 本地 JSON 模式 API 冒烟通过：活动编辑、报名成功查询、报名删除。
+- 本地 Playwright 浏览器回归通过：PC/移动导航、活动编辑、访客报名成功页、报名表删除。
+- CloudBase 静态站点和云函数已部署，线上 API 冒烟通过：活动编辑、报名成功查询、报名删除。
+
+CloudBase 线上部署验证已完成，待提交并合并稳定分支。
+
+### 遗留问题
+
+- 活动仍暂不支持删除、下架和取消。
+- 报名记录删除目前是直接删除，后续可考虑增加二次确认弹窗样式或软删除。
+- 报名成功页依赖报名 ID，用户关闭页面后如未保存链接，暂时没有“通过手机号找回报名”的功能。
+
+### 下一步建议
+
+1. 增加活动删除/下架能力。
+2. 增加报名导出 CSV。
+3. 增加更完整的 Playwright 回归脚本覆盖编辑和删除报名流程。

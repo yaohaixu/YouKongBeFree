@@ -30,15 +30,22 @@ const api = {
     });
   },
   put(path, body) {
+    const isForm = body instanceof FormData;
     return this.request(path, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers: isForm ? undefined : { "Content-Type": "application/json" },
+      body: isForm ? body : JSON.stringify(body),
     });
   },
   delete(path) {
     return this.request(path, { method: "DELETE" });
   },
+};
+
+let mePageState = {
+  user: null,
+  modules: [],
+  editingActivity: null,
 };
 
 function qs(selector, root = document) {
@@ -58,6 +65,11 @@ function setMessage(element, text, type = "muted") {
 function userHome(user) {
   if (!user) return "login.html";
   return user.role === "admin" ? "admin.html" : "me.html";
+}
+
+function currentPageName() {
+  const file = location.pathname.split("/").pop() || "index.html";
+  return file === "" ? "index.html" : file;
 }
 
 function formatDate(value) {
@@ -89,15 +101,23 @@ function descriptionToHtml(value = "") {
 }
 
 async function initSessionNav() {
-  const navSlot = qs("[data-session-nav]");
+  const navLinks = qs(".nav-links");
   const brandMarks = qsa(".brand-mark");
+  const pageName = currentPageName();
+  const baseLinks = [
+    ["index.html", "首页"],
+    ["whitepaper.html", "社区共识"],
+    ["participate.html", "活动与参与"],
+    ["donate.html", "捐赠支持"],
+    ["about.html", "关于与联系"],
+  ];
 
   let user = null;
   try {
     const session = await api.get("/api/session");
     user = session.user;
   } catch {
-    if (navSlot) navSlot.innerHTML = `<a class="nav-cta" href="login.html">有空</a>`;
+    renderMainNav(navLinks, baseLinks, pageName, null);
     brandMarks.forEach((mark) => {
       mark.addEventListener("click", (event) => {
         event.preventDefault();
@@ -115,22 +135,24 @@ async function initSessionNav() {
     });
   });
 
-  if (!navSlot) return user;
-  if (!user) {
-    navSlot.innerHTML = `<a class="nav-cta" href="login.html">有空</a>`;
-    return null;
-  }
-
-  navSlot.innerHTML = `
-    <a href="me.html">我的</a>
-    ${user.role === "admin" ? `<a href="admin.html">后台</a>` : ""}
-    <button class="nav-button" type="button" data-logout>${escapeHtml(user.nickname)} · 退出</button>
-  `;
-  qs("[data-logout]", navSlot)?.addEventListener("click", async () => {
+  renderMainNav(navLinks, baseLinks, pageName, user);
+  qs("[data-logout]", navLinks)?.addEventListener("click", async () => {
     await api.post("/api/logout", {});
     location.href = "index.html";
   });
   return user;
+}
+
+function renderMainNav(navLinks, baseLinks, pageName, user) {
+  if (!navLinks) return;
+  const links = baseLinks
+    .map(([href, label]) => `<a class="${pageName === href ? "active" : ""}" href="${href}">${label}</a>`)
+    .join("");
+  const myActive = pageName === "me.html" || pageName === "admin.html";
+  const userPart = user
+    ? `<a class="${myActive ? "active" : ""}" href="me.html">我的</a><button class="nav-button" type="button" data-logout>${escapeHtml(user.nickname)} · 退出</button>`
+    : `<a class="${myActive ? "active" : ""}" href="login.html">我的</a>`;
+  navLinks.innerHTML = `${links}<span class="session-nav" data-session-nav>${userPart}</span>`;
 }
 
 async function initLoginPage() {
@@ -156,6 +178,15 @@ async function fillModuleSelect(select) {
   const { modules } = await api.get("/api/modules");
   select.innerHTML = modules.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("");
   return modules;
+}
+
+function toDatetimeLocal(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 16);
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60 * 1000);
+  return local.toISOString().slice(0, 16);
 }
 
 function renderActivityCard(activity) {
@@ -210,27 +241,66 @@ async function initMePage() {
     return;
   }
 
+  mePageState.user = user;
   qs("[data-user-name]").textContent = user.nickname;
-  form.initiator.value = user.nickname;
-  await fillModuleSelect(form.moduleId);
+  resetActivityForm(form);
+  mePageState.modules = await fillModuleSelect(form.moduleId);
 
   const message = qs("[data-activity-message]");
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(form);
-    setMessage(message, "正在发布活动...");
+    const editing = mePageState.editingActivity;
+    setMessage(message, editing ? "正在保存活动..." : "正在发布活动...");
     try {
-      const { activity } = await api.post("/api/activities", formData);
-      setMessage(message, "活动已发布，正在打开活动页。", "success");
-      setTimeout(() => {
-        location.href = `activity.html?id=${activity.id}`;
-      }, 500);
+      const { activity } = editing
+        ? await api.put(`/api/activities/${editing.id}`, formData)
+        : await api.post("/api/activities", formData);
+      setMessage(message, editing ? "活动已保存。" : "活动已发布，正在打开活动页。", "success");
+      if (editing) {
+        resetActivityForm(form);
+        await renderMineActivities();
+      } else {
+        setTimeout(() => {
+          location.href = `activity.html?id=${activity.id}`;
+        }, 500);
+      }
     } catch (error) {
       setMessage(message, error.message, "error");
     }
   });
 
+  qs("[data-cancel-edit]")?.addEventListener("click", () => {
+    resetActivityForm(form);
+    setMessage(message, "已取消编辑。");
+  });
+
   await renderMineActivities();
+}
+
+function resetActivityForm(form) {
+  mePageState.editingActivity = null;
+  form.reset();
+  form.initiator.value = mePageState.user ? mePageState.user.nickname : "";
+  qs("[data-activity-form-title]", form)?.replaceChildren(document.createTextNode("添加活动"));
+  qs("[data-activity-submit]", form).textContent = "发布活动";
+  qs("[data-cancel-edit]", form).hidden = true;
+}
+
+function fillActivityForm(form, activity) {
+  mePageState.editingActivity = activity;
+  form.moduleId.value = activity.moduleId;
+  form.title.value = activity.title;
+  form.initiator.value = activity.initiator;
+  form.startsAt.value = toDatetimeLocal(activity.startsAt);
+  form.location.value = activity.location;
+  form.capacity.value = activity.capacity || "";
+  form.description.value = activity.description || "";
+  form.cover.value = "";
+  qs("[data-activity-form-title]", form)?.replaceChildren(document.createTextNode("编辑活动"));
+  qs("[data-activity-submit]", form).textContent = "保存活动";
+  qs("[data-cancel-edit]", form).hidden = false;
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function renderMineActivities() {
@@ -250,11 +320,21 @@ async function renderMineActivities() {
             <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
             <p>${formatDate(activity.startsAt)} · ${escapeHtml(activity.location)} · ${activity.registrationCount} 人报名</p>
           </div>
-          <button class="button outline" type="button" data-registration-id="${activity.id}">查看报名表</button>
+          <div class="row-actions">
+            <button class="button outline" type="button" data-edit-activity-id="${activity.id}">编辑</button>
+            <button class="button outline" type="button" data-registration-id="${activity.id}">查看报名表</button>
+          </div>
         </article>
       `
     )
     .join("");
+
+  qsa("[data-edit-activity-id]", list).forEach((button) => {
+    button.addEventListener("click", async () => {
+      const { activity } = await api.get(`/api/activities/${button.dataset.editActivityId}`);
+      fillActivityForm(qs("[data-activity-form]"), activity);
+    });
+  });
 
   qsa("[data-registration-id]", list).forEach((button) => {
     button.addEventListener("click", () => renderRegistrations(button.dataset.registrationId));
@@ -273,16 +353,31 @@ async function renderRegistrations(activityId) {
     }
     panel.innerHTML = `
       <table class="data-table">
-        <thead><tr><th>昵称</th><th>手机号</th><th>报名时间</th></tr></thead>
+        <thead><tr><th>昵称</th><th>手机号</th><th>报名时间</th><th>操作</th></tr></thead>
         <tbody>
           ${registrations
             .map(
-              (item) => `<tr><td>${escapeHtml(item.nickname)}</td><td>${escapeHtml(item.phone)}</td><td>${formatDate(item.createdAt)}</td></tr>`
+              (item) => `
+                <tr>
+                  <td>${escapeHtml(item.nickname)}</td>
+                  <td>${escapeHtml(item.phone)}</td>
+                  <td>${formatDate(item.createdAt)}</td>
+                  <td><button class="table-action" type="button" data-delete-registration="${item.id}">删除</button></td>
+                </tr>
+              `
             )
             .join("")}
         </tbody>
       </table>
     `;
+    qsa("[data-delete-registration]", panel).forEach((button) => {
+      button.addEventListener("click", async () => {
+        if (!confirm("确定删除这条报名记录吗？")) return;
+        await api.delete(`/api/activities/${activityId}/registrations/${button.dataset.deleteRegistration}`);
+        await renderRegistrations(activityId);
+        await renderMineActivities();
+      });
+    });
   } catch (error) {
     panel.innerHTML = `<p class="form-message" data-type="error">${escapeHtml(error.message)}</p>`;
   }
@@ -340,16 +435,70 @@ async function initActivityPage() {
     event.preventDefault();
     setMessage(message, "正在报名...");
     try {
-      await api.post(`/api/activities/${id}/register`, {
+      const { registration } = await api.post(`/api/activities/${id}/register`, {
         nickname: form.nickname.value,
         phone: form.phone.value,
       });
-      form.reset();
-      setMessage(message, "报名成功，来客厅见。", "success");
+      location.href = `success.html?activity=${encodeURIComponent(id)}&registration=${encodeURIComponent(registration.id)}`;
     } catch (error) {
       setMessage(message, error.message, "error");
     }
   });
+}
+
+async function initSuccessPage() {
+  const root = qs("[data-success-detail]");
+  if (!root) return;
+  const params = new URLSearchParams(location.search);
+  const activityId = params.get("activity");
+  const registrationId = params.get("registration");
+  if (!activityId || !registrationId) {
+    root.innerHTML = `<div class="empty-state"><strong>缺少报名信息</strong><p>请从活动详情页重新报名。</p></div>`;
+    return;
+  }
+
+  try {
+    const { activity, registration } = await api.get(`/api/activities/${activityId}/registrations/${registrationId}`);
+    root.innerHTML = `
+      <section class="success-hero">
+        <div class="wrap success-card">
+          <p class="eyebrow">报名成功</p>
+          <h1>来客厅见。</h1>
+          <p>你的报名已经记录下来，可以把这个页面留作确认信息。</p>
+          <div class="success-grid">
+            <div>
+              <span>活动</span>
+              <strong>${escapeHtml(activity.title)}</strong>
+              <p>${escapeHtml(activity.location)} · ${formatDate(activity.startsAt)}</p>
+            </div>
+            <div>
+              <span>报名人</span>
+              <strong>${escapeHtml(registration.nickname)}</strong>
+              <p>${escapeHtml(registration.phone)}</p>
+            </div>
+          </div>
+          <div class="button-row">
+            <a class="button primary" href="activity.html?id=${encodeURIComponent(activity.id)}">查看活动</a>
+            <a class="button ghost" href="participate.html">看看其他活动</a>
+          </div>
+        </div>
+      </section>
+    `;
+  } catch (error) {
+    root.innerHTML = `
+      <section class="success-hero">
+        <div class="wrap success-card">
+          <p class="eyebrow">报名确认</p>
+          <h1>暂时没读到报名信息。</h1>
+          <p>${escapeHtml(error.message)}</p>
+          <div class="button-row">
+            <a class="button primary" href="participate.html">回到活动列表</a>
+            <a class="button ghost" href="about.html">联系有空客厅</a>
+          </div>
+        </div>
+      </section>
+    `;
+  }
 }
 
 async function initAdminPage() {
@@ -495,6 +644,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(renderActivityLists),
     safeInit(initMePage),
     safeInit(initActivityPage),
+    safeInit(initSuccessPage),
     safeInit(initAdminPage),
   ]);
 });

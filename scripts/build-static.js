@@ -13,6 +13,7 @@ const files = [
   "me.html",
   "admin.html",
   "activity.html",
+  "success.html",
   "styles.css",
   "script.js",
   "app.js",
