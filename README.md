@@ -6,7 +6,7 @@
 
 当前版本：`0.4.0`
 
-状态：MVP 已完成并已部署到腾讯云 CloudBase。线上版本支持静态官网访问、手机号白名单登录、YKadmin 后台管理、成员/协作员角色、活动双岗审核、访客报名、云数据库落库和活动封面对象存储。
+状态：`0.4.0` 已完成开发、验证、CloudBase 线上部署，并已同步推送到 GitHub `dev` 和 `main` 分支。线上版本支持静态官网访问、手机号白名单登录、YKadmin 后台管理、成员/协作员角色、活动双岗审核、访客报名、云数据库落库和活动封面对象存储。
 
 ## 访问地址
 
@@ -198,12 +198,13 @@ npm run deploy:cloudbase
 ## 已验证
 
 - `node --check` 通过：`app.js`、`script.js`、`server.js`、`lib/app.js`、`lib/store.js`、构建脚本。
-- `npm run build:cloudbase` 通过，`success.html` 已纳入 CloudBase Hosting 静态构建。
+- `npm run build:cloudbase` 通过，CloudBase 静态站点和云函数均可构建。
 - 本地 JSON 模式 API 冒烟通过：管理员登录、成员/协作员新增、草稿保存、活动提审、管理员审核、协作员审核、访客报名、重复报名、取消报名、撤回活动。
 - 本地浏览器回归通过：移动端管理员登录跳转、PC/移动端导航固定展示、发起活动表单协作员选择、后台待办区和我的待办区。
-- CloudBase 线上 API 冒烟通过：模块读取、管理员登录、成员新增、成员登录、活动发布、访客报名、报名表查看。
-- CloudBase 静态页浏览器验证通过：登录页输入 `13377779999` 后跳转 `admin.html`，后台内容可见。
+- CloudBase 线上 API 冒烟通过：成员/协作员新增、活动草稿、提交审核、管理员审核、协作员审核、重复报名、取消报名。
+- CloudBase 静态页移动端浏览器验证通过：登录页输入 `13377779999` 后跳转 `admin.html`，后台待办区和协作员角色控件可见。
 - 线上冒烟产生的测试成员、活动和报名记录已清理。
+- GitHub 已同步：`dev` 和 `main` 当前均指向 `67e1344 feat(workflow): add activity review flow`。
 
 ## 正在开发 / 待完善
 

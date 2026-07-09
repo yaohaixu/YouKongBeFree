@@ -367,8 +367,14 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 ### 当前完成情况
 
 - `node --check` 语法检查通过。
+- `npm run build:cloudbase` 构建通过。
 - 本地 JSON 模式 API 冒烟通过：角色多选、草稿、提审、管理员审核、协作员审核、重复报名、取消报名、撤回。
 - 本地 Playwright 移动端回归通过：管理员手机号登录后进入后台、后台角色区可见、我的页面协作员选择和存草稿可见。
+- CloudBase 静态站点和云函数已部署成功。
+- CloudBase 线上 API 冒烟通过：成员/协作员新增、活动草稿、提交审核、管理员审核、协作员审核、重复报名、取消报名。
+- CloudBase 线上移动端页面验证通过：管理员登录后进入后台，待办区和协作员角色控件可见。
+- 线上冒烟产生的测试成员、活动、报名和 session 已清理。
+- Git 已提交 `67e1344 feat(workflow): add activity review flow`，并已推送到 GitHub `dev` 和 `main`。
 
 ### 遗留问题
 
