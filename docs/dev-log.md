@@ -315,3 +315,70 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 增加活动删除/下架能力。
 2. 增加报名导出 CSV。
 3. 增加更完整的 Playwright 回归脚本覆盖编辑和删除报名流程。
+
+## 2026-07-09 - 引入活动双岗审核与报名取消
+
+### 任务目标
+
+优化有空客厅活动系统：减少顶部导航闪烁，修复移动端登录后台跳转，增加重复报名直达成功页、报名取消、活动草稿、双岗审核、协作员角色、待办任务和管理员全量活动视图。
+
+### 具体修改内容
+
+- 顶部导航先读取本地缓存用户渲染，再用 `/api/session` 校准，减少“昵称 · 退出”闪烁。
+- 登录接口返回 session token，前端保存到 `localStorage` 并通过 `Authorization: Bearer` 兜底，改善移动端跨域 Cookie 兼容性。
+- 用户模型从单角色 `role` 扩展为多角色 `roles`，支持成员和协作员多选；默认管理员仍是唯一 `admin`。
+- 新增协作员列表接口 `GET /api/collaborators`。
+- 活动新增 `status`、`reviewStep`、`reviewLogs`、`collaboratorId` 字段。
+- 活动创建支持 `intent=draft` 存草稿，`intent=submit` 提交管理员审核。
+- 新增审核接口 `POST /api/activities/:id/review`，支持通过、退回、拒绝。
+- 新增撤回接口 `POST /api/activities/:id/withdraw`，审核中、已发布、已满员活动可撤回为草稿。
+- 新增报名取消接口 `POST /api/activities/:id/registrations/:registrationId/cancel`。
+- 重复报名不再报错，直接返回已有报名记录并跳转同一报名成功页。
+- 「我的」页面新增待办任务区、协作员选择、存草稿、提交审核、审核状态展示和撤回按钮。
+- 后台新增待办任务区和全部活动区，成员角色管理改为成员/协作员复选。
+- 报名成功页新增取消报名按钮和确认弹窗。
+- 静态资源版本参数升级为 `v=0.4.0`。
+- README、CHANGELOG 同步更新到 `0.4.0`。
+
+### 涉及文件
+
+- `lib/app.js`
+- `lib/store.js`
+- `app.js`
+- `me.html`
+- `admin.html`
+- `success.html`
+- `styles.css`
+- `package.json`
+- `package-lock.json`
+- `scripts/build-function.js`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 保留旧字段 `role`，新增 `roles`，通过 `normalizeRoles` 兼容线上旧数据，降低迁移风险。
+- 旧活动没有 `status` 时按 `published` 处理，避免线上已有活动因升级从公开列表消失。
+- 审核流使用轻量状态机：`draft`、`admin_review`、`collaborator_review`、`returned`、`rejected`、`published`、`full`、`cancelled`、`ended`。
+- 公开列表仅返回 `published`、`full`、`ended`，草稿和审核中活动只允许发起人、管理员或对应协作员查看。
+- 移动端登录问题采用 Cookie + Bearer token 双通道，不改变现有云函数 Cookie 机制。
+
+### 当前完成情况
+
+- `node --check` 语法检查通过。
+- 本地 JSON 模式 API 冒烟通过：角色多选、草稿、提审、管理员审核、协作员审核、重复报名、取消报名、撤回。
+- 本地 Playwright 移动端回归通过：管理员手机号登录后进入后台、后台角色区可见、我的页面协作员选择和存草稿可见。
+
+### 遗留问题
+
+- 活动取消和活动结束状态已预留，但暂未提供手动操作入口。
+- 审核待办暂无消息通知，需要用户进入页面查看。
+- 报名取消无需手机号二次验证，当前依赖报名成功页链接。
+- 暂未提供活动删除和报名导出 CSV。
+
+### 下一步建议
+
+1. 增加活动取消/结束入口和状态权限规则。
+2. 增加审核通知，可先用微信/飞书群机器人或短信提醒。
+3. 增加报名导出 CSV 和活动运营统计。

@@ -3,11 +3,17 @@ const api = {
     ? "https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com"
     : "",
   async request(path, options = {}) {
+    const token = localStorage.getItem("yk_session_token");
+    const headers = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    };
     let response;
     try {
       response = await fetch(`${this.baseUrl}${path}`, {
         credentials: "include",
         ...options,
+        headers,
       });
     } catch {
       throw new Error("没有连接到有空后台服务。请用 http://127.0.0.1:8080/login.html 打开页面，不要直接双击 HTML 文件。");
@@ -45,7 +51,16 @@ const api = {
 let mePageState = {
   user: null,
   modules: [],
+  collaborators: [],
   editingActivity: null,
+  submitIntent: "submit",
+};
+
+const actionLabels = {
+  approve: "通过",
+  reject: "拒绝",
+  return: "退回",
+  withdraw: "撤回",
 };
 
 function qs(selector, root = document) {
@@ -64,7 +79,7 @@ function setMessage(element, text, type = "muted") {
 
 function userHome(user) {
   if (!user) return "login.html";
-  return user.role === "admin" ? "admin.html" : "me.html";
+  return user.roles && user.roles.includes("admin") ? "admin.html" : "me.html";
 }
 
 function currentPageName() {
@@ -100,6 +115,10 @@ function descriptionToHtml(value = "") {
     .join("");
 }
 
+function hasRole(user, role) {
+  return Array.isArray(user?.roles) ? user.roles.includes(role) : user?.role === role;
+}
+
 async function initSessionNav() {
   const navLinks = qs(".nav-links");
   const brandMarks = qsa(".brand-mark");
@@ -112,11 +131,15 @@ async function initSessionNav() {
     ["about.html", "关于与联系"],
   ];
 
-  let user = null;
+  const cachedUser = getCachedUser();
+  renderMainNav(navLinks, baseLinks, pageName, cachedUser);
+  let user = cachedUser;
   try {
     const session = await api.get("/api/session");
     user = session.user;
+    cacheUser(user);
   } catch {
+    cacheUser(null);
     renderMainNav(navLinks, baseLinks, pageName, null);
     brandMarks.forEach((mark) => {
       mark.addEventListener("click", (event) => {
@@ -137,10 +160,28 @@ async function initSessionNav() {
 
   renderMainNav(navLinks, baseLinks, pageName, user);
   qs("[data-logout]", navLinks)?.addEventListener("click", async () => {
-    await api.post("/api/logout", {});
+    await api.post("/api/logout", {}).catch(() => {});
+    localStorage.removeItem("yk_session_token");
+    localStorage.removeItem("yk_user");
     location.href = "index.html";
   });
   return user;
+}
+
+function getCachedUser() {
+  try {
+    return JSON.parse(localStorage.getItem("yk_user") || "null");
+  } catch {
+    return null;
+  }
+}
+
+function cacheUser(user) {
+  if (user) {
+    localStorage.setItem("yk_user", JSON.stringify(user));
+  } else {
+    localStorage.removeItem("yk_user");
+  }
 }
 
 function renderMainNav(navLinks, baseLinks, pageName, user) {
@@ -164,9 +205,11 @@ async function initLoginPage() {
     event.preventDefault();
     setMessage(message, "正在确认你的手机号...");
     try {
-      const { user } = await api.post("/api/login", { phone: form.phone.value });
+      const { user, token } = await api.post("/api/login", { phone: form.phone.value });
+      if (token) localStorage.setItem("yk_session_token", token);
+      cacheUser(user);
       setMessage(message, "登录成功，正在进入页面。", "success");
-      location.href = userHome(user);
+      window.location.assign(userHome(user));
     } catch (error) {
       setMessage(message, error.message, "error");
     }
@@ -178,6 +221,15 @@ async function fillModuleSelect(select) {
   const { modules } = await api.get("/api/modules");
   select.innerHTML = modules.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("");
   return modules;
+}
+
+async function fillCollaboratorSelect(select) {
+  if (!select) return [];
+  const { collaborators } = await api.get("/api/collaborators");
+  select.innerHTML = collaborators.length
+    ? `<option value="">请选择协作员</option>${collaborators.map((item) => `<option value="${item.id}">${escapeHtml(item.nickname)}</option>`).join("")}`
+    : `<option value="">暂无协作员，请先联系管理员添加</option>`;
+  return collaborators;
 }
 
 function toDatetimeLocal(value) {
@@ -202,6 +254,7 @@ function renderActivityCard(activity) {
         <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
         <p>${escapeHtml(activity.location)} · ${formatDate(activity.startsAt)}</p>
         <div class="event-meta">
+          <span>${escapeHtml(activity.statusLabel || "活动发布")}</span>
           <span>发起人：${escapeHtml(activity.initiator)}</span>
           <span>${capacity}</span>
         </div>
@@ -245,28 +298,33 @@ async function initMePage() {
   qs("[data-user-name]").textContent = user.nickname;
   resetActivityForm(form);
   mePageState.modules = await fillModuleSelect(form.moduleId);
+  mePageState.collaborators = await fillCollaboratorSelect(form.collaboratorId);
+
+  qsa("[data-submit-intent]", form).forEach((button) => {
+    button.addEventListener("click", () => {
+      mePageState.submitIntent = button.dataset.submitIntent || "submit";
+    });
+  });
 
   const message = qs("[data-activity-message]");
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(form);
     const editing = mePageState.editingActivity;
-    setMessage(message, editing ? "正在保存活动..." : "正在发布活动...");
+    const intent = mePageState.submitIntent || "submit";
+    formData.set("intent", intent);
+    setMessage(message, intent === "draft" ? "正在保存草稿..." : "正在提交审核...");
     try {
       const { activity } = editing
         ? await api.put(`/api/activities/${editing.id}`, formData)
         : await api.post("/api/activities", formData);
-      setMessage(message, editing ? "活动已保存。" : "活动已发布，正在打开活动页。", "success");
-      if (editing) {
-        resetActivityForm(form);
-        await renderMineActivities();
-      } else {
-        setTimeout(() => {
-          location.href = `activity.html?id=${activity.id}`;
-        }, 500);
-      }
+      setMessage(message, intent === "draft" ? "草稿已保存。" : "活动已提交管理员审核。", "success");
+      resetActivityForm(form);
+      await renderMineActivities();
     } catch (error) {
       setMessage(message, error.message, "error");
+    } finally {
+      mePageState.submitIntent = "submit";
     }
   });
 
@@ -276,14 +334,16 @@ async function initMePage() {
   });
 
   await renderMineActivities();
+  await renderMyPendingTasks();
 }
 
 function resetActivityForm(form) {
   mePageState.editingActivity = null;
   form.reset();
   form.initiator.value = mePageState.user ? mePageState.user.nickname : "";
+  if (form.collaboratorId) form.collaboratorId.value = "";
   qs("[data-activity-form-title]", form)?.replaceChildren(document.createTextNode("添加活动"));
-  qs("[data-activity-submit]", form).textContent = "发布活动";
+  qs("[data-activity-submit]", form).textContent = "提交审核";
   qs("[data-cancel-edit]", form).hidden = true;
 }
 
@@ -295,12 +355,21 @@ function fillActivityForm(form, activity) {
   form.startsAt.value = toDatetimeLocal(activity.startsAt);
   form.location.value = activity.location;
   form.capacity.value = activity.capacity || "";
+  form.collaboratorId.value = activity.collaboratorId || "";
   form.description.value = activity.description || "";
   form.cover.value = "";
   qs("[data-activity-form-title]", form)?.replaceChildren(document.createTextNode("编辑活动"));
-  qs("[data-activity-submit]", form).textContent = "保存活动";
+  qs("[data-activity-submit]", form).textContent = "提交审核";
   qs("[data-cancel-edit]", form).hidden = false;
   form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function canEditMine(activity) {
+  return ["draft", "returned"].includes(activity.status);
+}
+
+function canWithdraw(activity) {
+  return ["admin_review", "collaborator_review", "published", "full"].includes(activity.status);
 }
 
 async function renderMineActivities() {
@@ -318,10 +387,12 @@ async function renderMineActivities() {
           <div>
             <span class="tag">${escapeHtml(activity.moduleName)}</span>
             <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
-            <p>${formatDate(activity.startsAt)} · ${escapeHtml(activity.location)} · ${activity.registrationCount} 人报名</p>
+            <p>${formatDate(activity.startsAt)} · ${escapeHtml(activity.location)} · ${escapeHtml(activity.statusLabel)} · ${escapeHtml(activity.reviewStepLabel)} · ${activity.registrationCount} 人报名</p>
+            <p>协作员：${escapeHtml(activity.collaboratorName || "未选择")}</p>
           </div>
           <div class="row-actions">
-            <button class="button outline" type="button" data-edit-activity-id="${activity.id}">编辑</button>
+            ${canEditMine(activity) ? `<button class="button outline" type="button" data-edit-activity-id="${activity.id}">编辑</button>` : ""}
+            ${canWithdraw(activity) ? `<button class="button outline danger-soft" type="button" data-withdraw-activity-id="${activity.id}">撤回</button>` : ""}
             <button class="button outline" type="button" data-registration-id="${activity.id}">查看报名表</button>
           </div>
         </article>
@@ -339,6 +410,22 @@ async function renderMineActivities() {
   qsa("[data-registration-id]", list).forEach((button) => {
     button.addEventListener("click", () => renderRegistrations(button.dataset.registrationId));
   });
+
+  qsa("[data-withdraw-activity-id]", list).forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!confirm("确定撤回这个活动吗？撤回后会变成草稿。")) return;
+      await api.post(`/api/activities/${button.dataset.withdrawActivityId}/withdraw`, {});
+      await renderMineActivities();
+      await renderActivityLists();
+    });
+  });
+}
+
+async function renderMyPendingTasks() {
+  const panel = qs("[data-my-pending]");
+  if (!panel) return;
+  const { activities } = await api.get("/api/activities?pending=me");
+  renderPendingTasks(panel, activities);
 }
 
 async function renderRegistrations(activityId) {
@@ -479,11 +566,29 @@ async function initSuccessPage() {
           </div>
           <div class="button-row">
             <a class="button primary" href="activity.html?id=${encodeURIComponent(activity.id)}">查看活动</a>
+            <button class="button outline danger-soft" type="button" data-cancel-registration>取消报名</button>
             <a class="button ghost" href="participate.html">看看其他活动</a>
           </div>
         </div>
       </section>
     `;
+    qs("[data-cancel-registration]", root)?.addEventListener("click", async () => {
+      if (!confirm("确定取消这次报名吗？取消后如需参加，需要重新报名。")) return;
+      await api.post(`/api/activities/${activityId}/registrations/${registrationId}/cancel`, {});
+      root.innerHTML = `
+        <section class="success-hero">
+          <div class="wrap success-card">
+            <p class="eyebrow">已取消报名</p>
+            <h1>这次先留白。</h1>
+            <p>你的报名记录已经取消，之后想来还可以重新报名。</p>
+            <div class="button-row">
+              <a class="button primary" href="activity.html?id=${encodeURIComponent(activity.id)}">回到活动</a>
+              <a class="button ghost" href="participate.html">看看其他活动</a>
+            </div>
+          </div>
+        </section>
+      `;
+    });
   } catch (error) {
     root.innerHTML = `
       <section class="success-hero">
@@ -509,12 +614,12 @@ async function initAdminPage() {
     location.href = "login.html";
     return;
   }
-  if (user.role !== "admin") {
+  if (!hasRole(user, "admin")) {
     adminRoot.innerHTML = `<div class="empty-state"><strong>你还不是管理员</strong><p>只有 YKadmin 可以进入后台。</p></div>`;
     return;
   }
 
-  await Promise.all([renderUsers(), renderModules()]);
+  await Promise.all([renderUsers(), renderModules(), renderAdminPendingTasks(), renderAllActivities()]);
   bindAdminForms();
 }
 
@@ -530,11 +635,11 @@ function bindAdminForms() {
       await api.post("/api/users", {
         nickname: userForm.nickname.value,
         phone: userForm.phone.value,
-        role: userForm.role.value,
+        roles: selectedRoles(userForm),
       });
       userForm.reset();
       setMessage(userMessage, "成员已添加。", "success");
-      await renderUsers();
+      await Promise.all([renderUsers(), renderAdminPendingTasks(), renderAllActivities()]);
     } catch (error) {
       setMessage(userMessage, error.message, "error");
     }
@@ -556,6 +661,21 @@ function bindAdminForms() {
   });
 }
 
+function selectedRoles(root) {
+  return qsa('[name="roles"]:checked', root).map((input) => input.value);
+}
+
+function renderRoleControls(user = {}) {
+  const roles = user.roles || [user.role || "member"];
+  if (roles.includes("admin")) {
+    return `<span class="tag">有空管理员</span>`;
+  }
+  return `
+    <label><input type="checkbox" name="roles" value="member" ${roles.includes("member") ? "checked" : ""} /> 成员</label>
+    <label><input type="checkbox" name="roles" value="collaborator" ${roles.includes("collaborator") ? "checked" : ""} /> 协作员</label>
+  `;
+}
+
 async function renderUsers() {
   const list = qs("[data-user-list]");
   if (!list) return;
@@ -563,13 +683,10 @@ async function renderUsers() {
   list.innerHTML = users
     .map(
       (user) => `
-        <article class="manage-row" data-user-id="${user.id}">
+        <article class="manage-row user-manage-row" data-user-id="${user.id}">
           <input name="nickname" value="${escapeHtml(user.nickname)}" />
           <input name="phone" value="${escapeHtml(user.phone)}" inputmode="tel" />
-          <select name="role">
-            <option value="member" ${user.role === "member" ? "selected" : ""}>成员</option>
-            <option value="admin" ${user.role === "admin" ? "selected" : ""}>管理员</option>
-          </select>
+          <div class="check-group" aria-label="角色">${renderRoleControls(user)}</div>
           <button class="button outline" type="button" data-save-user>保存</button>
           <button class="button outline" type="button" data-delete-user ${user.id === "admin" ? "disabled" : ""}>删除</button>
         </article>
@@ -582,15 +699,116 @@ async function renderUsers() {
       await api.put(`/api/users/${row.dataset.userId}`, {
         nickname: qs('[name="nickname"]', row).value,
         phone: qs('[name="phone"]', row).value,
-        role: qs('[name="role"]', row).value,
+        roles: selectedRoles(row),
       });
-      await renderUsers();
+      await Promise.all([renderUsers(), renderAdminPendingTasks(), renderAllActivities()]);
     });
     qs("[data-delete-user]", row).addEventListener("click", async () => {
       await api.delete(`/api/users/${row.dataset.userId}`);
-      await renderUsers();
+      await Promise.all([renderUsers(), renderAdminPendingTasks(), renderAllActivities()]);
     });
   });
+}
+
+function renderPendingTasks(container, activities) {
+  if (!container) return;
+  if (!activities.length) {
+    container.innerHTML = `<div class="empty-state"><strong>暂无待办</strong><p>需要你审核的活动会出现在这里。</p></div>`;
+    return;
+  }
+  container.innerHTML = activities.map(renderReviewTask).join("");
+  bindReviewButtons(container);
+}
+
+function renderReviewTask(activity) {
+  return `
+    <article class="event-row review-row" data-review-activity-id="${activity.id}">
+      <div>
+        <span class="tag">${escapeHtml(activity.reviewStepLabel)}</span>
+        <h3>${escapeHtml(activity.title)}</h3>
+        <p>${escapeHtml(activity.moduleName)} · ${formatDate(activity.startsAt)} · ${escapeHtml(activity.location || "地点待定")}</p>
+        <p>发起人：${escapeHtml(activity.initiator)} · 协作员：${escapeHtml(activity.collaboratorName || "未选择")}</p>
+        <details class="review-detail">
+          <summary>查看活动详情</summary>
+          <div class="article-content compact">${descriptionToHtml(activity.description || "暂无活动描述")}</div>
+          ${renderReviewHistory(activity)}
+        </details>
+      </div>
+      <div class="review-actions">
+        <label>审核意见
+          <select data-review-action>
+            <option value="approve">通过</option>
+            <option value="return">退回</option>
+            <option value="reject">拒绝</option>
+          </select>
+        </label>
+        <textarea data-review-comment placeholder="填写审核说明，可留空"></textarea>
+        <button class="button primary" type="button" data-review-submit>提交审核</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderReviewHistory(activity) {
+  const logs = activity.reviewLogs || [];
+  if (!logs.length) return `<p class="muted-text">暂无审核记录。</p>`;
+  return `
+    <div class="review-history">
+      ${logs
+        .map((log) => `<p><strong>${escapeHtml(log.actorName || "系统")}</strong> ${escapeHtml(actionLabels[log.action] || log.action)} · ${formatDate(log.createdAt)}${log.comment ? `：${escapeHtml(log.comment)}` : ""}</p>`)
+        .join("")}
+    </div>
+  `;
+}
+
+function bindReviewButtons(container) {
+  qsa("[data-review-submit]", container).forEach((button) => {
+    button.addEventListener("click", async () => {
+      const row = button.closest("[data-review-activity-id]");
+      await api.post(`/api/activities/${row.dataset.reviewActivityId}/review`, {
+        action: qs("[data-review-action]", row).value,
+        comment: qs("[data-review-comment]", row).value,
+      });
+      await Promise.all([
+        renderMyPendingTasks(),
+        renderAdminPendingTasks(),
+        renderAllActivities(),
+        renderMineActivities(),
+        renderActivityLists(),
+      ]);
+    });
+  });
+}
+
+async function renderAdminPendingTasks() {
+  const panel = qs("[data-admin-pending]");
+  if (!panel) return;
+  const { activities } = await api.get("/api/activities?pending=me");
+  renderPendingTasks(panel, activities);
+}
+
+async function renderAllActivities() {
+  const list = qs("[data-all-activities]");
+  if (!list) return;
+  const { activities } = await api.get("/api/activities?all=true");
+  if (!activities.length) {
+    list.innerHTML = `<div class="empty-state"><strong>暂无活动</strong><p>所有状态的活动会显示在这里。</p></div>`;
+    return;
+  }
+  list.innerHTML = activities
+    .map(
+      (activity) => `
+        <article class="event-row">
+          <div>
+            <span class="tag">${escapeHtml(activity.statusLabel)}</span>
+            <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
+            <p>${escapeHtml(activity.reviewStepLabel)} · ${formatDate(activity.startsAt)} · ${escapeHtml(activity.location || "地点待定")} · ${activity.registrationCount} 人报名</p>
+            <p>发起人：${escapeHtml(activity.initiator)} · 协作员：${escapeHtml(activity.collaboratorName || "未选择")}</p>
+          </div>
+        </article>
+      `
+    )
+    .join("");
 }
 
 async function renderModules() {

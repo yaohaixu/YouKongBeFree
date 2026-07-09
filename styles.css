@@ -361,6 +361,11 @@ textarea {
   background: var(--panel);
 }
 
+.button.danger-soft,
+.table-action {
+  color: #b42318;
+}
+
 .button:hover {
   transform: translateY(-2px);
   border-color: #a8a8a8;
@@ -1398,6 +1403,100 @@ textarea {
   background: var(--panel);
 }
 
+.user-manage-row {
+  grid-template-columns: minmax(120px, 1fr) minmax(140px, 1fr) minmax(150px, 0.8fr) auto auto;
+}
+
+.check-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  margin-top: 8px;
+  min-height: 44px;
+}
+
+.check-group.inline {
+  margin-top: 8px;
+}
+
+.check-group label {
+  display: inline-flex;
+  width: auto;
+  margin: 0;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink);
+  font-weight: 640;
+}
+
+.check-group input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.review-row {
+  align-items: start;
+}
+
+.review-actions {
+  display: grid;
+  width: min(100%, 280px);
+  gap: 10px;
+}
+
+.review-actions label {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 760;
+}
+
+.review-actions select,
+.review-actions textarea {
+  width: 100%;
+  margin-top: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 11px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.review-actions textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.review-detail {
+  margin-top: 12px;
+}
+
+.review-detail summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 760;
+}
+
+.article-content.compact {
+  margin-top: 12px;
+  padding: 18px;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.review-history {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.review-history p {
+  margin: 6px 0;
+}
+
 [data-module-list] .manage-row {
   grid-template-columns: minmax(130px, 0.6fr) minmax(180px, 1fr) auto auto;
 }
@@ -1659,8 +1758,14 @@ textarea {
   }
 
   .manage-row,
+  .user-manage-row,
   [data-module-list] .manage-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .review-row,
+  .review-actions {
+    width: 100%;
   }
 }
 
@@ -1858,8 +1963,13 @@ textarea {
   .event-card,
   .event-row,
   .manage-row,
+  .user-manage-row,
   [data-module-list] .manage-row {
     grid-template-columns: 1fr;
+  }
+
+  .review-actions {
+    width: 100%;
   }
 
   .event-cover {

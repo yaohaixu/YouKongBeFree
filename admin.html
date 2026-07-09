@@ -6,7 +6,7 @@
     <title>YKadmin 后台｜有空客厅</title>
     <meta name="description" content="YKadmin 管理成员手机号、昵称和活动模块。" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=0.3.1" />
+    <link rel="stylesheet" href="styles.css?v=0.4.0" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -34,6 +34,18 @@
         </div>
       </section>
 
+      <section class="section">
+        <div class="wrap">
+          <div class="section-head compact-head">
+            <div>
+              <p class="section-kicker">待办任务</p>
+              <h2>管理员审核。</h2>
+            </div>
+          </div>
+          <div class="event-list rows" data-admin-pending></div>
+        </div>
+      </section>
+
       <section class="section alt">
         <div class="wrap admin-layout">
           <section class="form-note">
@@ -43,10 +55,10 @@
                 <label>昵称<input name="nickname" required /></label>
                 <label>手机号<input name="phone" inputmode="tel" required /></label>
                 <label>角色
-                  <select name="role">
-                    <option value="member">成员</option>
-                    <option value="admin">管理员</option>
-                  </select>
+                  <span class="check-group inline">
+                    <label><input type="checkbox" name="roles" value="member" checked /> 成员</label>
+                    <label><input type="checkbox" name="roles" value="collaborator" /> 协作员</label>
+                  </span>
                 </label>
               </div>
               <button class="button primary" type="submit">添加成员</button>
@@ -63,6 +75,18 @@
               <p class="form-message" data-module-message></p>
             </form>
           </section>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap">
+          <div class="section-head compact-head">
+            <div>
+              <p class="section-kicker">全部活动</p>
+              <h2>所有人、所有状态。</h2>
+            </div>
+          </div>
+          <div class="event-list rows" data-all-activities></div>
         </div>
       </section>
 
@@ -97,7 +121,7 @@
         <nav class="footer-links"><a href="index.html">首页</a><a href="me.html">我的</a><a href="participate.html">活动与参与</a></nav>
       </div>
     </footer>
-    <script src="script.js?v=0.3.1"></script>
-    <script src="app.js?v=0.3.1"></script>
+    <script src="script.js?v=0.4.0"></script>
+    <script src="app.js?v=0.4.0"></script>
   </body>
 </html>
