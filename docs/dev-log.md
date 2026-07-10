@@ -683,3 +683,83 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 2. 新增活动报名详情页，并支持 CSV 导出。
 3. 增加管理员取消 / 结束活动能力和操作日志。
 4. 把本次 Playwright 冒烟流程沉淀为可重复运行的自动化测试脚本。
+
+## 2026-07-10 - 报名表详情、操作日志与分页筛选优化
+
+### 任务目标
+
+按用户新增优化要求，继续拆解高增长数据页面：将报名表改为独立详情页并支持 CSV 导出；新增管理员操作日志；将活动、成员、模块筛选改为点击「筛选」后查询；将列表改为 API 分页；补齐管理员取消 / 结束活动能力，并继续修复表单间距和移动端输入溢出。
+
+### 具体修改内容
+
+- 新增 `registrations.html`，活动发起人和管理员可进入独立报名表页面，查看报名者、删除报名记录、导出 CSV。
+- 新增 `admin-logs.html`，管理员可查看系统关键操作日志，支持关键词搜索和加载更多。
+- `lib/store.js` 新增 `logs` 集合，本地 JSON 和 CloudBase 均会初始化日志集合。
+- `lib/app.js` 新增操作日志写入能力，覆盖登录、退出、成员新增/保存/删除、模块新增/保存/删除、活动草稿/提审/审核/退回/拒绝/撤回/取消/结束、报名新增/删除/取消。
+- `lib/app.js` 新增 `/api/logs`、`POST /api/activities/:id/cancel`、`POST /api/activities/:id/end`。
+- `lib/app.js` 为 `/api/activities`、`/api/users`、`/api/modules` 增加服务端筛选和分页返回 `pageInfo`。
+- `app.js` 将活动、成员、模块、日志列表改为点击筛选后请求 API；加载更多请求下一页并追加，避免扩大 `pageSize` 的隐患。
+- `app.js` 将报名表按钮改为跳转 `registrations.html`；草稿、退回、拒绝、审核中且无人报名的活动不展示报名表入口，已发布过或已有报名记录的活动展示入口。
+- `app.js` 将审核意见默认值改为「请选择」，未选择时阻止提交。
+- `app.js` 将成员角色控件改为单选下拉，YKadmin 仍固定为唯一管理员。
+- `styles.css` 增加表单按钮、工具栏按钮、筛选面板和移动端日期输入的统一间距与宽度约束，修复移动端 `datetime-local` / `date` 控件溢出。
+- `me.html` 和 `admin.html` 保持待办预览在入口模块上方；普通成员不展示待办区。
+- `scripts/build-static.js` 补齐 `registrations.html` 和 `admin-logs.html`。
+- 版本号、静态资源参数和云函数构建版本升级到 `0.6.0`。
+- README、CHANGELOG、开发日志同步更新。
+
+### 涉及文件
+
+- `app.js`
+- `lib/app.js`
+- `lib/store.js`
+- `styles.css`
+- `registrations.html`
+- `admin-logs.html`
+- `me.html`
+- `admin.html`
+- `my-activities.html`
+- `admin-activities.html`
+- `admin-members.html`
+- `admin-modules.html`
+- `activity-editor.html`
+- `scripts/build-static.js`
+- `scripts/build-function.js`
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 继续沿用现有 Vanilla JS + Express 架构，不引入前端框架，避免重构成本过大。
+- 报名表拆成独立详情页，避免活动列表随着报名人数增长变得臃肿；CSV 在浏览器端生成，减少后端导出接口复杂度。
+- 操作日志采用追加写入 `logs` 集合，日志写入失败不阻断主流程，避免审计能力影响用户操作。
+- 列表分页采用 API 层 `page` + `pageSize`，前端加载更多请求下一页并追加；当前 CloudBase Store 仍会在服务端读取集合后筛选，后续数据量更大时可继续升级为数据库条件查询。
+- 搜索只绑定 `submit`，不绑定输入事件，避免用户每打一个字就触发请求。
+- 活动人数上限固定为 99，留空也按 99 处理，降低被批量提交拖垮报名表的风险。
+
+### 当前完成情况
+
+- `node --check` 已通过：`app.js`、`lib/app.js`、`lib/store.js`、`script.js`、`server.js`、`scripts/build-static.js`、`scripts/build-function.js`。
+- `git diff --check` 已通过。
+- `npm run build:cloudbase` 已通过。
+- 本地 JSON 模式 API 冒烟通过：管理员登录、新增协作员/成员、成员发起活动、人数留空默认 99、管理员审核、协作员审核、访客报名、重复报名找回确认页、报名表读取、操作日志搜索、管理员结束活动。
+- 本地 Playwright 验证通过：管理员登录跳转后台；待办预览位于后台入口模块上方；移动端 390px 下发起活动时间字段、全部活动开始/结束日期筛选、成员管理、操作日志、报名表页面均无横向溢出。
+- 本地 Playwright 验证通过：成员角色为单选下拉；报名表 CSV 按钮可见；审核意见默认「请选择」；带封面活动在审核待办中可查看上传图片；控制台无错误。
+- CloudBase `0.6.0` 已部署成功：静态托管上传 28 个文件，`registrations.html` 和 `admin-logs.html` 均可访问，线上 HTML / JS / CSS 已引用 `v=0.6.0`；云函数 `youkongApi` 部署成功，线上 `/api/session` 返回 `200`、安全响应头和 `{"user":null}`。
+
+### 遗留问题
+
+- 当前 CloudBase Store 的筛选分页仍是 API 进程读取集合后处理，不是数据库索引级分页；当数据量明显增长时，建议改为 CloudBase 查询条件、索引和游标分页。
+- 操作日志目前只支持关键词搜索，后续可增加动作类型、操作人、时间范围等筛选条件。
+- CSV 导出在浏览器端完成，后续如需更复杂报表可增加后端导出接口。
+- 尚未把本次 API 和 Playwright 冒烟整理成可重复运行的 `npm test`。
+
+### 下一步建议
+
+1. 将 CloudBase 查询升级为数据库层筛选、排序和分页，并为常用字段建立索引。
+2. 增加自动化测试脚本，覆盖登录、审核、报名、报名表导出和日志查询。
+3. 增加操作日志高级筛选：操作类型、操作人、目标对象、时间范围。
+4. 继续升级登录体系：短信验证码、微信登录或管理员二次校验。

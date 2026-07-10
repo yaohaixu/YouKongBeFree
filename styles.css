@@ -71,8 +71,17 @@ img {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
+}
+
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .nowrap {
@@ -1168,6 +1177,7 @@ select:disabled {
   margin-top: var(--control-gap);
   color: var(--muted);
   font-weight: 760;
+  min-width: 0;
 }
 
 .form-note input,
@@ -1176,6 +1186,7 @@ select:disabled {
 .manage-row input,
 .manage-row select {
   width: 100%;
+  min-width: 0;
   margin-top: 9px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -1203,8 +1214,10 @@ select:disabled {
 }
 
 .form-note form > .button,
-.form-note form > button {
-  margin-top: 22px;
+.form-note form > button,
+.form-note > .button,
+.form-note > button {
+  margin-top: 30px;
 }
 
 .auth-layout,
@@ -1240,7 +1253,7 @@ select:disabled {
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px 16px;
+  gap: 12px 16px;
 }
 
 .rich-textarea {
@@ -1496,35 +1509,6 @@ select:disabled {
   grid-template-columns: minmax(120px, 1fr) minmax(140px, 1fr) minmax(150px, 0.8fr) auto auto;
 }
 
-.check-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  align-items: center;
-  margin-top: 8px;
-  min-height: 44px;
-}
-
-.check-group.inline {
-  margin-top: 8px;
-}
-
-.check-group label {
-  display: inline-flex;
-  width: auto;
-  margin: 0;
-  align-items: center;
-  gap: 7px;
-  color: var(--ink);
-  font-weight: 640;
-}
-
-.check-group input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-}
-
 .review-row {
   align-items: start;
   grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
@@ -1714,17 +1698,36 @@ select:disabled {
   color: var(--muted);
   font-size: 14px;
   font-weight: 760;
+  min-width: 0;
 }
 
 .filter-panel input,
 .filter-panel select {
   width: 100%;
+  min-width: 0;
   min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 11px 12px;
   background: rgba(255, 255, 255, 0.86);
   color: var(--ink);
+}
+
+.form-grid > *,
+.filter-panel > *,
+.manage-row > *,
+.event-row > *,
+.list-toolbar > * {
+  min-width: 0;
+}
+
+input[type="date"],
+input[type="datetime-local"] {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .filter-panel input:focus,
@@ -1736,13 +1739,18 @@ select:disabled {
 
 .list-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin: 16px 0;
+  gap: 14px 18px;
+  margin: 22px 0 18px;
   color: var(--muted);
   font-size: 14px;
   font-weight: 760;
+}
+
+.list-toolbar .row-actions {
+  gap: 12px;
 }
 
 .load-more {
@@ -1907,6 +1915,11 @@ select:disabled {
 
 .compact-head h2 {
   font-size: clamp(28px, 3.6vw, 46px);
+}
+
+.compact-head .button,
+.section-head .button {
+  margin-top: 18px;
 }
 
 .site-footer {
@@ -2623,8 +2636,15 @@ select:disabled {
     justify-content: stretch;
   }
 
+  .list-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
   .row-actions .button,
-  .form-actions .button {
+  .form-actions .button,
+  .list-toolbar .button {
     flex: 1 1 100%;
   }
 

@@ -8,7 +8,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=0.5.0" />
+    <link rel="stylesheet" href="styles.css?v=0.6.0" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -56,6 +56,7 @@
               <a class="button ghost" href="admin.html">回后台</a>
             </div>
             <div class="manage-list" data-user-list></div>
+            <button class="button ghost load-more" type="button" data-load-more-users hidden>加载更多</button>
           </div>
 
           <aside class="form-note sticky-panel">
@@ -63,12 +64,7 @@
             <form data-user-form>
               <label>昵称<input name="nickname" required /></label>
               <label>手机号<input name="phone" inputmode="tel" required /></label>
-              <label>角色
-                <span class="check-group inline">
-                  <label><input type="checkbox" name="roles" value="member" checked /> 成员</label>
-                  <label><input type="checkbox" name="roles" value="collaborator" /> 协作员</label>
-                </span>
-              </label>
+              <label>角色<select name="role"><option value="member">成员</option><option value="collaborator">协作员</option></select></label>
               <button class="button primary" type="submit">添加成员</button>
               <p class="form-message" data-user-message></p>
             </form>
@@ -80,10 +76,10 @@
     <footer class="site-footer">
       <div class="footer-grid">
         <div><div class="footer-brand">有空客厅</div><div>成员权限越清楚，协作越稳。</div><div class="credit">网站制作人：海旭</div></div>
-        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-activities.html">全部活动</a><a href="admin-modules.html">模块管理</a></nav>
+        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-activities.html">全部活动</a><a href="admin-modules.html">模块管理</a><a href="admin-logs.html">操作日志</a></nav>
       </div>
     </footer>
-    <script src="script.js?v=0.5.0"></script>
-    <script src="app.js?v=0.5.0"></script>
+    <script src="script.js?v=0.6.0"></script>
+    <script src="app.js?v=0.6.0"></script>
   </body>
 </html>

@@ -56,8 +56,17 @@ let mePageState = {
   collaborators: [],
   editingActivity: null,
   submitIntent: "submit",
-  myActivityLimit: 12,
-  adminActivityLimit: 12,
+  pageSize: 12,
+  myActivityPage: 1,
+  adminActivityPage: 1,
+  userPage: 1,
+  modulePage: 1,
+  logPage: 1,
+  myActivities: [],
+  adminActivities: [],
+  users: [],
+  modulesPageItems: [],
+  logs: [],
 };
 
 const actionLabels = {
@@ -65,6 +74,8 @@ const actionLabels = {
   reject: "拒绝",
   return: "退回",
   withdraw: "撤回",
+  "activity.cancel": "取消活动",
+  "activity.end": "结束活动",
 };
 
 const statusOptions = [
@@ -109,7 +120,7 @@ function showToast(text = "保存成功") {
 function revealDynamicContent(root) {
   if (!root || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const elements = qsa(
-    ".event-card, .event-row, .empty-state, .data-table, .activity-hero, .article-content, .success-card",
+    ".event-card, .event-row, .manage-row, .empty-state, .data-table, .activity-hero, .article-content, .success-card",
     root
   );
   elements.forEach((element, index) => {
@@ -250,10 +261,12 @@ function renderMainNav(navLinks, baseLinks, pageName, user) {
     "my-activities.html",
     "activity-editor.html",
     "review-tasks.html",
+    "registrations.html",
     "admin.html",
     "admin-activities.html",
     "admin-members.html",
     "admin-modules.html",
+    "admin-logs.html",
   ];
   const myActive = workspacePages.includes(pageName);
   const userPart = user
@@ -565,6 +578,38 @@ function canWithdraw(activity) {
   return ["admin_review", "collaborator_review", "published", "full"].includes(activity.status);
 }
 
+function resetPagedState(key) {
+  const pageKeys = {
+    myActivities: "myActivityPage",
+    adminActivities: "adminActivityPage",
+    users: "userPage",
+    modulesPageItems: "modulePage",
+    logs: "logPage",
+  };
+  const pageKey = pageKeys[key];
+  if (Object.prototype.hasOwnProperty.call(mePageState, pageKey)) {
+    mePageState[pageKey] = 1;
+  }
+  if (Array.isArray(mePageState[key])) {
+    mePageState[key] = [];
+  }
+}
+
+function mergePageItems(key, page, items) {
+  const existing = page <= 1 ? [] : (mePageState[key] || []);
+  const seen = new Set(existing.map((item) => item.id));
+  const merged = [
+    ...existing,
+    ...items.filter((item) => {
+      if (!item.id || seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    }),
+  ];
+  mePageState[key] = merged;
+  return merged;
+}
+
 async function initMyActivitiesPage() {
   const root = qs("[data-my-activities-page]");
   if (!root) return;
@@ -573,17 +618,13 @@ async function initMyActivitiesPage() {
   mePageState.user = user;
   const filters = qs("[data-my-activity-filters]", root);
   fillStatusSelect(filters?.status);
-  filters?.addEventListener("input", () => {
-    mePageState.myActivityLimit = 12;
-    renderMineActivities();
-  });
   filters?.addEventListener("submit", (event) => {
     event.preventDefault();
-    mePageState.myActivityLimit = 12;
+    resetPagedState("myActivities");
     renderMineActivities();
   });
   qs("[data-load-more-my-activities]", root)?.addEventListener("click", () => {
-    mePageState.myActivityLimit += 12;
+    mePageState.myActivityPage += 1;
     renderMineActivities();
   });
   await renderMineActivities();
@@ -592,19 +633,23 @@ async function initMyActivitiesPage() {
 async function renderMineActivities() {
   const list = qs("[data-my-activities]");
   if (!list) return;
-  const { activities } = await api.get("/api/activities?owner=me");
   const filters = qs("[data-my-activity-filters]");
-  const filtered = filterActivities(activities, filters);
-  const visible = filtered.slice(0, mePageState.myActivityLimit);
-  updateResultCount(qs("[data-my-activity-count]"), filtered.length, activities.length);
-  updateLoadMore(qs("[data-load-more-my-activities]"), visible.length, filtered.length);
+  const query = queryFromForm(filters, {
+    owner: "me",
+    page: mePageState.myActivityPage,
+    pageSize: mePageState.pageSize,
+  });
+  const { activities, pageInfo } = await api.get(`/api/activities${query}`);
+  const loaded = mergePageItems("myActivities", mePageState.myActivityPage, activities);
+  updatePagedCount(qs("[data-my-activity-count]"), loaded.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-my-activities]"), loaded.length, pageInfo?.total || loaded.length);
 
-  if (!filtered.length) {
+  if (!loaded.length) {
     list.innerHTML = `<div class="empty-state"><strong>还没有发起过活动</strong><p>写下一个小想法，客厅就多一张新纸条。</p></div>`;
     revealDynamicContent(list);
     return;
   }
-  list.innerHTML = visible
+  list.innerHTML = loaded
     .map(
       (activity) => `
         <article class="event-row">
@@ -617,7 +662,7 @@ async function renderMineActivities() {
           <div class="row-actions">
             ${canEditMine(activity) ? `<a class="button outline" href="activity-editor.html?id=${encodeURIComponent(activity.id)}">编辑</a>` : ""}
             ${canWithdraw(activity) ? `<button class="button outline danger-soft" type="button" data-withdraw-activity-id="${activity.id}">撤回</button>` : ""}
-            <button class="button outline" type="button" data-registration-id="${activity.id}">查看报名表</button>
+            ${canViewRegistrations(activity) ? `<a class="button outline" href="registrations.html?id=${encodeURIComponent(activity.id)}">查看报名表</a>` : ""}
           </div>
         </article>
       `
@@ -625,62 +670,44 @@ async function renderMineActivities() {
     .join("");
   revealDynamicContent(list);
 
-  qsa("[data-registration-id]", list).forEach((button) => {
-    button.addEventListener("click", () => renderRegistrations(button.dataset.registrationId));
-  });
-
   qsa("[data-withdraw-activity-id]", list).forEach((button) => {
     button.addEventListener("click", async () => {
       if (!confirm("确定撤回这个活动吗？撤回后会变成草稿。")) return;
       await api.post(`/api/activities/${button.dataset.withdrawActivityId}/withdraw`, {});
       showToast("保存成功");
+      resetPagedState("myActivities");
       await renderMineActivities();
     });
   });
 }
 
-function filterActivities(activities, form) {
-  if (!form) return sortActivities(activities, "");
-  const keyword = String(form.q?.value || "").trim().toLowerCase();
-  const status = form.status?.value || "";
-  const moduleId = form.moduleId?.value || "";
-  const from = form.from?.value ? new Date(form.from.value).getTime() : 0;
-  const to = form.to?.value ? new Date(`${form.to.value}T23:59:59`).getTime() : 0;
-  const sort = form.sort?.value || "created-desc";
-  return sortActivities(
-    activities.filter((activity) => {
-      const haystack = [
-        activity.title,
-        activity.moduleName,
-        activity.initiator,
-        activity.creatorName,
-        activity.collaboratorName,
-        activity.location,
-        activity.statusLabel,
-      ].join(" ").toLowerCase();
-      const startsAt = activity.startsAt ? new Date(activity.startsAt).getTime() : 0;
-      return (!keyword || haystack.includes(keyword))
-        && (!status || activity.status === status)
-        && (!moduleId || activity.moduleId === moduleId)
-        && (!from || startsAt >= from)
-        && (!to || startsAt <= to);
-    }),
-    sort
-  );
+function canViewRegistrations(activity) {
+  return Boolean(activity.publishedAt)
+    || Number(activity.registrationCount || 0) > 0
+    || ["published", "full", "cancelled", "ended"].includes(activity.status);
 }
 
-function sortActivities(activities, sort) {
-  return activities.slice().sort((a, b) => {
-    if (sort === "start-asc") return new Date(a.startsAt || 0) - new Date(b.startsAt || 0);
-    if (sort === "start-desc") return new Date(b.startsAt || 0) - new Date(a.startsAt || 0);
-    if (sort === "registrations-desc") return (b.registrationCount || 0) - (a.registrationCount || 0);
-    return new Date(b.createdAt || b.startsAt || 0) - new Date(a.createdAt || a.startsAt || 0);
+function queryFromForm(form, extra = {}) {
+  const params = new URLSearchParams();
+  if (form) {
+    new FormData(form).forEach((value, key) => {
+      const text = String(value || "").trim();
+      if (text) params.set(key, text);
+    });
+  }
+  Object.entries(extra).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
   });
+  const query = params.toString();
+  return query ? `?${query}` : "";
 }
 
-function updateResultCount(element, filtered, total) {
+function updatePagedCount(element, visible, pageInfo) {
   if (!element) return;
-  element.textContent = `显示 ${filtered} 条，共 ${total} 条`;
+  const total = pageInfo?.total ?? visible;
+  element.textContent = `显示 ${visible} 条，共 ${total} 条`;
 }
 
 function updateLoadMore(button, visible, total) {
@@ -712,49 +739,93 @@ function canRegisterActivity(activity) {
   return ["published", "full", "ended"].includes(activity.status);
 }
 
-async function renderRegistrations(activityId) {
-  const panel = qs("[data-registration-panel]");
-  if (!panel) return;
-  panel.innerHTML = `<p class="muted-text">正在读取报名表...</p>`;
+async function initRegistrationsPage() {
+  const root = qs("[data-registrations-page]");
+  if (!root) return;
+  const user = await requireCurrentUser();
+  if (!user) return;
+  const id = new URLSearchParams(location.search).get("id");
+  const title = qs("[data-registration-title]", root);
+  const summary = qs("[data-registration-summary]", root);
+  const list = qs("[data-registration-list]", root);
+  const exportButton = qs("[data-export-registrations]", root);
+  if (!id) {
+    list.innerHTML = `<div class="empty-state"><strong>缺少活动 ID</strong><p>请从「我的活动」或「全部活动」进入报名表。</p></div>`;
+    return;
+  }
   try {
-    const { registrations } = await api.get(`/api/activities/${activityId}/registrations`);
-    if (!registrations.length) {
-      panel.innerHTML = `<div class="empty-state"><strong>暂时还没人报名</strong><p>可以把活动链接发到社群里。</p></div>`;
-      revealDynamicContent(panel);
-      return;
-    }
-    panel.innerHTML = `
-      <table class="data-table">
-        <thead><tr><th>昵称</th><th>手机号</th><th>报名时间</th><th>操作</th></tr></thead>
-        <tbody>
-          ${registrations
-            .map(
-              (item) => `
-                <tr>
-                  <td>${escapeHtml(item.nickname)}</td>
-                  <td>${escapeHtml(item.phone)}</td>
-                  <td>${formatDate(item.createdAt)}</td>
-                  <td><button class="table-action" type="button" data-delete-registration="${item.id}">删除</button></td>
-                </tr>
-              `
-            )
-            .join("")}
-        </tbody>
-      </table>
-    `;
-    revealDynamicContent(panel);
-    qsa("[data-delete-registration]", panel).forEach((button) => {
-      button.addEventListener("click", async () => {
-        if (!confirm("确定删除这条报名记录吗？")) return;
-        await api.delete(`/api/activities/${activityId}/registrations/${button.dataset.deleteRegistration}`);
-        showToast("删除成功");
-        await renderRegistrations(activityId);
-        await renderMineActivities();
-      });
+    const [{ activity }, { registrations }] = await Promise.all([
+      api.get(`/api/activities/${id}`),
+      api.get(`/api/activities/${id}/registrations`),
+    ]);
+    title.textContent = activity.title;
+    summary.textContent = `${activity.moduleName} · ${formatDate(activity.startsAt)} · ${activity.location} · ${registrations.length} 人报名`;
+    renderRegistrationTable(list, id, registrations);
+    exportButton.hidden = !registrations.length;
+    exportButton.addEventListener("click", () => {
+      downloadRegistrationsCsv(activity, registrations);
     });
   } catch (error) {
-    panel.innerHTML = `<p class="form-message" data-type="error">${escapeHtml(error.message)}</p>`;
+    list.innerHTML = `<p class="form-message" data-type="error">${escapeHtml(error.message)}</p>`;
   }
+}
+
+function renderRegistrationTable(container, activityId, registrations) {
+  if (!container) return;
+  if (!registrations.length) {
+    container.innerHTML = `<div class="empty-state"><strong>暂时还没人报名</strong><p>可以把活动链接发到社群里。</p></div>`;
+    revealDynamicContent(container);
+    return;
+  }
+  container.innerHTML = `
+    <table class="data-table">
+      <thead><tr><th>昵称</th><th>手机号</th><th>报名时间</th><th>操作</th></tr></thead>
+      <tbody>
+        ${registrations
+          .map(
+            (item) => `
+              <tr>
+                <td>${escapeHtml(item.nickname)}</td>
+                <td>${escapeHtml(item.phone)}</td>
+                <td>${formatDate(item.createdAt)}</td>
+                <td><button class="table-action" type="button" data-delete-registration="${item.id}">删除</button></td>
+              </tr>
+            `
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+  revealDynamicContent(container);
+  qsa("[data-delete-registration]", container).forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!confirm("确定删除这条报名记录吗？")) return;
+      await api.delete(`/api/activities/${activityId}/registrations/${button.dataset.deleteRegistration}`);
+      showToast("删除成功");
+      location.reload();
+    });
+  });
+}
+
+function escapeCsv(value = "") {
+  return `"${String(value).replaceAll('"', '""')}"`;
+}
+
+function downloadRegistrationsCsv(activity, registrations) {
+  const rows = [
+    ["活动标题", "昵称", "手机号", "报名时间"],
+    ...registrations.map((item) => [activity.title, item.nickname, item.phone, item.createdAt]),
+  ];
+  const csv = `\uFEFF${rows.map((row) => row.map(escapeCsv).join(",")).join("\n")}`;
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${activity.title || "有空报名表"}.csv`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 async function initActivityPage() {
@@ -979,6 +1050,14 @@ function renderAdminDashboardCards(root, activities, users, modules, pendingActi
       meta: "管理员审核",
       count: pendingActivities.length,
     },
+    {
+      href: "admin-logs.html",
+      label: "操作日志",
+      title: "查看系统里的关键动作",
+      body: "新增、保存、删除、提交、审核、撤回都会留下记录。",
+      meta: "审计记录",
+      count: "Log",
+    },
   ];
   container.innerHTML = cards.map(renderWorkspaceCard).join("");
   revealDynamicContent(container);
@@ -992,17 +1071,13 @@ async function initAdminActivitiesPage() {
   const filters = qs("[data-admin-activity-filters]", root);
   await fillModuleFilterSelect(filters?.moduleId);
   fillStatusSelect(filters?.status);
-  filters?.addEventListener("input", () => {
-    mePageState.adminActivityLimit = 12;
-    renderAllActivities();
-  });
   filters?.addEventListener("submit", (event) => {
     event.preventDefault();
-    mePageState.adminActivityLimit = 12;
+    resetPagedState("adminActivities");
     renderAllActivities();
   });
   qs("[data-load-more-admin-activities]", root)?.addEventListener("click", () => {
-    mePageState.adminActivityLimit += 12;
+    mePageState.adminActivityPage += 1;
     renderAllActivities();
   });
   await renderAllActivities();
@@ -1014,9 +1089,13 @@ async function initAdminMembersPage() {
   const user = await requireAdminUser(root);
   if (!user) return;
   const filters = qs("[data-member-filters]", root);
-  filters?.addEventListener("input", renderUsers);
   filters?.addEventListener("submit", (event) => {
     event.preventDefault();
+    resetPagedState("users");
+    renderUsers();
+  });
+  qs("[data-load-more-users]", root)?.addEventListener("click", () => {
+    mePageState.userPage += 1;
     renderUsers();
   });
   bindAdminForms();
@@ -1029,13 +1108,35 @@ async function initAdminModulesPage() {
   const user = await requireAdminUser(root);
   if (!user) return;
   const filters = qs("[data-module-filters]", root);
-  filters?.addEventListener("input", renderModules);
   filters?.addEventListener("submit", (event) => {
     event.preventDefault();
+    resetPagedState("modulesPageItems");
+    renderModules();
+  });
+  qs("[data-load-more-modules]", root)?.addEventListener("click", () => {
+    mePageState.modulePage += 1;
     renderModules();
   });
   bindAdminForms();
   await renderModules();
+}
+
+async function initAdminLogsPage() {
+  const root = qs("[data-admin-logs-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const filters = qs("[data-log-filters]", root);
+  filters?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    resetPagedState("logs");
+    renderLogs();
+  });
+  qs("[data-load-more-logs]", root)?.addEventListener("click", () => {
+    mePageState.logPage += 1;
+    renderLogs();
+  });
+  await renderLogs();
 }
 
 function fillStatusSelect(select) {
@@ -1055,11 +1156,12 @@ function bindAdminForms() {
       await api.post("/api/users", {
         nickname: userForm.nickname.value,
         phone: userForm.phone.value,
-        roles: selectedRoles(userForm),
+        role: selectedRole(userForm),
       });
       userForm.reset();
       setMessage(userMessage, "成员已添加。", "success");
       showToast("保存成功");
+      resetPagedState("users");
       await renderUsers();
     } catch (error) {
       setMessage(userMessage, error.message, "error");
@@ -1076,6 +1178,7 @@ function bindAdminForms() {
       moduleForm.reset();
       setMessage(moduleMessage, "模块已添加。", "success");
       showToast("保存成功");
+      resetPagedState("modulesPageItems");
       await renderModules();
     } catch (error) {
       setMessage(moduleMessage, error.message, "error");
@@ -1083,8 +1186,8 @@ function bindAdminForms() {
   });
 }
 
-function selectedRoles(root) {
-  return qsa('[name="roles"]:checked', root).map((input) => input.value);
+function selectedRole(root) {
+  return qs('[name="role"]', root)?.value || "member";
 }
 
 function renderRoleControls(user = {}) {
@@ -1093,36 +1196,37 @@ function renderRoleControls(user = {}) {
     return `<span class="tag">有空管理员</span>`;
   }
   return `
-    <label><input type="checkbox" name="roles" value="member" ${roles.includes("member") ? "checked" : ""} /> 成员</label>
-    <label><input type="checkbox" name="roles" value="collaborator" ${roles.includes("collaborator") ? "checked" : ""} /> 协作员</label>
+    <select name="role" aria-label="角色">
+      <option value="member" ${roles.includes("member") ? "selected" : ""}>成员</option>
+      <option value="collaborator" ${roles.includes("collaborator") ? "selected" : ""}>协作员</option>
+    </select>
   `;
 }
 
 async function renderUsers() {
   const list = qs("[data-user-list]");
   if (!list) return;
-  const { users } = await api.get("/api/users");
   const filters = qs("[data-member-filters]");
-  const keyword = String(filters?.q?.value || "").trim().toLowerCase();
-  const role = filters?.role?.value || "";
-  const filtered = users.filter((user) => {
-    const roles = user.roles || [user.role || "member"];
-    const haystack = [user.nickname, user.phone, roles.join(" ")].join(" ").toLowerCase();
-    return (!keyword || haystack.includes(keyword)) && (!role || roles.includes(role));
+  const query = queryFromForm(filters, {
+    page: mePageState.userPage,
+    pageSize: mePageState.pageSize,
   });
-  updateResultCount(qs("[data-member-count]"), filtered.length, users.length);
-  if (!filtered.length) {
+  const { users, pageInfo } = await api.get(`/api/users${query}`);
+  const loaded = mergePageItems("users", mePageState.userPage, users);
+  updatePagedCount(qs("[data-member-count]"), loaded.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-users]"), loaded.length, pageInfo?.total || loaded.length);
+  if (!loaded.length) {
     list.innerHTML = `<div class="empty-state"><strong>没有找到成员</strong><p>换一个关键词或角色筛选试试。</p></div>`;
     revealDynamicContent(list);
     return;
   }
-  list.innerHTML = filtered
+  list.innerHTML = loaded
     .map(
       (user) => `
         <article class="manage-row user-manage-row" data-user-id="${user.id}">
           <input name="nickname" value="${escapeHtml(user.nickname)}" />
           <input name="phone" value="${escapeHtml(user.phone)}" inputmode="tel" />
-          <div class="check-group" aria-label="角色">${renderRoleControls(user)}</div>
+          <div class="role-control">${renderRoleControls(user)}</div>
           <button class="button outline" type="button" data-save-user>保存</button>
           <button class="button outline" type="button" data-delete-user ${user.id === "admin" ? "disabled" : ""}>删除</button>
         </article>
@@ -1136,15 +1240,17 @@ async function renderUsers() {
       await api.put(`/api/users/${row.dataset.userId}`, {
         nickname: qs('[name="nickname"]', row).value,
         phone: qs('[name="phone"]', row).value,
-        roles: selectedRoles(row),
+        role: selectedRole(row),
       });
       showToast("保存成功");
+      resetPagedState("users");
       await renderUsers();
     });
     qs("[data-delete-user]", row).addEventListener("click", async () => {
       if (!confirm("确定删除这个成员吗？")) return;
       await api.delete(`/api/users/${row.dataset.userId}`);
       showToast("删除成功");
+      resetPagedState("users");
       await renderUsers();
     });
   });
@@ -1180,6 +1286,7 @@ function renderReviewTask(activity) {
       <div class="review-actions">
         <label>审核意见
           <select data-review-action>
+            <option value="" selected disabled>请选择</option>
             <option value="approve">通过</option>
             <option value="return">退回</option>
             <option value="reject">拒绝</option>
@@ -1208,11 +1315,18 @@ function bindReviewButtons(container) {
   qsa("[data-review-submit]", container).forEach((button) => {
     button.addEventListener("click", async () => {
       const row = button.closest("[data-review-activity-id]");
+      const action = qs("[data-review-action]", row).value;
+      if (!action) {
+        alert("请先选择审核意见");
+        return;
+      }
       await api.post(`/api/activities/${row.dataset.reviewActivityId}/review`, {
-        action: qs("[data-review-action]", row).value,
+        action,
         comment: qs("[data-review-comment]", row).value,
       });
       showToast("保存成功");
+      resetPagedState("myActivities");
+      resetPagedState("adminActivities");
       await Promise.all([
         renderMyPendingTasks(),
         renderAdminPendingTasks(),
@@ -1234,18 +1348,22 @@ async function renderAdminPendingTasks() {
 async function renderAllActivities() {
   const list = qs("[data-all-activities]");
   if (!list) return;
-  const { activities } = await api.get("/api/activities?all=true");
   const filters = qs("[data-admin-activity-filters]");
-  const filtered = filterActivities(activities, filters);
-  const visible = filtered.slice(0, mePageState.adminActivityLimit);
-  updateResultCount(qs("[data-admin-activity-count]"), filtered.length, activities.length);
-  updateLoadMore(qs("[data-load-more-admin-activities]"), visible.length, filtered.length);
-  if (!filtered.length) {
+  const query = queryFromForm(filters, {
+    all: "true",
+    page: mePageState.adminActivityPage,
+    pageSize: mePageState.pageSize,
+  });
+  const { activities, pageInfo } = await api.get(`/api/activities${query}`);
+  const loaded = mergePageItems("adminActivities", mePageState.adminActivityPage, activities);
+  updatePagedCount(qs("[data-admin-activity-count]"), loaded.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-admin-activities]"), loaded.length, pageInfo?.total || loaded.length);
+  if (!loaded.length) {
     list.innerHTML = `<div class="empty-state"><strong>暂无活动</strong><p>所有状态的活动会显示在这里。</p></div>`;
     revealDynamicContent(list);
     return;
   }
-  list.innerHTML = visible
+  list.innerHTML = loaded
     .map(
       (activity) => `
         <article class="event-row">
@@ -1257,28 +1375,63 @@ async function renderAllActivities() {
           </div>
           <div class="row-actions">
             <a class="button outline" href="activity.html?id=${encodeURIComponent(activity.id)}">查看</a>
+            ${canViewRegistrations(activity) ? `<a class="button outline" href="registrations.html?id=${encodeURIComponent(activity.id)}">报名表</a>` : ""}
+            ${canAdminCancel(activity) ? `<button class="button outline danger-soft" type="button" data-admin-cancel-activity-id="${activity.id}">取消</button>` : ""}
+            ${canAdminEnd(activity) ? `<button class="button outline" type="button" data-admin-end-activity-id="${activity.id}">结束</button>` : ""}
           </div>
         </article>
       `
     )
     .join("");
   revealDynamicContent(list);
+
+  qsa("[data-admin-cancel-activity-id]", list).forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!confirm("确定取消这个活动吗？")) return;
+      await api.post(`/api/activities/${button.dataset.adminCancelActivityId}/cancel`, {});
+      showToast("保存成功");
+      resetPagedState("adminActivities");
+      await renderAllActivities();
+    });
+  });
+  qsa("[data-admin-end-activity-id]", list).forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!confirm("确定结束这个活动吗？")) return;
+      await api.post(`/api/activities/${button.dataset.adminEndActivityId}/end`, {});
+      showToast("保存成功");
+      resetPagedState("adminActivities");
+      await renderAllActivities();
+    });
+  });
+}
+
+function canAdminCancel(activity) {
+  return !["cancelled", "ended", "rejected"].includes(activity.status);
+}
+
+function canAdminEnd(activity) {
+  return ["published", "full"].includes(activity.status);
 }
 
 async function renderModules() {
   const list = qs("[data-module-list]");
   if (!list) return;
-  const { modules } = await api.get("/api/modules");
   const filters = qs("[data-module-filters]");
-  const keyword = String(filters?.q?.value || "").trim().toLowerCase();
-  const filtered = modules.filter((module) => [module.name, module.description].join(" ").toLowerCase().includes(keyword));
-  updateResultCount(qs("[data-module-count]"), filtered.length, modules.length);
-  if (!filtered.length) {
+  const query = queryFromForm(filters, {
+    paged: "true",
+    page: mePageState.modulePage,
+    pageSize: mePageState.pageSize,
+  });
+  const { modules, pageInfo } = await api.get(`/api/modules${query}`);
+  const loaded = mergePageItems("modulesPageItems", mePageState.modulePage, modules);
+  updatePagedCount(qs("[data-module-count]"), loaded.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-modules]"), loaded.length, pageInfo?.total || loaded.length);
+  if (!loaded.length) {
     list.innerHTML = `<div class="empty-state"><strong>没有找到模块</strong><p>换一个关键词试试。</p></div>`;
     revealDynamicContent(list);
     return;
   }
-  list.innerHTML = filtered
+  list.innerHTML = loaded
     .map(
       (module) => `
         <article class="manage-row" data-module-id="${module.id}">
@@ -1299,6 +1452,7 @@ async function renderModules() {
         description: qs('[name="description"]', row).value,
       });
       showToast("保存成功");
+      resetPagedState("modulesPageItems");
       await renderModules();
     });
     qs("[data-delete-module]", row).addEventListener("click", async () => {
@@ -1306,12 +1460,50 @@ async function renderModules() {
         if (!confirm("确定删除这个活动模块吗？")) return;
         await api.delete(`/api/modules/${row.dataset.moduleId}`);
         showToast("删除成功");
+        resetPagedState("modulesPageItems");
         await renderModules();
       } catch (error) {
         alert(error.message);
       }
     });
   });
+}
+
+async function renderLogs() {
+  const list = qs("[data-log-list]");
+  if (!list) return;
+  const filters = qs("[data-log-filters]");
+  const query = queryFromForm(filters, {
+    page: mePageState.logPage,
+    pageSize: mePageState.pageSize,
+  });
+  const { logs, pageInfo } = await api.get(`/api/logs${query}`);
+  const loaded = mergePageItems("logs", mePageState.logPage, logs);
+  updatePagedCount(qs("[data-log-count]"), loaded.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-logs]"), loaded.length, pageInfo?.total || loaded.length);
+  if (!loaded.length) {
+    list.innerHTML = `<div class="empty-state"><strong>暂无日志</strong><p>系统里的关键操作会显示在这里。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = loaded
+    .map(
+      (log) => `
+        <article class="event-row log-row">
+          <div>
+            <span class="tag">${escapeHtml(log.actionLabel || log.action)}</span>
+            <h3>${escapeHtml(log.targetName || log.targetId || "系统操作")}</h3>
+            <p>${escapeHtml(log.detail || "")}</p>
+            <p>${escapeHtml(log.actorName || "访客")} · ${escapeHtml(log.actorRole || "")} · ${formatDate(log.createdAt)}</p>
+          </div>
+          <div class="row-actions">
+            <span class="muted-text">${escapeHtml(log.targetType || "system")}</span>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+  revealDynamicContent(list);
 }
 
 async function safeInit(task) {
@@ -1330,6 +1522,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(initMeDashboardPage),
     safeInit(initActivityEditorPage),
     safeInit(initMyActivitiesPage),
+    safeInit(initRegistrationsPage),
     safeInit(initReviewTasksPage),
     safeInit(initActivityPage),
     safeInit(initSuccessPage),
@@ -1337,5 +1530,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(initAdminActivitiesPage),
     safeInit(initAdminMembersPage),
     safeInit(initAdminModulesPage),
+    safeInit(initAdminLogsPage),
   ]);
 });

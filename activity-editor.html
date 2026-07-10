@@ -8,7 +8,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=0.5.0" />
+    <link rel="stylesheet" href="styles.css?v=0.6.0" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -47,7 +47,7 @@
               <label>发起人<input name="initiator" required /></label>
               <label>时间<input name="startsAt" type="datetime-local" required /></label>
               <label>地点<input name="location" required placeholder="有空客厅 / 流动客厅地址" /></label>
-              <label>人数限额<input name="capacity" type="number" min="1" placeholder="留空表示无上限" /></label>
+              <label>人数限额<input name="capacity" type="number" min="1" max="99" placeholder="留空默认 99 人" /></label>
             </div>
             <label>上传首页图<input name="cover" type="file" accept="image/jpeg,image/png,image/webp,image/gif" /></label>
             <label>活动描述</label>
@@ -79,7 +79,7 @@
         <nav class="footer-links"><a href="me.html">工作台</a><a href="my-activities.html">我的活动</a><a href="participate.html">活动与参与</a></nav>
       </div>
     </footer>
-    <script src="script.js?v=0.5.0"></script>
-    <script src="app.js?v=0.5.0"></script>
+    <script src="script.js?v=0.6.0"></script>
+    <script src="app.js?v=0.6.0"></script>
   </body>
 </html>

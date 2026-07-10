@@ -8,7 +8,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=0.5.0" />
+    <link rel="stylesheet" href="styles.css?v=0.6.0" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -40,18 +40,6 @@
         <div class="wrap">
           <div class="section-head compact-head">
             <div>
-              <p class="section-kicker">管理入口</p>
-              <h2>每件事都有自己的页面。</h2>
-            </div>
-          </div>
-          <div class="workspace-grid" data-admin-dashboard-cards></div>
-        </div>
-      </section>
-
-      <section class="section alt">
-        <div class="wrap">
-          <div class="section-head compact-head">
-            <div>
               <p class="section-kicker">待办预览</p>
               <h2>管理员审核。</h2>
             </div>
@@ -60,15 +48,27 @@
           <div class="event-list rows" data-admin-pending></div>
         </div>
       </section>
+
+      <section class="section alt">
+        <div class="wrap">
+          <div class="section-head compact-head">
+            <div>
+              <p class="section-kicker">管理入口</p>
+              <h2>每件事都有自己的页面。</h2>
+            </div>
+          </div>
+          <div class="workspace-grid" data-admin-dashboard-cards></div>
+        </div>
+      </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-grid">
         <div><div class="footer-brand">有空客厅</div><div>后台工作台只做导航和概览。</div><div class="credit">网站制作人：海旭</div></div>
-        <nav class="footer-links"><a href="admin-activities.html">全部活动</a><a href="admin-members.html">成员管理</a><a href="admin-modules.html">模块管理</a></nav>
+        <nav class="footer-links"><a href="admin-activities.html">全部活动</a><a href="admin-members.html">成员管理</a><a href="admin-modules.html">模块管理</a><a href="admin-logs.html">操作日志</a></nav>
       </div>
     </footer>
-    <script src="script.js?v=0.5.0"></script>
-    <script src="app.js?v=0.5.0"></script>
+    <script src="script.js?v=0.6.0"></script>
+    <script src="app.js?v=0.6.0"></script>
   </body>
 </html>
