@@ -28,6 +28,7 @@ Thumbs.db
 coverage/
 playwright-report/
 test-results/
+output/
 .playwright-cli/
 tmp/
 *.tmp
