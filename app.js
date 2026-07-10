@@ -168,6 +168,13 @@ function formatDate(value) {
   });
 }
 
+function formatActivityTime(activity = {}) {
+  const start = formatDate(activity.startsAt);
+  if (!activity.endsAt) return start;
+  const end = formatDate(activity.endsAt);
+  return `${start} - ${end}`;
+}
+
 function escapeHtml(value = "") {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -341,7 +348,7 @@ function renderActivityCard(activity) {
       <div class="event-body">
         <span class="tag">${escapeHtml(activity.moduleName)}</span>
         <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
-        <p>${escapeHtml(activity.location)} · ${formatDate(activity.startsAt)}</p>
+        <p>${escapeHtml(activity.location)} · ${formatActivityTime(activity)}</p>
         <div class="event-meta">
           <span>${escapeHtml(activity.statusLabel || "活动发布")}</span>
           <span>发起人：${escapeHtml(activity.initiator)}</span>
@@ -570,6 +577,7 @@ function fillActivityForm(form, activity) {
   form.title.value = activity.title;
   form.initiator.value = activity.initiator;
   form.startsAt.value = toDatetimeLocal(activity.startsAt);
+  if (form.endsAt) form.endsAt.value = toDatetimeLocal(activity.endsAt);
   form.location.value = activity.location;
   form.capacity.value = activity.capacity || "";
   form.collaboratorId.value = activity.collaboratorId || "";
@@ -714,7 +722,7 @@ async function renderMineActivities() {
           <div>
             <span class="tag">${escapeHtml(activity.moduleName)}</span>
             <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
-            <p>${formatDate(activity.startsAt)} · ${escapeHtml(activity.location)} · ${escapeHtml(activity.statusLabel)} · ${escapeHtml(activity.reviewStepLabel)} · ${activity.registrationCount} 人报名</p>
+            <p>${formatActivityTime(activity)} · ${escapeHtml(activity.location)} · ${escapeHtml(activity.statusLabel)} · ${escapeHtml(activity.reviewStepLabel)} · ${activity.registrationCount} 人报名</p>
             <p>协作员：${escapeHtml(activity.collaboratorName || "未选择")}</p>
           </div>
           <div class="row-actions">
@@ -817,7 +825,7 @@ async function initRegistrationsPage() {
       api.get(`/api/activities/${id}/registrations`),
     ]);
     title.textContent = activity.title;
-    summary.textContent = `${activity.moduleName} · ${formatDate(activity.startsAt)} · ${activity.location} · ${registrations.length} 人报名`;
+    summary.textContent = `${activity.moduleName} · ${formatActivityTime(activity)} · ${activity.location} · ${registrations.length} 人报名`;
     renderRegistrationTable(list, id, registrations);
     exportButton.hidden = !registrations.length;
     exportButton.addEventListener("click", () => {
@@ -902,7 +910,7 @@ async function initActivityPage() {
       <div>
         <span class="tag">${escapeHtml(activity.moduleName)}</span>
         <h1>${escapeHtml(activity.title)}</h1>
-        <p>${escapeHtml(activity.location)} · ${formatDate(activity.startsAt)}</p>
+        <p>${escapeHtml(activity.location)} · ${formatActivityTime(activity)}</p>
         <div class="event-meta">
           <span>${escapeHtml(activity.statusLabel || "活动发布")}</span>
           <span>发起人：${escapeHtml(activity.initiator)}</span>
@@ -988,7 +996,7 @@ async function initSuccessPage() {
             <div>
               <span>活动</span>
               <strong>${escapeHtml(activity.title)}</strong>
-              <p>${escapeHtml(activity.location)} · ${formatDate(activity.startsAt)}</p>
+              <p>${escapeHtml(activity.location)} · ${formatActivityTime(activity)}</p>
             </div>
             <div>
               <span>报名人</span>
@@ -1332,7 +1340,7 @@ function renderReviewTask(activity) {
       <div>
         <span class="tag">${escapeHtml(activity.reviewStepLabel)}</span>
         <h3>${escapeHtml(activity.title)}</h3>
-        <p>${escapeHtml(activity.moduleName)} · ${formatDate(activity.startsAt)} · ${escapeHtml(activity.location || "地点待定")}</p>
+        <p>${escapeHtml(activity.moduleName)} · ${formatActivityTime(activity)} · ${escapeHtml(activity.location || "地点待定")}</p>
         <p>发起人：${escapeHtml(activity.initiator)} · 协作员：${escapeHtml(activity.collaboratorName || "未选择")}</p>
         <details class="review-detail">
           <summary>查看活动详情</summary>
@@ -1428,7 +1436,7 @@ async function renderAllActivities() {
           <div>
             <span class="tag">${escapeHtml(statusTone[activity.status] || activity.statusLabel)}</span>
             <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
-            <p>${escapeHtml(activity.reviewStepLabel)} · ${formatDate(activity.startsAt)} · ${escapeHtml(activity.location || "地点待定")} · ${activity.registrationCount} 人报名</p>
+            <p>${escapeHtml(activity.reviewStepLabel)} · ${formatActivityTime(activity)} · ${escapeHtml(activity.location || "地点待定")} · ${activity.registrationCount} 人报名</p>
             <p>发起人：${escapeHtml(activity.initiator)} · 协作员：${escapeHtml(activity.collaboratorName || "未选择")}</p>
           </div>
           <div class="row-actions">

@@ -6,7 +6,7 @@ const output = path.join(root, "tmp", "cloudfunctions", "youkongApi");
 
 const packageJson = {
   name: "youkong-api-function",
-  version: "0.8.0",
+  version: "0.9.0",
   private: true,
   main: "index.js",
   scripts: {

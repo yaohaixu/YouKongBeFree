@@ -891,3 +891,61 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 在 CloudBase 控制台确认 `yk_activities` 的 `status + startsAt` 索引。
 2. 在活动编辑表单增加可选「结束时间」，支持跨天活动精确归档。
 3. 增加 GitHub Actions，在 `dev` / `main` push 时自动运行 `npm test` 和 `npm run build:cloudbase`。
+
+## 2026-07-10 - 活动结束时间与 GitHub Actions CI
+
+### 任务目标
+
+继续完成上次建议：为活动增加可选「结束时间」字段，避免跨天活动只按开始日期被提前归档；同时补齐 GitHub Actions CI，让 `dev` / `main` push 和 PR 自动运行测试与构建。
+
+### 具体修改内容
+
+- `activity-editor.html` 新增「结束时间（可选）」输入框。
+- `lib/app.js` 的活动输入解析新增 `endsAt` 字段。
+- 活动校验新增结束时间格式检查，且结束时间不能早于开始时间。
+- 活动创建和编辑接口保存 `endsAt`。
+- 自动结束归档逻辑优先使用 `endsAt` 所在日期判断；未填写结束时间时继续使用 `startsAt`。
+- `app.js` 新增 `formatActivityTime()`，列表、详情页、报名确认、报名表、审核待办、后台活动管理统一展示起止时间。
+- `tests/smoke.test.js` 增加带结束时间活动和跨天未结束活动的 API 冒烟覆盖。
+- 新增 `.github/workflows/ci.yml`，在 `dev` / `main` push 和 PR 时执行 `npm ci`、安装 Playwright Chromium、`npm test` 和 `npm run build:cloudbase`。
+- 版本号、静态资源参数和云函数构建版本升级到 `0.9.0`。
+- README、CHANGELOG、开发日志同步更新。
+
+### 涉及文件
+
+- `activity-editor.html`
+- `lib/app.js`
+- `app.js`
+- `tests/smoke.test.js`
+- `.github/workflows/ci.yml`
+- `package.json`
+- `package-lock.json`
+- `scripts/build-function.js`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- `endsAt` 保持可选，避免增加普通单日活动的填写负担；只有跨天或明确结束时间的活动才需要填写。
+- 归档仍按日期而不是精确分钟执行：填写 `endsAt=2026-07-20 10:00` 的活动，会在北京时间 2026-07-21 00:00 后自动归档，符合「结束日期次日归档」的规则。
+- 公开列表仍按 `startsAt` 排序，结束时间只影响展示和归档判断；这避免破坏已有首页和历史活动排序体验。
+- CI 只做测试和构建，不做 CloudBase 自动部署，避免 main push 直接影响线上环境；部署仍保留人工执行。
+
+### 当前完成情况
+
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
+- `git diff --check` 已通过。
+- `npm run build:cloudbase` 已通过。
+- CloudBase `0.9.0` 已部署成功：静态托管上传 29 个文件，云函数 `youkongApi` 部署成功。
+- 线上只读冒烟通过：`activity-editor.html` 已引用 `v=0.9.0` 并包含 `endsAt` 字段，线上 `app.js` 已包含 `formatActivityTime` 和 `activity.endsAt` 逻辑，`/api/activities?view=upcoming&page=1&pageSize=3` 返回 2 条并带正确 `pageInfo`。
+
+### 遗留问题
+
+- CI 首次在 GitHub 运行时需要确认 Playwright 依赖安装耗时和缓存是否稳定。
+- 如未来需要精确到活动结束当分钟归档，需要将当前按日期归档策略改为按时间戳比较。
+
+### 下一步建议
+
+1. 观察 GitHub Actions 首次运行结果，如 Playwright 依赖安装过慢，可增加更细缓存或改用官方 Playwright GitHub Action。
+2. 后续可增加 CloudBase 数据备份脚本，并把备份校验纳入定期运维。

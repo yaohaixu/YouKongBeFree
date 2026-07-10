@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.8.0`
+当前版本：`0.9.0`
 
-状态：`0.8.0` 已完成开发、本地验证与 CloudBase 线上部署。本版本新增活动自动结束归档、独立近期 / 历史活动列表页，并调整首页活动入口顺序。
+状态：`0.9.0` 已完成开发、本地验证与 CloudBase 线上部署。本版本新增活动可选结束时间，并补齐 GitHub Actions CI。
 
 ## 访问地址
 
@@ -49,7 +49,8 @@ GitHub Pages 静态展示：
 - 审核待办详情支持查看活动描述、审核记录和上传封面图；审核意见默认「请选择」。
 - 活动人数限制：发起活动时人数限额留空默认 99 人，最大 99 人。
 - 活动详情页：公开发布活动支持未登录访客填写昵称和手机号报名；重复报名会直接返回原报名确认页；草稿和审核中活动不开放报名。
-- 活动自动结束：系统按北京时间判断活动日期，活动日期次日 0 点后自动将已发布 / 已满员活动归档为「活动结束」，并从首页和近期活动列表移除。
+- 活动时间：活动必须填写开始时间，可选填写结束时间；列表、详情、报名确认页会展示起止时间。
+- 活动自动结束：系统按北京时间判断活动结束日期；若填写结束时间则以结束时间为准，否则沿用活动日期次日 0 点归档。已发布 / 已满员活动归档后从首页和近期活动列表移除。
 - 独立活动列表页：首页最多展示 3 条近期活动；`activities.html` 展示所有近期活动，`activities.html?view=history` 展示历史活动。
 - 报名成功页：展示活动和报名人信息，并支持访客取消报名。
 - 报名表查看：活动发起人和管理员可在独立页面查看报名者列表、删除报名记录，并导出 CSV。
@@ -72,6 +73,7 @@ GitHub Pages 静态展示：
 - 登录态：HTTP-only Cookie Session + 前端 Bearer token 兜底，改善移动端跨域 Cookie 兼容性
 - 配置：dotenv、CloudBase CLI、`cloudbaserc.json`
 - 测试验证：`npm test` 自动运行语法检查、Node API 冒烟和 Playwright 浏览器布局 / 流程验证
+- CI：GitHub Actions 在 `dev` / `main` push 和 PR 时运行 `npm ci`、`npm test` 和 `npm run build:cloudbase`
 
 ## 项目目录结构
 
@@ -103,6 +105,9 @@ GitHub Pages 静态展示：
 ├── lib/
 │   ├── app.js              # Express 应用与 API 路由
 │   └── store.js            # JSON / CloudBase 双存储实现
+├── .github/
+│   └── workflows/
+│       └── ci.yml          # GitHub Actions 测试与构建流程
 ├── tests/
 │   └── smoke.test.js       # API + Playwright 浏览器冒烟测试
 ├── scripts/
@@ -194,7 +199,7 @@ npm test
 测试内容包括：
 
 - 语法检查：核心前后端脚本和构建脚本。
-- API 冒烟：登录安全头、成员/协作员新增、活动提审、双岗审核、报名、重复报名、报名表、日志查询、报名人数排序和过期活动自动归档。
+- API 冒烟：登录安全头、成员/协作员新增、活动提审、双岗审核、报名、重复报名、报名表、日志查询、报名人数排序、过期活动自动归档和跨天活动保留。
 - Playwright 浏览器冒烟：管理员登录跳转、移动端关键页面无横向溢出、近期 / 历史活动页、审核默认「请选择」和审核封面图展示。
 
 ## CloudBase 部署
@@ -256,6 +261,7 @@ npm run deploy:cloudbase
 - 发起人查看审核状态：草稿、审核中、退回、拒绝、活动发布、活动人满、活动取消、活动结束。
 - 发起人可撤回审核中、已发布、已满员活动，撤回后回到草稿。
 - 活动详情页和访客报名。
+- 活动可选结束时间：支持跨天活动更精确归档，结束时间不能早于开始时间。
 - 重复报名自动进入已有报名确认页。
 - 报名成功后进入确认页，展示活动信息、报名昵称和手机号，并可取消报名。
 - 发起人查看自己活动独立报名表，可删除报名记录并导出 CSV。
@@ -264,10 +270,10 @@ npm run deploy:cloudbase
 - 首页和活动页动态读取活动列表。
 - 首页近期活动区前移到「我们是谁」之前，最多展示 3 条；首页「参加活动」和「查看所有近期活动」进入 `activities.html`。
 - 独立近期 / 历史活动列表页：近期活动只展示未结束活动，历史活动展示自动归档后的「活动结束」活动。
-- 活动自动结束任务：发布 / 满员活动在活动日期次日 0 点后自动改为「活动结束」，写入系统操作日志，并从首页和近期活动列表移除。
+- 活动自动结束任务：发布 / 满员活动按结束时间或活动日期自动改为「活动结束」，写入系统操作日志，并从首页和近期活动列表移除。
 - CloudBase 动态部署、NoSQL 落库和 Storage 封面上传。
 - 基础安全加固：CSP 等响应头、请求意图校验、限流、Session 哈希、上传白名单、输入校验和最小化手机号返回。
-- 基础工程规范：`.gitignore`、环境变量示例、README、CHANGELOG、开发日志。
+- 基础工程规范：`.gitignore`、环境变量示例、README、CHANGELOG、开发日志和 GitHub Actions CI。
 - CloudBase 查询和索引建议文档：`docs/cloudbase-indexes.md`。
 
 ## 已验证
@@ -294,15 +300,15 @@ npm run deploy:cloudbase
 - CloudBase `0.6.0` 报名表与操作日志版本部署通过：静态托管上传 28 个文件，`registrations.html` 和 `admin-logs.html` 可访问，线上 HTML / JS / CSS 已引用 `v=0.6.0`，线上 `/api/session` 返回 `200` 和安全响应头。
 - CloudBase `0.7.0` 查询层与测试版本部署通过：静态托管上传 28 个文件，云函数 `youkongApi` 部署成功；线上成员、模块、活动、日志分页查询均返回正确 `pageInfo`。
 - CloudBase `0.8.0` 活动归档与列表页版本部署通过：静态托管上传 29 个文件，`activities.html` 可访问，首页和活动页已引用 `v=0.8.0`；线上 `/api/activities?view=upcoming` 和 `/api/activities?view=history` 均返回正确 `pageInfo`。
+- CloudBase `0.9.0` 结束时间与 CI 版本部署通过：静态托管上传 29 个文件，云函数 `youkongApi` 部署成功；线上 `activity-editor.html` 已引用 `v=0.9.0` 并包含 `endsAt` 字段，线上 `app.js` 已包含 `formatActivityTime` 和 `activity.endsAt` 逻辑，线上近期活动 API 返回正确 `pageInfo`。
 - 线上冒烟产生的测试成员、活动和报名记录已清理。
-- GitHub 状态：`0.8.0` 按双分支流程维护，最新提交请以 `git log --oneline --decorate --graph --all` 为准。
+- GitHub 状态：`0.9.0` 按双分支流程维护，推送到 `dev` / `main` 后 GitHub Actions 会自动运行测试与构建；最新提交请以 `git log --oneline --decorate --graph --all` 为准。
 
 ## 正在开发 / 待完善
 
 - 生产级身份验证：短信验证码、密码或微信登录，替代当前手机号白名单免密登录。
 - 富文本编辑器和图片排版能力。
 - 管理员仪表盘统计。
-- GitHub Actions CI：在 dev 合并 main 前自动运行 `npm test` 和构建。
 - CloudBase 数据备份、恢复和权限策略文档。
 - 自定义域名和同源 API 路由，减少跨域 Cookie 运维复杂度。
 
@@ -311,7 +317,6 @@ npm run deploy:cloudbase
 - 支持审核通知、审核超时提醒和更细权限模型。
 - 支持 Notion / 飞书表格同步活动日历。
 - 增加财务公示模块和捐赠记录管理。
-- 建立 CI 流程，在 dev 合并 main 前自动检查语法、测试和敏感文件。
 - 为 CloudBase NoSQL 增加数据导出和定期备份脚本。
 
 ## Git 分支规范

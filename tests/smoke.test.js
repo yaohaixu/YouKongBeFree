@@ -62,6 +62,7 @@ async function createActivity(token, overrides = {}) {
   form.set("collaboratorId", overrides.collaboratorId || collaborators[0].id);
   form.set("initiator", overrides.initiator || "成员A");
   form.set("startsAt", overrides.startsAt || localDateTimeFromNow(30));
+  form.set("endsAt", overrides.endsAt || "");
   form.set("location", overrides.location || "有空客厅");
   form.set("capacity", overrides.capacity || "");
   form.set("description", overrides.description || "用于自动化测试审核、报名、日志和报名表。");
@@ -125,10 +126,14 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(modulesPage.pageInfo.pageSize, 2);
 
   const member = await login("13300002222");
-  const created = await createActivity(member.token, { title: "分页和日志测试活动" });
+  const created = await createActivity(member.token, {
+    title: "分页和日志测试活动",
+    endsAt: localDateTimeFromNow(30, 22, 0),
+  });
   assert.equal(created.activity.capacity, 99);
   assert.equal(created.activity.registrationCount, 0);
   assert.equal(created.activity.status, "admin_review");
+  assert.equal(created.activity.endsAt, localDateTimeFromNow(30, 22, 0));
 
   const owned = await request("/api/activities?owner=me&page=1&pageSize=1", {}, member.token);
   assert.equal(owned.activities.length, 1);
@@ -183,6 +188,24 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const history = await request("/api/activities?view=history&page=1&pageSize=20");
   const endedActivity = history.activities.find((activity) => activity.id === expired.activity.id);
   assert.equal(endedActivity?.status, "ended");
+
+  const crossDay = await createActivity(member.token, {
+    title: "跨天未结束活动",
+    startsAt: localDateTimeFromNow(-1, 20, 0),
+    endsAt: localDateTimeFromNow(1, 10, 0),
+  });
+  await request(`/api/activities/${crossDay.activity.id}/review`, {
+    method: "POST",
+    body: { action: "approve", comment: "管理员通过" },
+  }, admin.token);
+  await request(`/api/activities/${crossDay.activity.id}/review`, {
+    method: "POST",
+    body: { action: "approve", comment: "协作员通过" },
+  }, collaborator.token);
+  const upcomingAfterCrossDay = await request("/api/activities?view=upcoming&page=1&pageSize=20");
+  const ongoing = upcomingAfterCrossDay.activities.find((activity) => activity.id === crossDay.activity.id);
+  assert.equal(ongoing?.status, "published");
+  assert.equal(ongoing?.endsAt, localDateTimeFromNow(1, 10, 0));
 
   const coverBuffer = fs.readFileSync(path.join(__dirname, "..", "assets", "youkong-room.jpeg"));
   const pending = await createActivity(member.token, {
