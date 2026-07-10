@@ -824,3 +824,70 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 在 CloudBase 控制台按 `docs/cloudbase-indexes.md` 建立推荐索引。
 2. 新增 GitHub Actions，在 PR 或 dev/main push 时运行 `npm test` 和 `npm run build:cloudbase`。
 3. 为操作日志增加操作类型、时间范围和操作人筛选，减少宽泛关键词正则查询。
+
+## 2026-07-10 - 活动自动结束与近期 / 历史活动页
+
+### 任务目标
+
+优化公开活动体验：活动日期结束后自动归档为「活动结束」，结束活动不再出现在首页；首页将近期活动提前展示并最多露出 3 条；新增可查看所有近期活动和历史活动的独立页面；首页 Hero 按钮从「发起一个活动」调整为「参加活动」。
+
+### 具体修改内容
+
+- `lib/app.js` 新增活动自动结束逻辑：按北京时间判断活动日期，发布 / 满员活动在活动日期次日 0 点后自动更新为 `ended`。
+- 新增 `sweepExpiredActivities()`、`closeExpiredActivities()` 和 `startActivityAutoEndScheduler()`，本地服务启动后开启轮询，公开活动列表请求前强制兜底 sweep。
+- `scripts/build-function.js` 更新 CloudBase 云函数入口，每次云函数请求前执行节流后的活动结束 sweep。
+- `/api/activities` 新增公开视图语义：默认 `view=upcoming` 只返回未结束活动，`view=history` 返回已结束活动。
+- `index.html` 将近期活动区移动到「我们是谁」之前，最多展示 3 条近期活动；Hero 按钮改为「参加活动」。
+- 新增 `activities.html`，承载所有近期活动和历史活动两种视图。
+- `app.js` 新增公开活动列表页初始化、近期 / 历史 tab 状态、加载更多、首页列表按 `data-limit` 拉取。
+- `styles.css` 新增活动列表页、分段切换、列表工具栏和活动预览样式。
+- `scripts/build-static.js` 将 `activities.html` 加入 CloudBase Hosting 构建清单。
+- `tests/smoke.test.js` 新增动态未来 / 过去活动时间、自动归档断言、近期 / 历史页移动端无横向溢出检查。
+- 版本号、静态资源参数和云函数构建版本升级到 `0.8.0`。
+- README、CHANGELOG、开发日志同步更新。
+
+### 涉及文件
+
+- `lib/app.js`
+- `scripts/build-function.js`
+- `scripts/build-static.js`
+- `app.js`
+- `styles.css`
+- `index.html`
+- `participate.html`
+- `activities.html`
+- `tests/smoke.test.js`
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 活动自动结束按「活动日期」而不是具体开始时间判断：例如 2026-07-19 18:00 的活动，会在北京时间 2026-07-20 00:00 后归档，符合用户描述。
+- 保留 `ended` 活动的详情页可见性，让已报名者仍能进入确认页或查看历史活动；但默认公开列表只展示 `published` / `full`。
+- CloudBase 云函数不保证长期常驻，因此除本地 / 常驻服务的 `setInterval` 轮询外，公开活动列表请求前也会强制 sweep，避免首页展示过期活动。
+- 历史活动未另建后端接口，而是复用 `/api/activities?view=history`，减少 API 面并保留分页 / 排序能力。
+- 测试中使用动态日期生成未来活动和过期活动，避免固定日期在未来变成不稳定测试。
+
+### 当前完成情况
+
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
+- `git diff --check` 已通过。
+- `npm run build:cloudbase` 已通过。
+- API 冒烟覆盖：过期发布活动在公开列表请求时自动改为 `ended`，不再出现在近期活动中，并出现在历史活动视图。
+- Playwright 冒烟覆盖：`activities.html` 和 `activities.html?view=history` 在 390px 移动端无横向溢出。
+- CloudBase `0.8.0` 已部署成功：静态托管上传 29 个文件，云函数 `youkongApi` 部署成功。
+- 线上只读冒烟通过：首页已引用 `v=0.8.0` 并出现「参加活动」，`activities.html` 已上线；`/api/activities?view=upcoming&page=1&pageSize=3` 返回 2 条，`view=history` 返回 1 条，均带正确 `pageInfo`。
+
+### 遗留问题
+
+- CloudBase 控制台索引仍需按 `docs/cloudbase-indexes.md` 手动确认，尤其是 `status + startsAt`。
+- 当前自动结束以活动开始日期为准，暂未支持活动发起人填写单独结束时间；如果未来出现跨天活动，需要增加 `endsAt` 字段。
+
+### 下一步建议
+
+1. 在 CloudBase 控制台确认 `yk_activities` 的 `status + startsAt` 索引。
+2. 在活动编辑表单增加可选「结束时间」，支持跨天活动精确归档。
+3. 增加 GitHub Actions，在 `dev` / `main` push 时自动运行 `npm test` 和 `npm run build:cloudbase`。

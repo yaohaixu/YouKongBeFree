@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.7.0`
+当前版本：`0.8.0`
 
-状态：`0.7.0` 已完成开发、本地验证与 CloudBase 线上部署。本版本将活动、成员、模块和操作日志列表升级为 CloudBase 存储层查询分页，并把 API / Playwright 冒烟沉淀为 `npm test`。
+状态：`0.8.0` 已完成开发、本地验证与 CloudBase 线上部署。本版本新增活动自动结束归档、独立近期 / 历史活动列表页，并调整首页活动入口顺序。
 
 ## 访问地址
 
@@ -16,6 +16,8 @@ CloudBase 动态线上站点：
 - 登录页：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/login.html
 - 后台：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin.html
 - 我的：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/me.html
+- 近期活动：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/activities.html
+- 历史活动：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/activities.html?view=history
 - 发起活动：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/activity-editor.html
 - 我的活动：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/my-activities.html
 - 审核待办：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/review-tasks.html
@@ -47,9 +49,11 @@ GitHub Pages 静态展示：
 - 审核待办详情支持查看活动描述、审核记录和上传封面图；审核意见默认「请选择」。
 - 活动人数限制：发起活动时人数限额留空默认 99 人，最大 99 人。
 - 活动详情页：公开发布活动支持未登录访客填写昵称和手机号报名；重复报名会直接返回原报名确认页；草稿和审核中活动不开放报名。
+- 活动自动结束：系统按北京时间判断活动日期，活动日期次日 0 点后自动将已发布 / 已满员活动归档为「活动结束」，并从首页和近期活动列表移除。
+- 独立活动列表页：首页最多展示 3 条近期活动；`activities.html` 展示所有近期活动，`activities.html?view=history` 展示历史活动。
 - 报名成功页：展示活动和报名人信息，并支持访客取消报名。
 - 报名表查看：活动发起人和管理员可在独立页面查看报名者列表、删除报名记录，并导出 CSV。
-- 动态活动列表：首页和活动页读取已发布活动。
+- 动态活动列表：首页读取最多 3 条近期活动，独立活动页支持近期 / 历史视图。
 - 筛选与分页：活动、成员、模块、日志列表只在点击「筛选」后查询，API 按页返回数据，加载更多请求下一页。
 - 全站管理操作提供轻提示反馈，删除类操作需要确认弹窗。
 - 视觉体验：Apple 风格浅色系统界面、玻璃导航、统一圆角卡片、Apple 蓝主按钮、1200px 左右内容最大宽度、自适应左右留白、移动端单列布局、卡片 hover 和动态内容进入动效。
@@ -63,6 +67,7 @@ GitHub Pages 静态展示：
 - 云端后端：CloudBase 云函数 + `serverless-http`
 - 数据存储：本地 JSON 或 CloudBase NoSQL
 - 查询分页：本地 JSON 模拟查询；CloudBase 使用 `where`、`orderBy`、`skip`、`limit` 和 `count`
+- 活动归档：Express 启动定时轮询 + 公开活动列表请求前兜底 sweep；CloudBase 云函数入口按节流策略执行 sweep
 - 文件上传：Multer；线上封面上传至 CloudBase Storage
 - 登录态：HTTP-only Cookie Session + 前端 Bearer token 兜底，改善移动端跨域 Cookie 兼容性
 - 配置：dotenv、CloudBase CLI、`cloudbaserc.json`
@@ -74,6 +79,7 @@ GitHub Pages 静态展示：
 .
 ├── index.html              # 官网首页
 ├── whitepaper.html         # 社区共识 / 白皮书页面
+├── activities.html         # 近期 / 历史活动列表页面
 ├── participate.html        # 活动与参与页面
 ├── donate.html             # 捐赠支持页面
 ├── about.html              # 关于与联系页面
@@ -144,6 +150,9 @@ STORE_DRIVER=json
 CLOUDBASE_ENV_ID=youkong-d5gh4x0ayc29a2187
 CORS_ORIGINS=https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com
 SESSION_MAX_AGE_DAYS=14
+ACTIVITY_AUTO_END_INTERVAL_MS=900000
+ACTIVITY_AUTO_END_MIN_SWEEP_MS=60000
+DISABLE_ACTIVITY_AUTO_END=false
 YK_DB_FILE=
 ```
 
@@ -153,6 +162,7 @@ YK_DB_FILE=
 - 本地默认使用 `STORE_DRIVER=json`，数据写入 `data/youkong-db.json`。
 - 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_activities`、`yk_registrations`、`yk_sessions`、`yk_logs`。
 - `CORS_ORIGINS` 用英文逗号分隔允许跨域访问 API 的前端域名；`SESSION_MAX_AGE_DAYS` 会被限制在 1 到 30 天之间。
+- `ACTIVITY_AUTO_END_INTERVAL_MS` 控制本地 / 常驻服务的自动结束轮询间隔，默认 15 分钟；`ACTIVITY_AUTO_END_MIN_SWEEP_MS` 控制请求兜底 sweep 的最小间隔；`DISABLE_ACTIVITY_AUTO_END=true` 可关闭后台轮询。
 - 如果数据不存在，服务会初始化默认管理员和默认活动模块。
 
 ## 运行方式
@@ -184,8 +194,8 @@ npm test
 测试内容包括：
 
 - 语法检查：核心前后端脚本和构建脚本。
-- API 冒烟：登录安全头、成员/协作员新增、活动提审、双岗审核、报名、重复报名、报名表、日志查询和报名人数排序。
-- Playwright 浏览器冒烟：管理员登录跳转、移动端关键页面无横向溢出、审核默认「请选择」和审核封面图展示。
+- API 冒烟：登录安全头、成员/协作员新增、活动提审、双岗审核、报名、重复报名、报名表、日志查询、报名人数排序和过期活动自动归档。
+- Playwright 浏览器冒烟：管理员登录跳转、移动端关键页面无横向溢出、近期 / 历史活动页、审核默认「请选择」和审核封面图展示。
 
 ## CloudBase 部署
 
@@ -252,6 +262,9 @@ npm run deploy:cloudbase
 - 管理员查看系统内所有人、所有状态活动。
 - 管理员查看操作日志。
 - 首页和活动页动态读取活动列表。
+- 首页近期活动区前移到「我们是谁」之前，最多展示 3 条；首页「参加活动」和「查看所有近期活动」进入 `activities.html`。
+- 独立近期 / 历史活动列表页：近期活动只展示未结束活动，历史活动展示自动归档后的「活动结束」活动。
+- 活动自动结束任务：发布 / 满员活动在活动日期次日 0 点后自动改为「活动结束」，写入系统操作日志，并从首页和近期活动列表移除。
 - CloudBase 动态部署、NoSQL 落库和 Storage 封面上传。
 - 基础安全加固：CSP 等响应头、请求意图校验、限流、Session 哈希、上传白名单、输入校验和最小化手机号返回。
 - 基础工程规范：`.gitignore`、环境变量示例、README、CHANGELOG、开发日志。
@@ -280,8 +293,9 @@ npm run deploy:cloudbase
 - CloudBase `0.5.0` 工作台拆页版本部署通过：线上静态页已引用 `v=0.5.0`，新增管理子页面已进入 CloudBase Hosting 构建清单。
 - CloudBase `0.6.0` 报名表与操作日志版本部署通过：静态托管上传 28 个文件，`registrations.html` 和 `admin-logs.html` 可访问，线上 HTML / JS / CSS 已引用 `v=0.6.0`，线上 `/api/session` 返回 `200` 和安全响应头。
 - CloudBase `0.7.0` 查询层与测试版本部署通过：静态托管上传 28 个文件，云函数 `youkongApi` 部署成功；线上成员、模块、活动、日志分页查询均返回正确 `pageInfo`。
+- CloudBase `0.8.0` 活动归档与列表页版本部署通过：静态托管上传 29 个文件，`activities.html` 可访问，首页和活动页已引用 `v=0.8.0`；线上 `/api/activities?view=upcoming` 和 `/api/activities?view=history` 均返回正确 `pageInfo`。
 - 线上冒烟产生的测试成员、活动和报名记录已清理。
-- GitHub 状态：`0.7.0` 按双分支流程维护，最新提交请以 `git log --oneline --decorate --graph --all` 为准。
+- GitHub 状态：`0.8.0` 按双分支流程维护，最新提交请以 `git log --oneline --decorate --graph --all` 为准。
 
 ## 正在开发 / 待完善
 

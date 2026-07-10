@@ -6,7 +6,7 @@ const output = path.join(root, "tmp", "cloudfunctions", "youkongApi");
 
 const packageJson = {
   name: "youkong-api-function",
-  version: "0.7.0",
+  version: "0.8.0",
   private: true,
   main: "index.js",
   scripts: {
@@ -28,7 +28,7 @@ process.env.YKADMIN_NICKNAME = process.env.YKADMIN_NICKNAME || "有空管理员"
 process.env.YKADMIN_PHONE = process.env.YKADMIN_PHONE || "13377779999";
 
 const serverless = require("serverless-http");
-const { createApp, store } = require("./lib/app");
+const { createApp, store, sweepExpiredActivities } = require("./lib/app");
 
 const app = createApp({
   serveStatic: false,
@@ -39,6 +39,7 @@ let ready;
 exports.main = async (event, context) => {
   ready = ready || store.ensureSeed();
   await ready;
+  await sweepExpiredActivities({ reason: "cloudbase-request" });
   return handler(event, context);
 };
 `;

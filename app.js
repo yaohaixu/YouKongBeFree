@@ -62,8 +62,10 @@ let mePageState = {
   userPage: 1,
   modulePage: 1,
   logPage: 1,
+  publicActivityPage: 1,
   myActivities: [],
   adminActivities: [],
+  publicActivities: [],
   users: [],
   modulesPageItems: [],
   logs: [],
@@ -253,8 +255,9 @@ function cacheUser(user) {
 
 function renderMainNav(navLinks, baseLinks, pageName, user) {
   if (!navLinks) return;
+  const activePageName = pageName === "activities.html" ? "participate.html" : pageName;
   const links = baseLinks
-    .map(([href, label]) => `<a class="${pageName === href ? "active" : ""}" href="${href}">${label}</a>`)
+    .map(([href, label]) => `<a class="${activePageName === href ? "active" : ""}" href="${href}">${label}</a>`)
     .join("");
   const workspacePages = [
     "me.html",
@@ -353,15 +356,23 @@ async function renderActivityLists() {
   const lists = qsa("[data-activity-list]");
   if (!lists.length) return;
 
-  const { activities } = await api.get("/api/activities");
-  lists.forEach((list) => {
+  await Promise.all(lists.map(async (list) => {
     const limit = Number(list.dataset.limit || "0");
+    const view = list.dataset.activityView || "upcoming";
+    const pageSize = limit || Number(list.dataset.pageSize || "12");
+    const params = new URLSearchParams({
+      view,
+      page: "1",
+      pageSize: String(pageSize),
+      sort: view === "history" ? "start-desc" : "start-asc",
+    });
+    const { activities } = await api.get(`/api/activities?${params.toString()}`);
     const visible = limit ? activities.slice(0, limit) : activities;
     if (!visible.length) {
       list.innerHTML = `
         <div class="empty-state">
-          <strong>公告栏还空着</strong>
-          <p>等第一位有空成员发布活动，这里就会出现新的接龙。</p>
+          <strong>${escapeHtml(list.dataset.emptyTitle || "公告栏还空着")}</strong>
+          <p>${escapeHtml(list.dataset.emptyText || "等第一位有空成员发布活动，这里就会出现新的接龙。")}</p>
         </div>
       `;
       revealDynamicContent(list);
@@ -369,7 +380,7 @@ async function renderActivityLists() {
     }
     list.innerHTML = visible.map(renderActivityCard).join("");
     revealDynamicContent(list);
-  });
+  }));
 }
 
 async function requireCurrentUser() {
@@ -585,6 +596,7 @@ function resetPagedState(key) {
     users: "userPage",
     modulesPageItems: "modulePage",
     logs: "logPage",
+    publicActivities: "publicActivityPage",
   };
   const pageKey = pageKeys[key];
   if (Object.prototype.hasOwnProperty.call(mePageState, pageKey)) {
@@ -593,6 +605,52 @@ function resetPagedState(key) {
   if (Array.isArray(mePageState[key])) {
     mePageState[key] = [];
   }
+}
+
+async function initPublicActivitiesPage() {
+  const root = qs("[data-public-activities-page]");
+  if (!root) return;
+  const params = new URLSearchParams(location.search);
+  const view = params.get("view") === "history" ? "history" : "upcoming";
+  root.dataset.activityView = view;
+  qs("[data-public-activity-title]", root).textContent = view === "history" ? "历史活动" : "近期活动";
+  qs("[data-public-activity-subtitle]", root).textContent = view === "history"
+    ? "这些活动已经结束，可以回看客厅里发生过的事。"
+    : "这里显示已经发布、还没有结束的活动。未登录也可以点进活动页报名。";
+  qsa("[data-public-activity-tab]", root).forEach((link) => {
+    link.classList.toggle("active", link.dataset.publicActivityTab === view);
+  });
+  qs("[data-load-more-public-activities]", root)?.addEventListener("click", () => {
+    mePageState.publicActivityPage += 1;
+    renderPublicActivities();
+  });
+  await renderPublicActivities();
+}
+
+async function renderPublicActivities() {
+  const root = qs("[data-public-activities-page]");
+  const list = qs("[data-public-activities]");
+  if (!root || !list) return;
+  const view = root.dataset.activityView === "history" ? "history" : "upcoming";
+  const params = new URLSearchParams({
+    view,
+    page: String(mePageState.publicActivityPage),
+    pageSize: String(mePageState.pageSize),
+    sort: view === "history" ? "start-desc" : "start-asc",
+  });
+  const { activities, pageInfo } = await api.get(`/api/activities?${params.toString()}`);
+  const loaded = mergePageItems("publicActivities", mePageState.publicActivityPage, activities);
+  updatePagedCount(qs("[data-public-activity-count]"), loaded.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-public-activities]"), loaded.length, pageInfo?.total || loaded.length);
+  if (!loaded.length) {
+    list.innerHTML = view === "history"
+      ? `<div class="empty-state"><strong>还没有历史活动</strong><p>活动结束后会自动归档到这里。</p></div>`
+      : `<div class="empty-state"><strong>近期公告栏暂时空着</strong><p>等活动发布后，这里会第一时间出现。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = loaded.map(renderActivityCard).join("");
+  revealDynamicContent(list);
 }
 
 function mergePageItems(key, page, items) {
@@ -1519,6 +1577,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await Promise.all([
     safeInit(initSessionNav),
     safeInit(renderActivityLists),
+    safeInit(initPublicActivitiesPage),
     safeInit(initMeDashboardPage),
     safeInit(initActivityEditorPage),
     safeInit(initMyActivitiesPage),

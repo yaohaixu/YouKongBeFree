@@ -8,7 +8,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=0.6.0" />
+    <link rel="stylesheet" href="styles.css?v=0.8.0" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -42,7 +42,7 @@
             <p class="lead">这里不是一个被消费的场地，而是一个可以被共同使用、共同维护、共同想象的客厅。你可以来休息、发起活动、做饭、聊天、讨论公共议题，也可以什么都不做。</p>
             <div class="hero-actions">
               <a class="button primary" href="#visit">来客厅坐坐</a>
-            <a class="button ghost" href="activity-editor.html">发起一个活动</a>
+              <a class="button ghost" href="activities.html">参加活动</a>
               <a class="button ghost" href="donate.html">支持有空客厅</a>
               <a class="button ghost" href="whitepaper.html">阅读白皮书</a>
             </div>
@@ -57,6 +57,30 @@
               <span><strong>110+</strong>场活动</span>
               <span><strong>60+</strong>伙伴协作</span>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="events">
+        <div class="wrap split activity-preview">
+          <div>
+            <p class="section-kicker">近期活动</p>
+            <h2>先看公告栏，再决定今天有没有空。</h2>
+            <p class="intro-text">首页只贴最近三张活动纸条。想看完整列表，可以进入活动页慢慢挑。</p>
+            <div class="button-row">
+              <a class="button primary" href="activities.html">查看所有近期活动</a>
+              <a class="button outline" href="activities.html?view=history">查看历史活动</a>
+            </div>
+          </div>
+          <div>
+            <div
+              class="event-list compact"
+              data-activity-list
+              data-limit="3"
+              data-activity-view="upcoming"
+              data-empty-title="近期公告栏暂时空着"
+              data-empty-text="等活动发布后，这里会第一时间出现。"
+            ></div>
           </div>
         </div>
       </section>
@@ -152,7 +176,7 @@
             <article class="card">
               <h3>来参加活动</h3>
               <p>看看近期活动，接龙报名，或者先来坐坐。</p>
-              <div class="button-row"><a class="button outline" href="participate.html#calendar">查看近期活动</a></div>
+              <div class="button-row"><a class="button outline" href="activities.html">查看近期活动</a></div>
             </article>
             <article class="card">
               <h3>发起活动</h3>
@@ -170,17 +194,6 @@
               <div class="button-row"><a class="button outline" href="donate.html">支持客厅</a></div>
             </article>
           </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="wrap split">
-          <div>
-            <p class="section-kicker">近期活动</p>
-            <h2>公告栏上先贴几张纸。</h2>
-            <p class="intro-text">这里先放一个可更新的活动列表。正式上线时，可以接入 Notion、飞书表格或手动维护。</p>
-          </div>
-          <div class="event-list compact" data-activity-list data-limit="3"></div>
         </div>
       </section>
 
@@ -280,7 +293,7 @@
         </nav>
       </div>
     </footer>
-    <script src="script.js?v=0.6.0"></script>
-    <script src="app.js?v=0.6.0"></script>
+    <script src="script.js?v=0.8.0"></script>
+    <script src="app.js?v=0.8.0"></script>
   </body>
 </html>

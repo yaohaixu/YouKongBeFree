@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>YKadmin 工作台｜有空客厅</title>
-    <meta name="description" content="YKadmin 工作台，进入活动、成员、模块和审核管理。" />
+    <title>近期活动｜有空客厅</title>
+    <meta name="description" content="查看有空客厅近期活动和历史活动。未登录也可以进入活动详情页报名。" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -27,45 +27,35 @@
       </div>
     </header>
 
-    <main id="main" data-admin-dashboard>
-      <section class="page-hero">
+    <main id="main" data-public-activities-page>
+      <section class="page-hero river compact-hero">
         <div class="wrap">
-          <p class="eyebrow">YKadmin 工作台</p>
-          <h1>把后台拆成清楚的几个入口。</h1>
-          <p>活动、成员、模块和审核不再堆在同一个页面里。先看概览，再进入对应的管理页。</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="wrap">
-          <div class="section-head compact-head">
-            <div>
-              <p class="section-kicker">待办预览</p>
-              <h2>管理员审核。</h2>
-            </div>
-            <a class="button ghost" href="review-tasks.html">查看全部</a>
+          <p class="eyebrow">公告栏</p>
+          <h1 data-public-activity-title>近期活动</h1>
+          <p data-public-activity-subtitle>这里显示已经发布、还没有结束的活动。未登录也可以点进活动页报名。</p>
+          <div class="pill-tabs" aria-label="活动视图切换">
+            <a class="active" href="activities.html" data-public-activity-tab="upcoming">近期活动</a>
+            <a href="activities.html?view=history" data-public-activity-tab="history">历史活动</a>
           </div>
-          <div class="event-list rows" data-admin-pending></div>
         </div>
       </section>
 
       <section class="section alt">
-        <div class="wrap">
-          <div class="section-head compact-head">
-            <div>
-              <p class="section-kicker">管理入口</p>
-              <h2>每件事都有自己的页面。</h2>
-            </div>
+        <div class="wrap activity-list-shell">
+          <div class="list-toolbar">
+            <span data-public-activity-count>正在读取活动...</span>
+            <a class="button primary" href="participate.html#start">发起一个活动</a>
           </div>
-          <div class="workspace-grid" data-admin-dashboard-cards></div>
+          <div class="event-list public-event-list" data-public-activities></div>
+          <button class="button ghost load-more" type="button" data-load-more-public-activities hidden>加载更多</button>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-grid">
-        <div><div class="footer-brand">有空客厅</div><div>后台工作台只做导航和概览。</div><div class="credit">网站制作人：海旭</div></div>
-        <nav class="footer-links"><a href="admin-activities.html">全部活动</a><a href="admin-members.html">成员管理</a><a href="admin-modules.html">模块管理</a><a href="admin-logs.html">操作日志</a></nav>
+        <div><div class="footer-brand">有空客厅</div><div>人人都可以发起，也一起维护。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="index.html">首页</a><a href="participate.html">活动与参与</a><a href="donate.html">捐赠支持</a><a href="about.html">关于与联系</a></nav>
       </div>
     </footer>
     <script src="script.js?v=0.8.0"></script>

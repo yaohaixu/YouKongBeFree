@@ -40,6 +40,18 @@ async function login(phone) {
   return request("/api/login", { method: "POST", body: { phone } });
 }
 
+function localDateTimeFromNow(days, hour = 19, minute = 30) {
+  const date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
 async function createActivity(token, overrides = {}) {
   const modules = await request("/api/modules");
   const admin = await login("13377779999");
@@ -49,7 +61,7 @@ async function createActivity(token, overrides = {}) {
   form.set("moduleId", modules.modules[0].id);
   form.set("collaboratorId", overrides.collaboratorId || collaborators[0].id);
   form.set("initiator", overrides.initiator || "成员A");
-  form.set("startsAt", overrides.startsAt || "2026-08-01T19:30");
+  form.set("startsAt", overrides.startsAt || localDateTimeFromNow(30));
   form.set("location", overrides.location || "有空客厅");
   form.set("capacity", overrides.capacity || "");
   form.set("description", overrides.description || "用于自动化测试审核、报名、日志和报名表。");
@@ -154,6 +166,24 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.ok(logs.logs.length >= 1);
   assert.equal(logs.pageInfo.pageSize, 5);
 
+  const expired = await createActivity(member.token, {
+    title: "应自动结束的历史活动",
+    startsAt: localDateTimeFromNow(-30, 18, 0),
+  });
+  await request(`/api/activities/${expired.activity.id}/review`, {
+    method: "POST",
+    body: { action: "approve", comment: "管理员通过" },
+  }, admin.token);
+  await request(`/api/activities/${expired.activity.id}/review`, {
+    method: "POST",
+    body: { action: "approve", comment: "协作员通过" },
+  }, collaborator.token);
+  const upcoming = await request("/api/activities?view=upcoming&page=1&pageSize=20");
+  assert.ok(!upcoming.activities.some((activity) => activity.id === expired.activity.id));
+  const history = await request("/api/activities?view=history&page=1&pageSize=20");
+  const endedActivity = history.activities.find((activity) => activity.id === expired.activity.id);
+  assert.equal(endedActivity?.status, "ended");
+
   const coverBuffer = fs.readFileSync(path.join(__dirname, "..", "assets", "youkong-room.jpeg"));
   const pending = await createActivity(member.token, {
     title: "带封面审核测试活动",
@@ -172,6 +202,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await page.getByRole("button", { name: "进入有空" }).click();
     await page.waitForURL("**/admin.html");
     await assertNoHorizontalOverflow(page, `${baseUrl}/activity-editor.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/activities.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/activities.html?view=history`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-activities.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-members.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-logs.html`);

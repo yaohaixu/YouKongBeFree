@@ -6,6 +6,7 @@ const output = path.join(root, "dist");
 const files = [
   "index.html",
   "whitepaper.html",
+  "activities.html",
   "participate.html",
   "donate.html",
   "about.html",

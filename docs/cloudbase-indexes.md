@@ -1,6 +1,6 @@
 # CloudBase 查询与索引建议
 
-本项目 `0.7.0` 起，活动、成员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。
+本项目 `0.7.0` 起，活动、成员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。`0.8.0` 起，活动自动结束任务也会按 `status + startsAt` 查询过期待归档活动。
 
 ## 推荐索引
 
@@ -8,7 +8,7 @@
 
 ### `yk_activities`
 
-- `status + startsAt`：公开活动列表和状态筛选。
+- `status + startsAt`：公开近期 / 历史活动列表、状态筛选和自动结束 sweep。
 - `createdBy + createdAt`：成员查看「我发起的活动」。
 - `status + collaboratorId + createdAt`：协作员审核待办。
 - `moduleId + startsAt`：按模块和活动时间筛选。
