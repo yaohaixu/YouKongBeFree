@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.6.0`
+当前版本：`0.7.0`
 
-状态：`0.6.0` 已完成开发、本地验证与 CloudBase 线上部署。本版本补齐报名表详情页、CSV 导出、管理员操作日志、管理员取消 / 结束活动能力，并将活动、成员、模块、日志列表改为点击筛选后由 API 分页返回。
+状态：`0.7.0` 已完成开发、本地验证与 CloudBase 线上部署。本版本将活动、成员、模块和操作日志列表升级为 CloudBase 存储层查询分页，并把 API / Playwright 冒烟沉淀为 `npm test`。
 
 ## 访问地址
 
@@ -62,10 +62,11 @@ GitHub Pages 静态展示：
 - 本地后端：Node.js、Express
 - 云端后端：CloudBase 云函数 + `serverless-http`
 - 数据存储：本地 JSON 或 CloudBase NoSQL
+- 查询分页：本地 JSON 模拟查询；CloudBase 使用 `where`、`orderBy`、`skip`、`limit` 和 `count`
 - 文件上传：Multer；线上封面上传至 CloudBase Storage
 - 登录态：HTTP-only Cookie Session + 前端 Bearer token 兜底，改善移动端跨域 Cookie 兼容性
 - 配置：dotenv、CloudBase CLI、`cloudbaserc.json`
-- 测试验证：Node API 冒烟、Playwright 浏览器布局和流程验证
+- 测试验证：`npm test` 自动运行语法检查、Node API 冒烟和 Playwright 浏览器布局 / 流程验证
 
 ## 项目目录结构
 
@@ -96,6 +97,8 @@ GitHub Pages 静态展示：
 ├── lib/
 │   ├── app.js              # Express 应用与 API 路由
 │   └── store.js            # JSON / CloudBase 双存储实现
+├── tests/
+│   └── smoke.test.js       # API + Playwright 浏览器冒烟测试
 ├── scripts/
 │   ├── build-static.js     # 生成 CloudBase Hosting 静态目录
 │   └── build-function.js   # 生成 CloudBase 云函数部署包
@@ -106,6 +109,7 @@ GitHub Pages 静态展示：
 │   └── .gitkeep            # 本地上传目录占位，真实上传文件不提交 Git
 ├── docs/
 │   ├── dev-log.md          # 开发日志
+│   ├── cloudbase-indexes.md # CloudBase 查询字段和推荐索引
 │   └── security.md         # 安全控制和遗留风险说明
 ├── cloudbaserc.json        # CloudBase 环境与云函数配置
 ├── package.json
@@ -171,6 +175,18 @@ npm start
 - 昵称：`有空管理员`
 - 手机号：`13377779999`
 
+运行自动化测试：
+
+```bash
+npm test
+```
+
+测试内容包括：
+
+- 语法检查：核心前后端脚本和构建脚本。
+- API 冒烟：登录安全头、成员/协作员新增、活动提审、双岗审核、报名、重复报名、报名表、日志查询和报名人数排序。
+- Playwright 浏览器冒烟：管理员登录跳转、移动端关键页面无横向溢出、审核默认「请选择」和审核封面图展示。
+
 ## CloudBase 部署
 
 当前 CloudBase 环境：`youkong-d5gh4x0ayc29a2187`
@@ -222,6 +238,8 @@ npm run deploy:cloudbase
 - 发起活动独立编辑页。
 - 我发起的活动独立管理页，支持筛选、撤回和报名表查看。
 - 活动、成员、模块和日志列表使用 API 分页；搜索条件只在点击「筛选」时生效。
+- CloudBase 模式下列表查询通过存储层 `where/orderBy/skip/limit/count` 执行，避免云函数读取集合全量后再分页。
+- `npm test` 自动化冒烟流程，覆盖 API 主链路和关键移动端浏览器布局。
 - 审核待办独立页，管理员和协作员按自己的待办进入。
 - 成员活动草稿、提审、编辑退回活动。
 - 双岗审核流：管理员审核、协作员审核、通过/退回/拒绝。
@@ -237,10 +255,12 @@ npm run deploy:cloudbase
 - CloudBase 动态部署、NoSQL 落库和 Storage 封面上传。
 - 基础安全加固：CSP 等响应头、请求意图校验、限流、Session 哈希、上传白名单、输入校验和最小化手机号返回。
 - 基础工程规范：`.gitignore`、环境变量示例、README、CHANGELOG、开发日志。
+- CloudBase 查询和索引建议文档：`docs/cloudbase-indexes.md`。
 
 ## 已验证
 
 - `node --check` 通过：`app.js`、`script.js`、`server.js`、`lib/app.js`、`lib/store.js`、构建脚本。
+- `npm test` 通过：语法检查、隔离 JSON 数据库 API 冒烟和 Playwright 浏览器冒烟。
 - `npm run build:cloudbase` 通过，CloudBase 静态站点和云函数均可构建。
 - 本地浏览器回归通过：`0.6.0` 管理员工作台、成员工作台、发起活动、我的活动、审核待办、全部活动、成员管理、模块管理、报名表、操作日志均可打开，控制台无错误。
 - 本地浏览器流程通过：普通成员不展示审核待办；发起活动提交管理员审核；管理员可查看审核详情封面并通过；协作员完成第二岗审核后活动发布；报名、重复报名找回确认页、取消报名均可用。
@@ -259,15 +279,16 @@ npm run deploy:cloudbase
 - CloudBase `0.4.3` 安全加固部署通过：线上静态页已引用 `v=0.4.3` 并包含 HTML CSP；线上 API 返回安全响应头；缺少安全校验头的 POST 返回 `403`。
 - CloudBase `0.5.0` 工作台拆页版本部署通过：线上静态页已引用 `v=0.5.0`，新增管理子页面已进入 CloudBase Hosting 构建清单。
 - CloudBase `0.6.0` 报名表与操作日志版本部署通过：静态托管上传 28 个文件，`registrations.html` 和 `admin-logs.html` 可访问，线上 HTML / JS / CSS 已引用 `v=0.6.0`，线上 `/api/session` 返回 `200` 和安全响应头。
+- CloudBase `0.7.0` 查询层与测试版本部署通过：静态托管上传 28 个文件，云函数 `youkongApi` 部署成功；线上成员、模块、活动、日志分页查询均返回正确 `pageInfo`。
 - 线上冒烟产生的测试成员、活动和报名记录已清理。
-- GitHub 状态：`0.6.0` 按双分支流程维护，最新提交请以 `git log --oneline --decorate --graph --all` 为准。
+- GitHub 状态：`0.7.0` 按双分支流程维护，最新提交请以 `git log --oneline --decorate --graph --all` 为准。
 
 ## 正在开发 / 待完善
 
 - 生产级身份验证：短信验证码、密码或微信登录，替代当前手机号白名单免密登录。
 - 富文本编辑器和图片排版能力。
 - 管理员仪表盘统计。
-- 自动化测试脚本与 CI。
+- GitHub Actions CI：在 dev 合并 main 前自动运行 `npm test` 和构建。
 - CloudBase 数据备份、恢复和权限策略文档。
 - 自定义域名和同源 API 路由，减少跨域 Cookie 运维复杂度。
 

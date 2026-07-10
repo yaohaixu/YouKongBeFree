@@ -763,3 +763,64 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 2. 增加自动化测试脚本，覆盖登录、审核、报名、报名表导出和日志查询。
 3. 增加操作日志高级筛选：操作类型、操作人、目标对象、时间范围。
 4. 继续升级登录体系：短信验证码、微信登录或管理员二次校验。
+
+## 2026-07-10 - CloudBase 存储层分页与自动化冒烟测试
+
+### 任务目标
+
+落实上次建议：将 CloudBase 查询升级为数据库层筛选、排序和分页，避免云函数读取集合全量后再分页；同时把 API / Playwright 冒烟沉淀为 `npm test`，让后续发版前可以一键回归。
+
+### 具体修改内容
+
+- `lib/store.js` 新增统一 `query(collection, options)` 接口。
+- JSON 本地模式通过 `localQueryItems` 模拟等值、包含、范围、关键词、排序和分页。
+- CloudBase 模式通过 `where`、`orderBy`、`skip`、`limit` 和 `count` 执行存储层查询。
+- `/api/users`、`/api/collaborators`、`/api/modules`、`/api/activities`、`/api/logs` 改为调用 `store.query()`。
+- 活动创建时写入 `registrationCount: 0`；报名新增、删除、取消时同步维护 `registrationCount`，支持按报名人数排序。
+- `package.json` 新增 `test`、`test:syntax`、`test:smoke`。
+- 新增 `tests/smoke.test.js`，使用隔离 JSON 数据库启动临时 Express 服务，覆盖 API 主链路和 Playwright 浏览器布局检查。
+- 新增 `docs/cloudbase-indexes.md`，记录 CloudBase 推荐索引、查询字段和后续注意事项。
+- 版本号升级到 `0.7.0`，云函数构建版本同步升级。
+- README、CHANGELOG、开发日志同步更新。
+
+### 涉及文件
+
+- `lib/store.js`
+- `lib/app.js`
+- `tests/smoke.test.js`
+- `docs/cloudbase-indexes.md`
+- `package.json`
+- `package-lock.json`
+- `scripts/build-function.js`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 没有直接在路由层写 CloudBase SDK 代码，而是新增 `store.query()`，保持 JSON / CloudBase 双存储接口一致。
+- CloudBase 查询支持等值、数组包含、`in`、日期范围、关键词正则、排序和分页；本地 JSON 用同一 options 结构模拟，保证本地测试能覆盖同样语义。
+- 活动报名数采用冗余字段 `registrationCount` 支持数据库层排序；页面展示仍由业务层补齐真实报名数，兼容历史活动记录。
+- 自动化测试使用 Node 内置 test runner 启动临时服务，并直接调用 Playwright 库做浏览器冒烟，避免依赖外部手工启动服务。
+- 测试服务使用随机端口和临时 JSON 数据库，不污染本地真实数据和 CloudBase 线上数据。
+
+### 当前完成情况
+
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
+- API 冒烟覆盖：缺少安全校验头的 POST 返回 `403`；管理员登录；新增协作员/成员；成员发起活动；人数留空默认 99；服务端分页；双岗审核；访客报名；重复报名找回确认页；报名表读取；操作日志搜索；按报名人数排序。
+- Playwright 冒烟覆盖：管理员登录跳转后台；移动端 390px 下发起活动页、全部活动页、成员管理页、操作日志页、报名表页无横向溢出；审核意见默认「请选择」；审核待办展示上传封面图。
+- `node --check` 已纳入 `npm test` 的 `test:syntax` 阶段。
+- CloudBase `0.7.0` 已部署成功：静态托管上传 28 个文件，云函数 `youkongApi` 部署成功；线上成员、模块、活动、日志分页查询均返回正确 `pageInfo`。
+
+### 遗留问题
+
+- CloudBase 推荐索引需要在 CloudBase 控制台手动创建，索引配置本身未纳入自动部署。
+- 关键词搜索仍使用正则，数据继续增长后建议增加更明确筛选项，例如操作类型、操作人和时间范围。
+- 活动模块名、创建人名、协作员名仍是 API 聚合字段；如需完全索引化搜索这些派生字段，需要在活动记录中增加冗余字段并维护同步。
+- 尚未增加 GitHub Actions CI。
+
+### 下一步建议
+
+1. 在 CloudBase 控制台按 `docs/cloudbase-indexes.md` 建立推荐索引。
+2. 新增 GitHub Actions，在 PR 或 dev/main push 时运行 `npm test` 和 `npm run build:cloudbase`。
+3. 为操作日志增加操作类型、时间范围和操作人筛选，减少宽泛关键词正则查询。

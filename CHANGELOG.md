@@ -2,6 +2,31 @@
 
 所有重要变更都会记录在此文件中。格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循语义化版本思路。
 
+## [0.7.0] - 2026-07-10
+
+### Added
+
+- 新增统一 `store.query()` 查询接口，JSON 本地模式和 CloudBase 模式共享筛选、排序和分页语义。
+- 新增 `npm test`，自动运行语法检查、API 冒烟和 Playwright 浏览器冒烟。
+- 新增 `tests/smoke.test.js`，覆盖登录安全头、成员/协作员新增、活动提审、双岗审核、报名、重复报名、报名表、日志查询、报名人数排序、移动端无横向溢出和审核封面图展示。
+- 新增 `docs/cloudbase-indexes.md`，记录 CloudBase 推荐索引和查询注意事项。
+
+### Changed
+
+- CloudBase 模式下活动、成员、模块和操作日志列表改为使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 在数据库查询层分页。
+- 活动记录新增并维护 `registrationCount`，支持按报名人数进行数据库层排序。
+- 协作员列表、成员管理、模块管理、活动管理和操作日志查询统一改为存储层筛选。
+- 云函数构建版本升级为 `0.7.0`。
+
+### Fixed
+
+- 修复 CloudBase Store 需要读取集合前 1000 条后再在云函数内筛选分页的性能隐患。
+- 修复发版前缺少一键回归测试的问题。
+
+### Removed
+
+- 移除 `lib/app.js` 中已不再使用的旧内存分页和关键词筛选 helper。
+
 ## [0.6.0] - 2026-07-10
 
 ### Added
