@@ -18,7 +18,9 @@
       "envVariables": {
         "STORE_DRIVER": "cloudbase",
         "YKADMIN_NICKNAME": "有空管理员",
-        "YKADMIN_PHONE": "13377779999"
+        "YKADMIN_PHONE": "13377779999",
+        "CORS_ORIGINS": "https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com",
+        "SESSION_MAX_AGE_DAYS": "14"
       }
     }
   ]

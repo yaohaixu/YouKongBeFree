@@ -525,3 +525,81 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 增加可重复运行的 Playwright 视觉冒烟脚本，覆盖首页、登录页、后台页、我的页、活动详情页和报名成功页。
 2. 接入真实活动照片和空间照片，建立图片压缩与命名规范。
 3. 继续补齐活动取消/结束、报名导出 CSV 和生产级登录方式。
+
+## 2026-07-10 - 网站安全加固
+
+### 任务目标
+
+按用户要求优化网站安全性，在不重构技术栈、不破坏现有登录、后台、活动审核和报名流程的前提下，补齐 MVP 阶段最关键的 Web 安全控制。
+
+### 具体修改内容
+
+- 后端禁用 `X-Powered-By`，新增安全响应头：CSP、`X-Frame-Options`、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy`，CloudBase / HTTPS 环境返回 HSTS。
+- 所有 HTML 页面新增 `Content-Security-Policy` meta 和 referrer meta，弥补 CloudBase Hosting 静态页不继承 Express 响应头的问题。
+- CORS 从动态回显请求头调整为固定白名单头，只允许配置中的前端 Origin 携带凭据访问 API。
+- 所有非 GET API 请求必须携带 `X-Requested-With: XMLHttpRequest`，前端 API 客户端统一自动添加该请求头，降低跨站表单提交风险。
+- 新增内存级限流：普通写操作按 IP 限流，登录按 IP 和手机号双维度限流，报名按 IP 和活动限流。
+- Session 服务端从明文 token 调整为 token 哈希存储，并新增 `expiresAt` 过期时间；登录 token 随机强度提升到 32 字节。
+- 新生成业务 ID 的随机后缀从 4 字节提升到 8 字节，降低报名确认链接和资源 ID 被猜测的概率。
+- 上传封面新增 MIME 和扩展名双重白名单，只允许 JPG、PNG、WebP、GIF，单文件最大 6MB。
+- 手机号、昵称、模块名称、模块说明、活动标题、发起人、地点、活动描述、审核说明增加格式和长度校验。
+- 公开协作员接口和登录态接口不再返回手机号，管理员成员管理接口保留手机号。
+- 错误处理优化：上传类型错误、文件过大、请求体过大等返回明确 4xx 信息，避免泛化 500。
+- 新增 `docs/security.md`，记录当前安全控制、配置项和遗留风险。
+- 环境变量新增 `CORS_ORIGINS`、`SESSION_MAX_AGE_DAYS`，CloudBase 部署配置同步增加。
+- 静态资源版本参数和 package 版本升级到 `0.4.3`。
+- README、CHANGELOG、开发日志同步更新。
+
+### 涉及文件
+
+- `lib/app.js`
+- `app.js`
+- `.env.example`
+- `cloudbaserc.json`
+- `package.json`
+- `package-lock.json`
+- `scripts/build-function.js`
+- `index.html`
+- `whitepaper.html`
+- `participate.html`
+- `donate.html`
+- `about.html`
+- `login.html`
+- `admin.html`
+- `me.html`
+- `activity.html`
+- `success.html`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+- `docs/security.md`
+
+### 技术方案选择
+
+- 不引入 `helmet`、`express-rate-limit` 等新依赖，而是在现有 Express 应用中实现轻量安全中间件，减少 CloudBase 云函数部署和依赖审计的不确定性。
+- 继续保留前端 Bearer token 兜底，以兼容 CloudBase 静态域名和 API 域名跨站 Cookie 的移动端问题；服务端改为只保存 token 哈希，降低数据库泄露风险。
+- CSRF 防护选择“自定义请求头 + CORS 白名单”的轻量方案，适合当前 Vanilla JS 前端和 API 分域部署形态。
+- 限流采用进程内 Map，适合 MVP 阶段快速降低暴力尝试风险；多实例全局限流后续应交给网关、WAF 或共享存储。
+- 上传限制采用 MIME 与扩展名双重校验，直接拒绝 SVG、HTML 和脚本类文件，降低上传型 XSS 风险。
+
+### 当前完成情况
+
+- `node --check` 已通过：`app.js`、`lib/app.js`、`lib/store.js`、`script.js`、`server.js`、`scripts/build-static.js`、`scripts/build-function.js`。
+- 本地隔离 JSON 数据库安全冒烟通过：缺少安全校验头的 POST 返回 `403`；正常登录成功；Session 数据库只保存 `tokenHash` 和 `expiresAt`；静态页返回 CSP、XFO、nosniff、Referrer-Policy、Permissions-Policy；管理员新增协作员成功；活动草稿保存成功；非法 HTML 文件上传返回 `400`。
+- 本地浏览器验证通过：登录页输入管理员手机号后进入后台，控制台无 CSP 或脚本错误。
+- CloudBase `0.4.3` 已部署成功：线上静态页引用 `v=0.4.3` 并包含 HTML CSP；线上 API 返回安全响应头；缺少安全校验头的登录 POST 返回 `403`。
+- `npm audit --omit=dev --registry=https://registry.npmjs.org` 已运行，仍报告 `@cloudbase/node-sdk@3.18.3` 传递依赖中的 axios / lodash 风险；当前 CloudBase 官方最新版本仍为 `3.18.3`，暂未强行 override，已记录到 `docs/security.md`。
+
+### 遗留问题
+
+- 当前登录仍是手机号白名单免密登录，建议后续升级为短信验证码、微信登录或密码加二次校验。
+- 取消报名和报名成功页仍依赖报名 ID 作为访问凭据，后续可增加一次性确认 token 或手机号二次校验。
+- 当前限流是进程内存级，多实例下不是全局限流，生产流量增长后应接入 CloudBase 网关、WAF 或共享存储限流。
+- 依赖审计中的 CloudBase SDK 传递依赖风险需要持续关注官方更新。
+- 尚未把安全冒烟整理成可重复运行的 `npm test` 或 CI 流程。
+
+### 下一步建议
+
+1. 增加生产级登录：短信验证码、微信登录或后台密码二次校验。
+2. 给报名确认 / 取消报名增加独立一次性 token，并支持报名手机号二次确认。
+3. 接入自动化安全测试和依赖审计 CI，定期检查 CloudBase SDK 漏洞修复。

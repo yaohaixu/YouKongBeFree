@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.4.2`
+当前版本：`0.4.3`
 
-状态：`0.4.2` 已完成开发、本地验证与 CloudBase 线上部署。本版本将全站视觉统一调整为 Apple 风格：浅色系统背景、玻璃拟态导航、统一圆角卡片、蓝色主按钮、轻量阴影、清爽留白和更一致的 PC / 移动端布局。
+状态：`0.4.3` 已完成开发、本地验证与 CloudBase 线上部署。本版本增强安全响应头、HTML CSP、CORS、CSRF 防护、限流、Session 存储、上传校验和输入校验。
 
 ## 访问地址
 
@@ -39,6 +39,7 @@ GitHub Pages 静态展示：
 - 动态活动列表：首页和活动页读取已发布活动。
 - 全站管理操作提供轻提示反馈，删除类操作需要确认弹窗。
 - 视觉体验：Apple 风格浅色系统界面、玻璃导航、统一圆角卡片、Apple 蓝主按钮、1200px 左右内容最大宽度、自适应左右留白、移动端单列布局、卡片 hover 和动态内容进入动效。
+- 安全加固：API 安全响应头、静态页 HTML CSP、CORS 白名单、非 GET API 安全校验头、登录和写操作限流、Session 哈希存储和过期、上传图片白名单、手机号和文本长度校验。
 - CloudBase NoSQL 落库与 CloudBase Storage 活动封面存储。
 
 ## 技术栈
@@ -81,7 +82,8 @@ GitHub Pages 静态展示：
 ├── uploads/
 │   └── .gitkeep            # 本地上传目录占位，真实上传文件不提交 Git
 ├── docs/
-│   └── dev-log.md          # 开发日志
+│   ├── dev-log.md          # 开发日志
+│   └── security.md         # 安全控制和遗留风险说明
 ├── cloudbaserc.json        # CloudBase 环境与云函数配置
 ├── package.json
 ├── package-lock.json
@@ -113,6 +115,8 @@ YKADMIN_NICKNAME=有空管理员
 YKADMIN_PHONE=13377779999
 STORE_DRIVER=json
 CLOUDBASE_ENV_ID=youkong-d5gh4x0ayc29a2187
+CORS_ORIGINS=https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com
+SESSION_MAX_AGE_DAYS=14
 YK_DB_FILE=
 ```
 
@@ -121,6 +125,7 @@ YK_DB_FILE=
 - `.env` 不允许提交到 Git。
 - 本地默认使用 `STORE_DRIVER=json`，数据写入 `data/youkong-db.json`。
 - 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_activities`、`yk_registrations`、`yk_sessions`。
+- `CORS_ORIGINS` 用英文逗号分隔允许跨域访问 API 的前端域名；`SESSION_MAX_AGE_DAYS` 会被限制在 1 到 30 天之间。
 - 如果数据不存在，服务会初始化默认管理员和默认活动模块。
 
 ## 运行方式
@@ -197,6 +202,7 @@ npm run deploy:cloudbase
 - 管理员查看系统内所有人、所有状态活动。
 - 首页和活动页动态读取活动列表。
 - CloudBase 动态部署、NoSQL 落库和 Storage 封面上传。
+- 基础安全加固：CSP 等响应头、请求意图校验、限流、Session 哈希、上传白名单、输入校验和最小化手机号返回。
 - 基础工程规范：`.gitignore`、环境变量示例、README、CHANGELOG、开发日志。
 
 ## 已验证
@@ -211,6 +217,7 @@ npm run deploy:cloudbase
 - CloudBase 静态页移动端浏览器验证通过：登录页输入 `13377779999` 后跳转 `admin.html`，后台待办区和协作员角色控件可见。
 - 本地浏览器视觉检查通过：`0.4.2` 首页、社区共识、登录页、后台页 PC / 移动端布局可用，Apple 风格样式层生效，无明显内容重叠或横向溢出。
 - CloudBase `0.4.2` 线上部署通过：静态页已引用 `styles.css?v=0.4.2`、`script.js?v=0.4.2`、`app.js?v=0.4.2`，线上 CSS 可查到 `--accent: #0071e3`、Apple 风格样式层和非阻塞 reveal 动效。
+- CloudBase `0.4.3` 安全加固部署通过：线上静态页已引用 `v=0.4.3` 并包含 HTML CSP；线上 API 返回安全响应头；缺少安全校验头的 POST 返回 `403`。
 - 线上冒烟产生的测试成员、活动和报名记录已清理。
 - GitHub 状态：`0.4.2` 按双分支流程维护，最新提交请以 `git log --oneline --decorate --graph --all` 为准。
 

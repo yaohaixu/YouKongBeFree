@@ -2,6 +2,36 @@
 
 所有重要变更都会记录在此文件中。格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循语义化版本思路。
 
+## [0.4.3] - 2026-07-10
+
+### Added
+
+- 新增安全响应头：CSP、`X-Frame-Options`、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy`，HTTPS 环境返回 HSTS。
+- 新增所有 HTML 页面的 `Content-Security-Policy` meta 和 referrer meta，补齐 CloudBase Hosting 静态页的基础浏览器侧约束。
+- 新增非 GET API 请求安全校验头要求，前端统一发送 `X-Requested-With: XMLHttpRequest`。
+- 新增登录、报名和普通写操作的内存级限流。
+- 新增 `docs/security.md`，记录当前安全控制和遗留风险。
+- 新增 `CORS_ORIGINS` 和 `SESSION_MAX_AGE_DAYS` 环境变量说明。
+
+### Changed
+
+- Session 服务端存储从明文 token 调整为 token 哈希，并增加过期时间。
+- 登录 token 随机强度提升到 32 字节；新生成 ID 的随机后缀提升到 8 字节。
+- CORS 允许头从回显请求头调整为固定白名单。
+- 公开协作员接口和登录态接口不再返回手机号，管理员成员管理接口仍返回手机号。
+- 上传封面限制为 JPG、PNG、WebP、GIF，单文件最大 6MB。
+- 手机号、昵称、模块、活动标题、地点、描述和审核说明增加格式与长度校验。
+- 静态资源版本参数升级为 `v=0.4.3`。
+
+### Fixed
+
+- 修复上传错误和请求体过大时可能返回泛化 500 的问题，改为明确 4xx 错误。
+- 降低跨站表单提交、点击劫持、内容嗅探和过度暴露成员手机号的风险。
+
+### Removed
+
+- 无。
+
 ## [0.4.2] - 2026-07-10
 
 ### Added

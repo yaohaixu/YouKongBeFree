@@ -4,8 +4,10 @@ const api = {
     : "",
   async request(path, options = {}) {
     const token = localStorage.getItem("yk_session_token");
+    const method = String(options.method || "GET").toUpperCase();
     const headers = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(!["GET", "HEAD", "OPTIONS"].includes(method) ? { "X-Requested-With": "XMLHttpRequest" } : {}),
       ...(options.headers || {}),
     };
     let response;
