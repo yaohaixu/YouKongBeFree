@@ -30,6 +30,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html {
   scroll-behavior: smooth;
   background: var(--bg);
@@ -1598,6 +1602,154 @@ select:disabled {
   margin: 6px 0;
 }
 
+.workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.workspace-card {
+  display: grid;
+  min-height: 236px;
+  align-content: start;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: clamp(20px, 2.2vw, 26px);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-card);
+  color: var(--ink);
+  text-decoration: none;
+  transition:
+    transform 220ms var(--ease-out),
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    background 220ms ease;
+}
+
+.workspace-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(0, 113, 227, 0.22);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 26px 74px rgba(0, 0, 0, 0.1);
+}
+
+.workspace-card span,
+.workspace-card small {
+  color: var(--soft);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.workspace-card strong {
+  display: inline-grid;
+  width: fit-content;
+  min-width: 48px;
+  min-height: 38px;
+  place-items: center;
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: rgba(0, 113, 227, 0.1);
+  color: #0066cc;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.workspace-card h3 {
+  margin: 10px 0 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.workspace-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.dashboard-stats {
+  border: 0;
+  background: transparent;
+}
+
+.editor-layout,
+.manager-layout {
+  display: grid;
+  align-items: start;
+  gap: 28px;
+}
+
+.editor-layout {
+  grid-template-columns: minmax(0, 0.68fr) minmax(320px, 0.32fr);
+}
+
+.manager-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.36fr);
+}
+
+.sticky-panel {
+  position: sticky;
+  top: 92px;
+}
+
+.filter-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 14px;
+  align-items: end;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: clamp(18px, 2vw, 24px);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.filter-panel.wide {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+}
+
+.filter-panel label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 760;
+}
+
+.filter-panel input,
+.filter-panel select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 11px 12px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--ink);
+}
+
+.filter-panel input:focus,
+.filter-panel select:focus {
+  outline: none;
+  border-color: rgba(0, 113, 227, 0.5);
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.16);
+}
+
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 760;
+}
+
+.load-more {
+  width: 100%;
+  margin-top: 16px;
+}
+
 .toast {
   position: fixed;
   left: 50%;
@@ -1948,6 +2100,8 @@ select:disabled {
 .empty-state,
 .article-content,
 .manage-row,
+.workspace-card,
+.filter-panel,
 .activity-hero-cover,
 .success-card,
 .data-table,
@@ -2025,6 +2179,8 @@ select:disabled {
 .form-note,
 .panel-block,
 .article-content,
+.workspace-card,
+.filter-panel,
 .success-card {
   overflow: hidden;
 }
@@ -2048,6 +2204,8 @@ select:disabled {
 .form-note select,
 .manage-row input,
 .manage-row select,
+.filter-panel input,
+.filter-panel select,
 .review-actions select,
 .review-actions textarea {
   border-color: rgba(0, 0, 0, 0.1);
@@ -2061,6 +2219,8 @@ select:disabled {
 .form-note select:focus,
 .manage-row input:focus,
 .manage-row select:focus,
+.filter-panel input:focus,
+.filter-panel select:focus,
 .review-actions select:focus,
 .review-actions textarea:focus {
   border-color: rgba(0, 113, 227, 0.5);
@@ -2161,6 +2321,8 @@ select:disabled {
   .auth-layout,
   .app-layout,
   .admin-layout,
+  .editor-layout,
+  .manager-layout,
   .activity-layout,
   .activity-hero {
     grid-template-columns: 1fr;
@@ -2179,6 +2341,7 @@ select:disabled {
 
   .stats,
   .grid.four,
+  .workspace-grid,
   .process,
   .donation-options,
   .qr-grid,
@@ -2196,6 +2359,10 @@ select:disabled {
   }
 
   .auth-card {
+    position: static;
+  }
+
+  .sticky-panel {
     position: static;
   }
 
@@ -2225,6 +2392,11 @@ select:disabled {
 
   .review-actions {
     justify-self: stretch;
+  }
+
+  .filter-panel,
+  .filter-panel.wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -2364,6 +2536,7 @@ select:disabled {
 
   .stats,
   .grid.four,
+  .workspace-grid,
   .process,
   .donation-options,
   .qr-grid,
@@ -2420,6 +2593,8 @@ select:disabled {
   .success-grid,
   .event-card,
   .event-row,
+  .filter-panel,
+  .filter-panel.wide,
   .manage-row,
   .user-manage-row,
   [data-module-list] .manage-row {

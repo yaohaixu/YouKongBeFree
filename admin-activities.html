@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>全部活动管理｜有空客厅</title>
+    <meta name="description" content="YKadmin 查看和筛选系统内所有状态的活动。" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css?v=0.5.0" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html"><span class="brand-mark">有空</span><span class="brand-text">有空客厅</span></a>
+        <button class="menu-toggle" type="button" aria-label="打开导航" aria-expanded="false"><span></span><span></span><span></span></button>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="whitepaper.html">社区共识</a>
+          <a href="participate.html">活动与参与</a>
+          <a href="donate.html">捐赠支持</a>
+          <a href="about.html">关于与联系</a>
+          <span class="session-nav" data-session-nav><a href="login.html">我的</a></span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" data-admin-activities-page>
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">全部活动管理</p>
+          <h1>用筛选条件管理越来越多的活动。</h1>
+          <p>按标题、模块、状态、时间和报名人数筛选，避免所有活动堆成一条长长的流水账。</p>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap">
+          <form class="filter-panel wide" data-admin-activity-filters>
+            <label>搜索<input name="q" placeholder="标题 / 发起人 / 地点 / 协作员" /></label>
+            <label>模块<select name="moduleId"></select></label>
+            <label>状态<select name="status"></select></label>
+            <label>开始日期<input name="from" type="date" /></label>
+            <label>结束日期<input name="to" type="date" /></label>
+            <label>排序
+              <select name="sort">
+                <option value="created-desc">最近创建</option>
+                <option value="start-asc">活动时间从近到远</option>
+                <option value="start-desc">活动时间从远到近</option>
+                <option value="registrations-desc">报名人数最多</option>
+              </select>
+            </label>
+            <button class="button ghost" type="submit">筛选</button>
+          </form>
+          <div class="list-toolbar">
+            <span data-admin-activity-count>正在读取活动...</span>
+            <a class="button ghost" href="admin.html">回后台</a>
+          </div>
+          <div class="event-list rows" data-all-activities></div>
+          <button class="button ghost load-more" type="button" data-load-more-admin-activities hidden>加载更多</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><div class="footer-brand">有空客厅</div><div>活动越来越多时，先筛选再处理。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-members.html">成员管理</a><a href="admin-modules.html">模块管理</a></nav>
+      </div>
+    </footer>
+    <script src="script.js?v=0.5.0"></script>
+    <script src="app.js?v=0.5.0"></script>
+  </body>
+</html>

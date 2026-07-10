@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>YKadmin 工作台｜有空客厅</title>
-    <meta name="description" content="YKadmin 工作台，进入活动、成员、模块和审核管理。" />
+    <title>模块管理｜有空客厅</title>
+    <meta name="description" content="YKadmin 添加、搜索、修改和删除活动模块。" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -27,45 +27,46 @@
       </div>
     </header>
 
-    <main id="main" data-admin-dashboard>
+    <main id="main" data-admin-modules-page>
       <section class="page-hero">
         <div class="wrap">
-          <p class="eyebrow">YKadmin 工作台</p>
-          <h1>把后台拆成清楚的几个入口。</h1>
-          <p>活动、成员、模块和审核不再堆在同一个页面里。先看概览，再进入对应的管理页。</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="wrap">
-          <div class="section-head compact-head">
-            <div>
-              <p class="section-kicker">管理入口</p>
-              <h2>每件事都有自己的页面。</h2>
-            </div>
-          </div>
-          <div class="workspace-grid" data-admin-dashboard-cards></div>
+          <p class="eyebrow">模块管理</p>
+          <h1>活动属于哪些类别，在这里维护。</h1>
+          <p>模块会出现在发起活动的下拉框里，也会作为活动列表里的分类标签。</p>
         </div>
       </section>
 
       <section class="section alt">
-        <div class="wrap">
-          <div class="section-head compact-head">
-            <div>
-              <p class="section-kicker">待办预览</p>
-              <h2>管理员审核。</h2>
+        <div class="wrap manager-layout">
+          <div>
+            <form class="filter-panel" data-module-filters>
+              <label>搜索<input name="q" placeholder="模块名称 / 说明" /></label>
+              <button class="button ghost" type="submit">筛选</button>
+            </form>
+            <div class="list-toolbar">
+              <span data-module-count>正在读取模块...</span>
+              <a class="button ghost" href="admin.html">回后台</a>
             </div>
-            <a class="button ghost" href="review-tasks.html">查看全部</a>
+            <div class="manage-list" data-module-list></div>
           </div>
-          <div class="event-list rows" data-admin-pending></div>
+
+          <aside class="form-note sticky-panel">
+            <h3>添加活动模块</h3>
+            <form data-module-form>
+              <label>模块名称<input name="name" required placeholder="比如：有空放映" /></label>
+              <label>模块说明<input name="description" placeholder="一句话说明这个模块" /></label>
+              <button class="button primary" type="submit">添加模块</button>
+              <p class="form-message" data-module-message></p>
+            </form>
+          </aside>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-grid">
-        <div><div class="footer-brand">有空客厅</div><div>后台工作台只做导航和概览。</div><div class="credit">网站制作人：海旭</div></div>
-        <nav class="footer-links"><a href="admin-activities.html">全部活动</a><a href="admin-members.html">成员管理</a><a href="admin-modules.html">模块管理</a></nav>
+        <div><div class="footer-brand">有空客厅</div><div>模块让活动更容易被找到。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-activities.html">全部活动</a><a href="admin-members.html">成员管理</a></nav>
       </div>
     </footer>
     <script src="script.js?v=0.5.0"></script>

@@ -603,3 +603,83 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 增加生产级登录：短信验证码、微信登录或后台密码二次校验。
 2. 给报名确认 / 取消报名增加独立一次性 token，并支持报名手机号二次确认。
 3. 接入自动化安全测试和依赖审计 CI，定期检查 CloudBase SDK 漏洞修复。
+
+## 2026-07-10 - 角色工作台与管理子页面重构
+
+### 任务目标
+
+按用户确认的方向，将「我的」和 YKadmin 后台从高增长长列表页面重构为入口型工作台，并把活动、成员、模块、审核待办拆成独立子页面，降低活动和人员数据增长后的臃肿感。
+
+### 具体修改内容
+
+- 将 `me.html` 改为成员工作台：展示活动状态概览和入口卡片。
+- 将 `admin.html` 改为 YKadmin 工作台：展示全部活动、成员管理、模块管理、审核待办入口。
+- 新增 `activity-editor.html`，承载发起 / 编辑活动表单，支持存草稿与提交审核。
+- 新增 `my-activities.html`，承载我发起的活动列表、搜索筛选、撤回和报名表查看。
+- 新增 `review-tasks.html`，承载管理员 / 协作员审核待办，可展开活动详情、封面图和审核记录。
+- 新增 `admin-activities.html`，承载管理员全部活动查看和筛选。
+- 新增 `admin-members.html`，承载成员搜索、角色筛选、新增、编辑、删除。
+- 新增 `admin-modules.html`，承载活动模块搜索、新增、编辑、删除。
+- `app.js` 新增工作台渲染、筛选排序、分页加载、子页面初始化和角色权限控制逻辑。
+- `styles.css` 新增工作台卡片、筛选面板、编辑 / 管理双栏布局、粘性侧栏、加载更多按钮等样式。
+- 增加全局 `[hidden] { display: none !important; }`，修复按钮样式覆盖 HTML 隐藏属性导致隐藏控件外露的问题。
+- `scripts/build-static.js` 补齐新增 HTML 页面，确保 CloudBase Hosting 部署包含所有子页面。
+- 首页、活动与参与页、活动详情页和登录页相关入口文案与链接改为新的工作台 / 发起活动页面。
+- 版本号和静态资源参数升级到 `0.5.0`。
+- README、CHANGELOG、开发日志同步更新。
+
+### 涉及文件
+
+- `app.js`
+- `styles.css`
+- `me.html`
+- `admin.html`
+- `activity-editor.html`
+- `my-activities.html`
+- `review-tasks.html`
+- `admin-activities.html`
+- `admin-members.html`
+- `admin-modules.html`
+- `index.html`
+- `participate.html`
+- `activity.html`
+- `login.html`
+- `scripts/build-static.js`
+- `scripts/build-function.js`
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 继续使用现有 HTML / CSS / Vanilla JS 架构，不引入 React 或新的前端框架，降低部署和接手成本。
+- 保留现有 API 与审核流，只重构前端信息架构和页面入口，避免影响已经验证过的登录、审核、报名和 CloudBase 存储逻辑。
+- 使用工作台卡片承载高层入口，使用独立列表页承载高增长数据，后续活动、成员和模块数量增加时可继续扩展筛选、分页和导出。
+- 筛选分页先放在前端完成，适合当前数据规模；当活动量继续增长后可把筛选条件下沉到 API 查询层。
+- 沿用 Apple 风格视觉系统，新增页面使用同一套按钮、表单、卡片、间距和移动端断点。
+
+### 当前完成情况
+
+- `node --check` 已通过：`app.js`、`lib/app.js`、`lib/store.js`、`script.js`、`server.js`、`scripts/build-static.js`、`scripts/build-function.js`。
+- `npm run build:cloudbase` 已通过。
+- CloudBase `0.5.0` 已部署成功：静态托管上传 26 个文件，新增子页面均可通过线上地址访问，线上 HTML 已引用 `v=0.5.0`；云函数 `youkongApi` 部署成功，线上 `/api/session` 返回安全响应头和 `{"user":null}`。
+- 本地 Playwright 验证通过：管理员登录进入 YKadmin 工作台；普通成员只看到发起活动和我的活动入口；协作员可看到审核待办入口。
+- 本地 Playwright 流程验证通过：新增协作员和成员、成员发起活动、管理员审核、协作员审核、活动发布、访客报名、重复报名跳转已有确认页、取消报名弹窗和取消后页面。
+- 本地 Playwright 验证通过：审核待办展开后可查看上传封面图；管理员全部活动、成员管理、模块管理页面均可打开且控制台无错误。
+- 本地移动端 390px 验证通过：工作台卡片、全部活动筛选、活动列表和导航自然换行；隐藏控件不再外露。
+
+### 遗留问题
+
+- 当前列表筛选和分页仍在前端完成，数据量明显增加后需要改为服务端分页和查询。
+- 管理员全部活动页目前以查看为主，后续可增加管理员取消、结束、删除活动能力。
+- 报名表目前显示在「我的活动」侧栏中，后续可以拆成活动报名详情页，适合报名人数较多的活动。
+- 工作台统计仍是基础计数，后续可增加待办趋势、报名趋势、即将开始活动等运营指标。
+
+### 下一步建议
+
+1. 为活动、成员、模块列表增加服务端分页和查询参数。
+2. 新增活动报名详情页，并支持 CSV 导出。
+3. 增加管理员取消 / 结束活动能力和操作日志。
+4. 把本次 Playwright 冒烟流程沉淀为可重复运行的自动化测试脚本。

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>成员管理｜有空客厅</title>
+    <meta name="description" content="YKadmin 添加、搜索、修改和删除有空成员。" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css?v=0.5.0" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html"><span class="brand-mark">有空</span><span class="brand-text">有空客厅</span></a>
+        <button class="menu-toggle" type="button" aria-label="打开导航" aria-expanded="false"><span></span><span></span><span></span></button>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="whitepaper.html">社区共识</a>
+          <a href="participate.html">活动与参与</a>
+          <a href="donate.html">捐赠支持</a>
+          <a href="about.html">关于与联系</a>
+          <span class="session-nav" data-session-nav><a href="login.html">我的</a></span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" data-admin-members-page>
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">成员管理</p>
+          <h1>谁可以进入系统，谁可以协作审核。</h1>
+          <p>新增成员后，对方用手机号即可登录。协作员可以被活动发起人选择参与第二岗审核。</p>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap manager-layout">
+          <div>
+            <form class="filter-panel" data-member-filters>
+              <label>搜索<input name="q" placeholder="昵称 / 手机号" /></label>
+              <label>角色
+                <select name="role">
+                  <option value="">全部角色</option>
+                  <option value="member">成员</option>
+                  <option value="collaborator">协作员</option>
+                  <option value="admin">管理员</option>
+                </select>
+              </label>
+              <button class="button ghost" type="submit">筛选</button>
+            </form>
+            <div class="list-toolbar">
+              <span data-member-count>正在读取成员...</span>
+              <a class="button ghost" href="admin.html">回后台</a>
+            </div>
+            <div class="manage-list" data-user-list></div>
+          </div>
+
+          <aside class="form-note sticky-panel">
+            <h3>添加成员</h3>
+            <form data-user-form>
+              <label>昵称<input name="nickname" required /></label>
+              <label>手机号<input name="phone" inputmode="tel" required /></label>
+              <label>角色
+                <span class="check-group inline">
+                  <label><input type="checkbox" name="roles" value="member" checked /> 成员</label>
+                  <label><input type="checkbox" name="roles" value="collaborator" /> 协作员</label>
+                </span>
+              </label>
+              <button class="button primary" type="submit">添加成员</button>
+              <p class="form-message" data-user-message></p>
+            </form>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><div class="footer-brand">有空客厅</div><div>成员权限越清楚，协作越稳。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-activities.html">全部活动</a><a href="admin-modules.html">模块管理</a></nav>
+      </div>
+    </footer>
+    <script src="script.js?v=0.5.0"></script>
+    <script src="app.js?v=0.5.0"></script>
+  </body>
+</html>

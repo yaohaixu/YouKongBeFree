@@ -56,6 +56,8 @@ let mePageState = {
   collaborators: [],
   editingActivity: null,
   submitIntent: "submit",
+  myActivityLimit: 12,
+  adminActivityLimit: 12,
 };
 
 const actionLabels = {
@@ -63,6 +65,31 @@ const actionLabels = {
   reject: "拒绝",
   return: "退回",
   withdraw: "撤回",
+};
+
+const statusOptions = [
+  ["", "全部状态"],
+  ["draft", "草稿"],
+  ["admin_review", "管理员审核"],
+  ["collaborator_review", "协作员审核"],
+  ["returned", "退回"],
+  ["rejected", "拒绝"],
+  ["published", "活动发布"],
+  ["full", "活动人满"],
+  ["cancelled", "活动取消"],
+  ["ended", "活动结束"],
+];
+
+const statusTone = {
+  draft: "草稿",
+  admin_review: "审核中",
+  collaborator_review: "审核中",
+  returned: "退回",
+  rejected: "拒绝",
+  published: "发布",
+  full: "人满",
+  cancelled: "取消",
+  ended: "结束",
 };
 
 function showToast(text = "保存成功") {
@@ -218,7 +245,17 @@ function renderMainNav(navLinks, baseLinks, pageName, user) {
   const links = baseLinks
     .map(([href, label]) => `<a class="${pageName === href ? "active" : ""}" href="${href}">${label}</a>`)
     .join("");
-  const myActive = pageName === "me.html" || pageName === "admin.html";
+  const workspacePages = [
+    "me.html",
+    "my-activities.html",
+    "activity-editor.html",
+    "review-tasks.html",
+    "admin.html",
+    "admin-activities.html",
+    "admin-members.html",
+    "admin-modules.html",
+  ];
+  const myActive = workspacePages.includes(pageName);
   const userPart = user
     ? `<a class="${myActive ? "active" : ""}" href="me.html">我的</a><button class="nav-button" type="button" data-logout>${escapeHtml(user.nickname)} · 退出</button>`
     : `<a class="${myActive ? "active" : ""}" href="login.html">我的</a>`;
@@ -259,6 +296,13 @@ async function fillCollaboratorSelect(select) {
     ? `<option value="">请选择协作员</option>${collaborators.map((item) => `<option value="${item.id}">${escapeHtml(item.nickname)}</option>`).join("")}`
     : `<option value="">暂无协作员，请先联系管理员添加</option>`;
   return collaborators;
+}
+
+async function fillModuleFilterSelect(select) {
+  if (!select) return [];
+  const { modules } = await api.get("/api/modules");
+  select.innerHTML = `<option value="">全部模块</option>${modules.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("")}`;
+  return modules;
 }
 
 function toDatetimeLocal(value) {
@@ -315,25 +359,139 @@ async function renderActivityLists() {
   });
 }
 
-async function initMePage() {
-  const form = qs("[data-activity-form]");
-  if (!form) return;
-
+async function requireCurrentUser() {
   const { user } = await api.get("/api/session");
   if (!user) {
     location.href = "login.html";
-    return;
+    return null;
   }
+  return user;
+}
 
+async function initMeDashboardPage() {
+  const root = qs("[data-me-dashboard]");
+  if (!root) return;
+  const user = await requireCurrentUser();
+  if (!user) return;
   mePageState.user = user;
-  qs("[data-user-name]").textContent = user.nickname;
-  const pendingSection = qs("[data-my-pending-section]");
+  qs("[data-user-name]", root).textContent = user.nickname;
+
+  const [{ activities: myActivities }, pendingResult] = await Promise.all([
+    api.get("/api/activities?owner=me"),
+    hasRole(user, "collaborator") ? api.get("/api/activities?pending=me") : Promise.resolve({ activities: [] }),
+  ]);
+
+  renderWorkspaceCards(root, user, myActivities, pendingResult.activities);
+  renderDashboardSummary(qs("[data-workspace-summary]", root), myActivities);
+
+  const pendingPreview = qs("[data-my-pending]", root);
+  const pendingSection = qs("[data-my-pending-section]", root);
   if (pendingSection && !hasRole(user, "collaborator")) {
     pendingSection.hidden = true;
+  } else {
+    renderPendingTasks(pendingPreview, pendingResult.activities.slice(0, 3), { compact: true });
   }
+}
+
+function countByStatus(activities) {
+  return activities.reduce((acc, activity) => {
+    acc[activity.status] = (acc[activity.status] || 0) + 1;
+    return acc;
+  }, {});
+}
+
+function renderDashboardSummary(container, activities) {
+  if (!container) return;
+  const counts = countByStatus(activities);
+  const reviewing = (counts.admin_review || 0) + (counts.collaborator_review || 0);
+  container.innerHTML = `
+    <div class="stat"><strong>${activities.length}</strong><span>我发起的活动</span></div>
+    <div class="stat"><strong>${counts.draft || 0}</strong><span>草稿</span></div>
+    <div class="stat"><strong>${reviewing}</strong><span>审核中</span></div>
+    <div class="stat"><strong>${(counts.published || 0) + (counts.full || 0)}</strong><span>已发布</span></div>
+  `;
+  revealDynamicContent(container);
+}
+
+function renderWorkspaceCards(root, user, myActivities, pendingActivities) {
+  const container = qs("[data-workspace-cards]", root);
+  if (!container) return;
+  const counts = countByStatus(myActivities);
+  const reviewing = (counts.admin_review || 0) + (counts.collaborator_review || 0);
+  const cards = [
+    {
+      href: "activity-editor.html",
+      label: "发起活动",
+      title: "写下一个新的活动想法",
+      body: "从草稿开始，选择协作员后提交审核。",
+      meta: "草稿 / 提交审核",
+      count: "+",
+    },
+    {
+      href: "my-activities.html",
+      label: "我发起的活动",
+      title: "管理自己的活动和报名表",
+      body: "筛选草稿、审核中、退回、已发布等状态。",
+      meta: `${reviewing} 个审核中`,
+      count: myActivities.length,
+    },
+  ];
+  if (hasRole(user, "collaborator")) {
+    cards.push({
+      href: "review-tasks.html",
+      label: "审核待办",
+      title: "处理需要你审核的活动",
+      body: "查看活动详情、封面、描述和审核历史。",
+      meta: "协作员入口",
+      count: pendingActivities.length,
+    });
+  }
+  if (hasRole(user, "admin")) {
+    cards.push({
+      href: "admin.html",
+      label: "管理后台",
+      title: "进入 YKadmin 工作台",
+      body: "活动、成员、模块分页面管理。",
+      meta: "管理员入口",
+      count: "Admin",
+    });
+  }
+  container.innerHTML = cards.map(renderWorkspaceCard).join("");
+  revealDynamicContent(container);
+}
+
+function renderWorkspaceCard(card) {
+  return `
+    <a class="workspace-card" href="${card.href}">
+      <span>${escapeHtml(card.label)}</span>
+      <strong>${escapeHtml(String(card.count))}</strong>
+      <h3>${escapeHtml(card.title)}</h3>
+      <p>${escapeHtml(card.body)}</p>
+      <small>${escapeHtml(card.meta)}</small>
+    </a>
+  `;
+}
+
+async function initActivityEditorPage() {
+  const form = qs("[data-activity-form]");
+  if (!form) return;
+  const user = await requireCurrentUser();
+  if (!user) return;
+  mePageState.user = user;
+  qs("[data-user-name]") && (qs("[data-user-name]").textContent = user.nickname);
   resetActivityForm(form);
   mePageState.modules = await fillModuleSelect(form.moduleId);
   mePageState.collaborators = await fillCollaboratorSelect(form.collaboratorId);
+
+  const editingId = new URLSearchParams(location.search).get("id");
+  if (editingId) {
+    try {
+      const { activity } = await api.get(`/api/activities/${editingId}`);
+      fillActivityForm(form, activity);
+    } catch (error) {
+      setMessage(qs("[data-activity-message]"), error.message, "error");
+    }
+  }
 
   qsa("[data-submit-intent]", form).forEach((button) => {
     button.addEventListener("click", () => {
@@ -356,7 +514,9 @@ async function initMePage() {
       setMessage(message, intent === "draft" ? "草稿已保存。" : "活动已提交管理员审核。", "success");
       showToast("保存成功");
       resetActivityForm(form);
-      await renderMineActivities();
+      setTimeout(() => {
+        location.href = "my-activities.html";
+      }, 520);
     } catch (error) {
       setMessage(message, error.message, "error");
     } finally {
@@ -368,11 +528,6 @@ async function initMePage() {
     resetActivityForm(form);
     setMessage(message, "已取消编辑。");
   });
-
-  await renderMineActivities();
-  if (!pendingSection?.hidden) {
-    await renderMyPendingTasks();
-  }
 }
 
 function resetActivityForm(form) {
@@ -410,16 +565,46 @@ function canWithdraw(activity) {
   return ["admin_review", "collaborator_review", "published", "full"].includes(activity.status);
 }
 
+async function initMyActivitiesPage() {
+  const root = qs("[data-my-activities-page]");
+  if (!root) return;
+  const user = await requireCurrentUser();
+  if (!user) return;
+  mePageState.user = user;
+  const filters = qs("[data-my-activity-filters]", root);
+  fillStatusSelect(filters?.status);
+  filters?.addEventListener("input", () => {
+    mePageState.myActivityLimit = 12;
+    renderMineActivities();
+  });
+  filters?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    mePageState.myActivityLimit = 12;
+    renderMineActivities();
+  });
+  qs("[data-load-more-my-activities]", root)?.addEventListener("click", () => {
+    mePageState.myActivityLimit += 12;
+    renderMineActivities();
+  });
+  await renderMineActivities();
+}
+
 async function renderMineActivities() {
   const list = qs("[data-my-activities]");
   if (!list) return;
   const { activities } = await api.get("/api/activities?owner=me");
-  if (!activities.length) {
+  const filters = qs("[data-my-activity-filters]");
+  const filtered = filterActivities(activities, filters);
+  const visible = filtered.slice(0, mePageState.myActivityLimit);
+  updateResultCount(qs("[data-my-activity-count]"), filtered.length, activities.length);
+  updateLoadMore(qs("[data-load-more-my-activities]"), visible.length, filtered.length);
+
+  if (!filtered.length) {
     list.innerHTML = `<div class="empty-state"><strong>还没有发起过活动</strong><p>写下一个小想法，客厅就多一张新纸条。</p></div>`;
     revealDynamicContent(list);
     return;
   }
-  list.innerHTML = activities
+  list.innerHTML = visible
     .map(
       (activity) => `
         <article class="event-row">
@@ -430,7 +615,7 @@ async function renderMineActivities() {
             <p>协作员：${escapeHtml(activity.collaboratorName || "未选择")}</p>
           </div>
           <div class="row-actions">
-            ${canEditMine(activity) ? `<button class="button outline" type="button" data-edit-activity-id="${activity.id}">编辑</button>` : ""}
+            ${canEditMine(activity) ? `<a class="button outline" href="activity-editor.html?id=${encodeURIComponent(activity.id)}">编辑</a>` : ""}
             ${canWithdraw(activity) ? `<button class="button outline danger-soft" type="button" data-withdraw-activity-id="${activity.id}">撤回</button>` : ""}
             <button class="button outline" type="button" data-registration-id="${activity.id}">查看报名表</button>
           </div>
@@ -439,13 +624,6 @@ async function renderMineActivities() {
     )
     .join("");
   revealDynamicContent(list);
-
-  qsa("[data-edit-activity-id]", list).forEach((button) => {
-    button.addEventListener("click", async () => {
-      const { activity } = await api.get(`/api/activities/${button.dataset.editActivityId}`);
-      fillActivityForm(qs("[data-activity-form]"), activity);
-    });
-  });
 
   qsa("[data-registration-id]", list).forEach((button) => {
     button.addEventListener("click", () => renderRegistrations(button.dataset.registrationId));
@@ -457,9 +635,58 @@ async function renderMineActivities() {
       await api.post(`/api/activities/${button.dataset.withdrawActivityId}/withdraw`, {});
       showToast("保存成功");
       await renderMineActivities();
-      await renderActivityLists();
     });
   });
+}
+
+function filterActivities(activities, form) {
+  if (!form) return sortActivities(activities, "");
+  const keyword = String(form.q?.value || "").trim().toLowerCase();
+  const status = form.status?.value || "";
+  const moduleId = form.moduleId?.value || "";
+  const from = form.from?.value ? new Date(form.from.value).getTime() : 0;
+  const to = form.to?.value ? new Date(`${form.to.value}T23:59:59`).getTime() : 0;
+  const sort = form.sort?.value || "created-desc";
+  return sortActivities(
+    activities.filter((activity) => {
+      const haystack = [
+        activity.title,
+        activity.moduleName,
+        activity.initiator,
+        activity.creatorName,
+        activity.collaboratorName,
+        activity.location,
+        activity.statusLabel,
+      ].join(" ").toLowerCase();
+      const startsAt = activity.startsAt ? new Date(activity.startsAt).getTime() : 0;
+      return (!keyword || haystack.includes(keyword))
+        && (!status || activity.status === status)
+        && (!moduleId || activity.moduleId === moduleId)
+        && (!from || startsAt >= from)
+        && (!to || startsAt <= to);
+    }),
+    sort
+  );
+}
+
+function sortActivities(activities, sort) {
+  return activities.slice().sort((a, b) => {
+    if (sort === "start-asc") return new Date(a.startsAt || 0) - new Date(b.startsAt || 0);
+    if (sort === "start-desc") return new Date(b.startsAt || 0) - new Date(a.startsAt || 0);
+    if (sort === "registrations-desc") return (b.registrationCount || 0) - (a.registrationCount || 0);
+    return new Date(b.createdAt || b.startsAt || 0) - new Date(a.createdAt || a.startsAt || 0);
+  });
+}
+
+function updateResultCount(element, filtered, total) {
+  if (!element) return;
+  element.textContent = `显示 ${filtered} 条，共 ${total} 条`;
+}
+
+function updateLoadMore(button, visible, total) {
+  if (!button) return;
+  button.hidden = visible >= total;
+  button.textContent = `再加载 ${Math.min(12, total - visible)} 条`;
 }
 
 async function renderMyPendingTasks() {
@@ -467,6 +694,18 @@ async function renderMyPendingTasks() {
   if (!panel) return;
   const { activities } = await api.get("/api/activities?pending=me");
   renderPendingTasks(panel, activities);
+}
+
+async function initReviewTasksPage() {
+  const root = qs("[data-review-tasks-root]");
+  if (!root) return;
+  const user = await requireCurrentUser();
+  if (!user) return;
+  if (!hasRole(user, "collaborator") && !hasRole(user, "admin")) {
+    root.innerHTML = `<section class="section"><div class="wrap"><div class="empty-state"><strong>暂无审核权限</strong><p>只有协作员或管理员可以查看审核待办。</p></div></div></section>`;
+    return;
+  }
+  await renderMyPendingTasks();
 }
 
 function canRegisterActivity(activity) {
@@ -675,20 +914,133 @@ async function initSuccessPage() {
 }
 
 async function initAdminPage() {
-  const adminRoot = qs("[data-admin-root]");
+  const adminRoot = qs("[data-admin-dashboard]");
   if (!adminRoot) return;
-  const { user } = await api.get("/api/session");
-  if (!user) {
-    location.href = "login.html";
-    return;
-  }
-  if (!hasRole(user, "admin")) {
-    adminRoot.innerHTML = `<div class="empty-state"><strong>你还不是管理员</strong><p>只有 YKadmin 可以进入后台。</p></div>`;
-    return;
-  }
+  const user = await requireAdminUser(adminRoot);
+  if (!user) return;
 
-  await Promise.all([renderUsers(), renderModules(), renderAdminPendingTasks(), renderAllActivities()]);
+  const [{ activities }, { users }, { modules }, { activities: pendingActivities }] = await Promise.all([
+    api.get("/api/activities?all=true"),
+    api.get("/api/users"),
+    api.get("/api/modules"),
+    api.get("/api/activities?pending=me"),
+  ]);
+  renderAdminDashboardCards(adminRoot, activities, users, modules, pendingActivities);
+  renderPendingTasks(qs("[data-admin-pending]", adminRoot), pendingActivities.slice(0, 4), { compact: true });
+}
+
+async function requireAdminUser(root) {
+  const user = await requireCurrentUser();
+  if (!user) return null;
+  if (!hasRole(user, "admin")) {
+    if (root) {
+      root.innerHTML = `<section class="section"><div class="wrap"><div class="empty-state"><strong>你还不是管理员</strong><p>只有 YKadmin 可以进入后台。</p></div></div></section>`;
+    }
+    return;
+  }
+  return user;
+}
+
+function renderAdminDashboardCards(root, activities, users, modules, pendingActivities) {
+  const container = qs("[data-admin-dashboard-cards]", root);
+  if (!container) return;
+  const counts = countByStatus(activities);
+  const reviewing = (counts.admin_review || 0) + (counts.collaborator_review || 0);
+  const cards = [
+    {
+      href: "admin-activities.html",
+      label: "全部活动",
+      title: "筛选和查看所有状态活动",
+      body: "按标题、模块、状态、时间和报名数管理。",
+      meta: `${reviewing} 个审核中`,
+      count: activities.length,
+    },
+    {
+      href: "admin-members.html",
+      label: "成员管理",
+      title: "管理成员、协作员和手机号",
+      body: "添加、搜索、修改、删除成员角色。",
+      meta: "成员 / 协作员",
+      count: users.length,
+    },
+    {
+      href: "admin-modules.html",
+      label: "模块管理",
+      title: "维护活动分类模块",
+      body: "管理有空放映、有空食堂等分类。",
+      meta: "活动分类",
+      count: modules.length,
+    },
+    {
+      href: "review-tasks.html",
+      label: "审核待办",
+      title: "处理当前审核任务",
+      body: "查看详情、封面和审核记录后处理。",
+      meta: "管理员审核",
+      count: pendingActivities.length,
+    },
+  ];
+  container.innerHTML = cards.map(renderWorkspaceCard).join("");
+  revealDynamicContent(container);
+}
+
+async function initAdminActivitiesPage() {
+  const root = qs("[data-admin-activities-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const filters = qs("[data-admin-activity-filters]", root);
+  await fillModuleFilterSelect(filters?.moduleId);
+  fillStatusSelect(filters?.status);
+  filters?.addEventListener("input", () => {
+    mePageState.adminActivityLimit = 12;
+    renderAllActivities();
+  });
+  filters?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    mePageState.adminActivityLimit = 12;
+    renderAllActivities();
+  });
+  qs("[data-load-more-admin-activities]", root)?.addEventListener("click", () => {
+    mePageState.adminActivityLimit += 12;
+    renderAllActivities();
+  });
+  await renderAllActivities();
+}
+
+async function initAdminMembersPage() {
+  const root = qs("[data-admin-members-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const filters = qs("[data-member-filters]", root);
+  filters?.addEventListener("input", renderUsers);
+  filters?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    renderUsers();
+  });
   bindAdminForms();
+  await renderUsers();
+}
+
+async function initAdminModulesPage() {
+  const root = qs("[data-admin-modules-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const filters = qs("[data-module-filters]", root);
+  filters?.addEventListener("input", renderModules);
+  filters?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    renderModules();
+  });
+  bindAdminForms();
+  await renderModules();
+}
+
+function fillStatusSelect(select) {
+  if (!select) return;
+  select.innerHTML = statusOptions.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
 }
 
 function bindAdminForms() {
@@ -708,7 +1060,7 @@ function bindAdminForms() {
       userForm.reset();
       setMessage(userMessage, "成员已添加。", "success");
       showToast("保存成功");
-      await Promise.all([renderUsers(), renderAdminPendingTasks(), renderAllActivities()]);
+      await renderUsers();
     } catch (error) {
       setMessage(userMessage, error.message, "error");
     }
@@ -750,7 +1102,21 @@ async function renderUsers() {
   const list = qs("[data-user-list]");
   if (!list) return;
   const { users } = await api.get("/api/users");
-  list.innerHTML = users
+  const filters = qs("[data-member-filters]");
+  const keyword = String(filters?.q?.value || "").trim().toLowerCase();
+  const role = filters?.role?.value || "";
+  const filtered = users.filter((user) => {
+    const roles = user.roles || [user.role || "member"];
+    const haystack = [user.nickname, user.phone, roles.join(" ")].join(" ").toLowerCase();
+    return (!keyword || haystack.includes(keyword)) && (!role || roles.includes(role));
+  });
+  updateResultCount(qs("[data-member-count]"), filtered.length, users.length);
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><strong>没有找到成员</strong><p>换一个关键词或角色筛选试试。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = filtered
     .map(
       (user) => `
         <article class="manage-row user-manage-row" data-user-id="${user.id}">
@@ -773,13 +1139,13 @@ async function renderUsers() {
         roles: selectedRoles(row),
       });
       showToast("保存成功");
-      await Promise.all([renderUsers(), renderAdminPendingTasks(), renderAllActivities()]);
+      await renderUsers();
     });
     qs("[data-delete-user]", row).addEventListener("click", async () => {
       if (!confirm("确定删除这个成员吗？")) return;
       await api.delete(`/api/users/${row.dataset.userId}`);
       showToast("删除成功");
-      await Promise.all([renderUsers(), renderAdminPendingTasks(), renderAllActivities()]);
+      await renderUsers();
     });
   });
 }
@@ -869,20 +1235,28 @@ async function renderAllActivities() {
   const list = qs("[data-all-activities]");
   if (!list) return;
   const { activities } = await api.get("/api/activities?all=true");
-  if (!activities.length) {
+  const filters = qs("[data-admin-activity-filters]");
+  const filtered = filterActivities(activities, filters);
+  const visible = filtered.slice(0, mePageState.adminActivityLimit);
+  updateResultCount(qs("[data-admin-activity-count]"), filtered.length, activities.length);
+  updateLoadMore(qs("[data-load-more-admin-activities]"), visible.length, filtered.length);
+  if (!filtered.length) {
     list.innerHTML = `<div class="empty-state"><strong>暂无活动</strong><p>所有状态的活动会显示在这里。</p></div>`;
     revealDynamicContent(list);
     return;
   }
-  list.innerHTML = activities
+  list.innerHTML = visible
     .map(
       (activity) => `
         <article class="event-row">
           <div>
-            <span class="tag">${escapeHtml(activity.statusLabel)}</span>
+            <span class="tag">${escapeHtml(statusTone[activity.status] || activity.statusLabel)}</span>
             <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
             <p>${escapeHtml(activity.reviewStepLabel)} · ${formatDate(activity.startsAt)} · ${escapeHtml(activity.location || "地点待定")} · ${activity.registrationCount} 人报名</p>
             <p>发起人：${escapeHtml(activity.initiator)} · 协作员：${escapeHtml(activity.collaboratorName || "未选择")}</p>
+          </div>
+          <div class="row-actions">
+            <a class="button outline" href="activity.html?id=${encodeURIComponent(activity.id)}">查看</a>
           </div>
         </article>
       `
@@ -895,7 +1269,16 @@ async function renderModules() {
   const list = qs("[data-module-list]");
   if (!list) return;
   const { modules } = await api.get("/api/modules");
-  list.innerHTML = modules
+  const filters = qs("[data-module-filters]");
+  const keyword = String(filters?.q?.value || "").trim().toLowerCase();
+  const filtered = modules.filter((module) => [module.name, module.description].join(" ").toLowerCase().includes(keyword));
+  updateResultCount(qs("[data-module-count]"), filtered.length, modules.length);
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><strong>没有找到模块</strong><p>换一个关键词试试。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = filtered
     .map(
       (module) => `
         <article class="manage-row" data-module-id="${module.id}">
@@ -944,9 +1327,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   await Promise.all([
     safeInit(initSessionNav),
     safeInit(renderActivityLists),
-    safeInit(initMePage),
+    safeInit(initMeDashboardPage),
+    safeInit(initActivityEditorPage),
+    safeInit(initMyActivitiesPage),
+    safeInit(initReviewTasksPage),
     safeInit(initActivityPage),
     safeInit(initSuccessPage),
     safeInit(initAdminPage),
+    safeInit(initAdminActivitiesPage),
+    safeInit(initAdminMembersPage),
+    safeInit(initAdminModulesPage),
   ]);
 });

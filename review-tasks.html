@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>我的工作台｜有空客厅</title>
-    <meta name="description" content="有空成员工作台，进入发起活动、我的活动和审核待办。" />
+    <title>审核待办｜有空客厅</title>
+    <meta name="description" content="有空客厅管理员和协作员审核待办。" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -27,25 +27,12 @@
       </div>
     </header>
 
-    <main id="main" data-me-dashboard>
+    <main id="main" data-review-tasks-root>
       <section class="page-hero river">
         <div class="wrap">
-          <p class="eyebrow">我的工作台</p>
-          <h1><span data-user-name>有空成员</span>，从这里进入你要处理的事。</h1>
-          <p>工作台只保留入口和概览。发起活动、管理报名表、查看审核待办都进入独立页面处理。</p>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="wrap">
-          <div class="section-head compact-head">
-            <div>
-              <p class="section-kicker">概览</p>
-              <h2>先看状态，再进入细节。</h2>
-            </div>
-            <a class="button primary" href="activity-editor.html">发起活动</a>
-          </div>
-          <div class="stats dashboard-stats" data-workspace-summary></div>
+          <p class="eyebrow">审核待办</p>
+          <h1>先看细节，再给出判断。</h1>
+          <p>这里只显示需要你处理的审核任务。管理员看管理员审核，协作员看协作员审核。</p>
         </div>
       </section>
 
@@ -53,22 +40,9 @@
         <div class="wrap">
           <div class="section-head compact-head">
             <div>
-              <p class="section-kicker">入口</p>
-              <h2>选择一个模块继续。</h2>
-            </div>
-          </div>
-          <div class="workspace-grid" data-workspace-cards></div>
-        </div>
-      </section>
-
-      <section class="section" data-my-pending-section>
-        <div class="wrap">
-          <div class="section-head compact-head">
-            <div>
-              <p class="section-kicker">待办预览</p>
+              <p class="section-kicker">待处理</p>
               <h2>需要你审核的活动。</h2>
             </div>
-            <a class="button ghost" href="review-tasks.html">查看全部</a>
           </div>
           <div class="event-list rows" data-my-pending></div>
         </div>
@@ -77,8 +51,8 @@
 
     <footer class="site-footer">
       <div class="footer-grid">
-        <div><div class="footer-brand">有空客厅</div><div>工作台只放入口，细节进入对应页面。</div><div class="credit">网站制作人：海旭</div></div>
-        <nav class="footer-links"><a href="activity-editor.html">发起活动</a><a href="my-activities.html">我的活动</a><a href="admin.html">后台</a></nav>
+        <div><div class="footer-brand">有空客厅</div><div>审核是让空间更稳的共同动作。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="me.html">工作台</a><a href="admin.html">后台</a><a href="my-activities.html">我的活动</a></nav>
       </div>
     </footer>
     <script src="script.js?v=0.5.0"></script>

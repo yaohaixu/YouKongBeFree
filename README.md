@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.4.3`
+当前版本：`0.5.0`
 
-状态：`0.4.3` 已完成开发、本地验证与 CloudBase 线上部署。本版本增强安全响应头、HTML CSP、CORS、CSRF 防护、限流、Session 存储、上传校验和输入校验。
+状态：`0.5.0` 已完成开发、本地验证与 CloudBase 线上部署。本版本将「我的」和 YKadmin 后台从长列表重构为入口型工作台，并把活动、成员、模块、审核等高增长数据拆到独立子页面管理。
 
 ## 访问地址
 
@@ -16,6 +16,12 @@ CloudBase 动态线上站点：
 - 登录页：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/login.html
 - 后台：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin.html
 - 我的：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/me.html
+- 发起活动：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/activity-editor.html
+- 我的活动：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/my-activities.html
+- 审核待办：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/review-tasks.html
+- 全部活动管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-activities.html
+- 成员管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-members.html
+- 模块管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-modules.html
 - API 服务：https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api
 
 GitHub Pages 静态展示：
@@ -28,8 +34,10 @@ GitHub Pages 静态展示：
 
 - 中文响应式官网：首页、社区共识、活动与参与、捐赠支持、关于与联系。
 - 手机号白名单登录：YKadmin 先在后台录入成员昵称和手机号，成员再用手机号登录。
-- YKadmin 后台：成员新增、编辑、删除；成员/协作员角色多选；活动模块新增、编辑、删除；管理员待办审核；查看全部活动状态。
-- 成员「我的」页面：保存活动草稿、选择协作员、提交活动审核、查看自己活动状态、撤回活动、查看报名表。
+- YKadmin 后台：入口型工作台；全部活动、成员管理、模块管理、审核待办拆分为独立子页面。
+- YKadmin 子页面：成员新增、编辑、删除；成员/协作员角色多选；活动模块新增、编辑、删除；管理员待办审核；按关键词、模块、状态、时间、报名数筛选全部活动。
+- 成员「我的」工作台：只保留概览和入口卡片，发起活动、我的活动、审核待办进入独立页面处理。
+- 成员活动管理：保存活动草稿、选择协作员、提交活动审核、查看自己活动状态、撤回活动、查看报名表。
 - 普通成员只看到发起活动和自己活动管理；协作员才会看到自己的审核待办。
 - 活动双岗审核：管理员通过后进入协作员审核，协作员通过后公开发布；任一岗位可退回，拒绝后不可编辑。
 - 审核待办详情支持查看活动描述、审核记录和上传封面图。
@@ -63,8 +71,14 @@ GitHub Pages 静态展示：
 ├── donate.html             # 捐赠支持页面
 ├── about.html              # 关于与联系页面
 ├── login.html              # 成员登录页面
-├── me.html                 # 成员我的页面：发布活动、查看报名表
-├── admin.html              # YKadmin 后台
+├── me.html                 # 成员工作台：概览和入口卡片
+├── activity-editor.html    # 发起 / 编辑活动页面
+├── my-activities.html      # 我发起的活动：筛选、撤回、报名表
+├── review-tasks.html       # 管理员 / 协作员审核待办
+├── admin.html              # YKadmin 工作台：管理入口
+├── admin-activities.html   # 全部活动管理与筛选
+├── admin-members.html      # 成员管理
+├── admin-modules.html      # 活动模块管理
 ├── activity.html           # 活动详情与报名页面
 ├── styles.css              # 全站样式
 ├── script.js               # 官网导航、复制、滚动动效
@@ -189,8 +203,14 @@ npm run deploy:cloudbase
 - 登录入口：右上角「有空」和左上角圆形「有空」均可进入登录/我的入口。
 - 管理员登录后自动进入后台。
 - 成员登录后自动进入「我的」。
-- YKadmin 成员管理。
-- YKadmin 活动模块管理。
+- YKadmin 工作台入口卡片。
+- YKadmin 全部活动独立管理页，支持关键词、模块、状态、时间和排序筛选。
+- YKadmin 成员管理独立页。
+- YKadmin 活动模块管理独立页。
+- 成员工作台入口卡片。
+- 发起活动独立编辑页。
+- 我发起的活动独立管理页，支持筛选、撤回和报名表查看。
+- 审核待办独立页，管理员和协作员按自己的待办进入。
 - 成员活动草稿、提审、编辑退回活动。
 - 双岗审核流：管理员审核、协作员审核、通过/退回/拒绝。
 - 发起人查看审核状态：草稿、审核中、退回、拒绝、活动发布、活动人满、活动取消、活动结束。
@@ -209,6 +229,9 @@ npm run deploy:cloudbase
 
 - `node --check` 通过：`app.js`、`script.js`、`server.js`、`lib/app.js`、`lib/store.js`、构建脚本。
 - `npm run build:cloudbase` 通过，CloudBase 静态站点和云函数均可构建。
+- 本地浏览器回归通过：`0.5.0` 管理员工作台、成员工作台、发起活动、我的活动、审核待办、全部活动、成员管理、模块管理均可打开，控制台无错误。
+- 本地浏览器流程通过：普通成员不展示审核待办；发起活动提交管理员审核；管理员可查看审核详情封面并通过；协作员完成第二岗审核后活动发布；报名、重复报名找回确认页、取消报名均可用。
+- 本地移动端 390px 验证通过：工作台卡片、全部活动筛选、列表和导航自然换行，无隐藏控件外露。
 - 本地 JSON 模式 API 冒烟通过：草稿和审核中活动报名返回 `400`，已发布活动报名返回 `200`，满员/结束活动仍支持已报名手机号找回确认页。
 - 本地 JSON 模式 API 冒烟通过：管理员登录、成员/协作员新增、草稿保存、活动提审、管理员审核、协作员审核、访客报名、重复报名、取消报名、撤回活动。
 - 本地浏览器回归通过：普通成员不展示待办任务区，管理员审核待办可展开查看封面图，草稿详情页不展示报名表，保存操作出现“保存成功”轻提示。
@@ -218,8 +241,9 @@ npm run deploy:cloudbase
 - 本地浏览器视觉检查通过：`0.4.2` 首页、社区共识、登录页、后台页 PC / 移动端布局可用，Apple 风格样式层生效，无明显内容重叠或横向溢出。
 - CloudBase `0.4.2` 线上部署通过：静态页已引用 `styles.css?v=0.4.2`、`script.js?v=0.4.2`、`app.js?v=0.4.2`，线上 CSS 可查到 `--accent: #0071e3`、Apple 风格样式层和非阻塞 reveal 动效。
 - CloudBase `0.4.3` 安全加固部署通过：线上静态页已引用 `v=0.4.3` 并包含 HTML CSP；线上 API 返回安全响应头；缺少安全校验头的 POST 返回 `403`。
+- CloudBase `0.5.0` 工作台拆页版本部署通过：线上静态页已引用 `v=0.5.0`，新增管理子页面已进入 CloudBase Hosting 构建清单。
 - 线上冒烟产生的测试成员、活动和报名记录已清理。
-- GitHub 状态：`0.4.2` 按双分支流程维护，最新提交请以 `git log --oneline --decorate --graph --all` 为准。
+- GitHub 状态：`0.5.0` 按双分支流程维护，最新提交请以 `git log --oneline --decorate --graph --all` 为准。
 
 ## 正在开发 / 待完善
 

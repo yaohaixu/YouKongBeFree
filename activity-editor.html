@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>发起活动｜有空客厅</title>
+    <meta name="description" content="有空成员发起或编辑活动。" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css?v=0.5.0" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html"><span class="brand-mark">有空</span><span class="brand-text">有空客厅</span></a>
+        <button class="menu-toggle" type="button" aria-label="打开导航" aria-expanded="false"><span></span><span></span><span></span></button>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="whitepaper.html">社区共识</a>
+          <a href="participate.html">活动与参与</a>
+          <a href="donate.html">捐赠支持</a>
+          <a href="about.html">关于与联系</a>
+          <span class="session-nav" data-session-nav><a href="login.html">我的</a></span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="page-hero river">
+        <div class="wrap">
+          <p class="eyebrow">发起活动</p>
+          <h1><span data-user-name>有空成员</span>，把一个想法写清楚。</h1>
+          <p>可以先存草稿，也可以提交审核。管理员通过后，再交给你选择的协作员继续审核。</p>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap editor-layout">
+          <form class="form-note activity-editor" data-activity-form>
+            <h3 data-activity-form-title>添加活动</h3>
+            <div class="form-grid">
+              <label>对应模块<select name="moduleId" required></select></label>
+              <label>选择协作员<select name="collaboratorId"></select></label>
+              <label>标题<input name="title" required placeholder="比如：有空放映｜重庆森林" /></label>
+              <label>发起人<input name="initiator" required /></label>
+              <label>时间<input name="startsAt" type="datetime-local" required /></label>
+              <label>地点<input name="location" required placeholder="有空客厅 / 流动客厅地址" /></label>
+              <label>人数限额<input name="capacity" type="number" min="1" placeholder="留空表示无上限" /></label>
+            </div>
+            <label>上传首页图<input name="cover" type="file" accept="image/jpeg,image/png,image/webp,image/gif" /></label>
+            <label>活动描述</label>
+            <textarea name="description" class="rich-textarea" required placeholder="像写一篇公众号短文一样介绍活动：为什么想发起、会发生什么、适合谁来、需要注意什么。可以分段书写。"></textarea>
+            <div class="form-actions">
+              <button class="button ghost" type="submit" data-submit-intent="draft">存草稿</button>
+              <button class="button primary" type="submit" data-activity-submit data-submit-intent="submit">提交审核</button>
+              <button class="button outline" type="button" data-cancel-edit hidden>取消</button>
+            </div>
+            <p class="form-message" data-activity-message></p>
+          </form>
+
+          <aside class="panel-block sticky-panel">
+            <p class="section-kicker">处理建议</p>
+            <h3>先写到能被别人接住。</h3>
+            <p class="muted-text">标题、时间、地点、活动描述和协作员会影响审核效率。存草稿不会公开，提交审核后可以在「我的活动」查看状态。</p>
+            <div class="button-row">
+              <a class="button ghost" href="my-activities.html">我的活动</a>
+              <a class="button outline" href="me.html">回工作台</a>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><div class="footer-brand">有空客厅</div><div>有想做的事，也可以从这里开始。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="me.html">工作台</a><a href="my-activities.html">我的活动</a><a href="participate.html">活动与参与</a></nav>
+      </div>
+    </footer>
+    <script src="script.js?v=0.5.0"></script>
+    <script src="app.js?v=0.5.0"></script>
+  </body>
+</html>
