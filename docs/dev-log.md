@@ -1013,3 +1013,188 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 为 CloudBase `yk_registrations` 增加 `activityId + phoneHash` 索引。
 2. 设计数据库级报名事务或队列锁，彻底解决多实例并发名额问题。
 3. 增加通知系统雏形：审核通过 / 退回通知发起人，有人报名通知发起人。
+
+## 2026-07-11 - 0.11.0 全站视觉系统改版
+
+### 任务目标
+
+根据最新设计要求，充分使用 `design-taste-frontend` 和 `impeccable` 两个前端审美 skill，对有空客厅官网和后台整体视觉进行大改，降低通用 Apple / SaaS 感，让公开页面更贴近重庆社区公共客厅，后台页面更像稳定可交接的产品工具。
+
+### 具体修改内容
+
+- `styles.css` 新增 0.11.0 视觉刷新层：统一色彩、边距、半径、按钮、表单、表格、卡片、活动列表、工作台入口和响应式规则。
+- 首页首屏文案压缩，保留原核心含义，减少首屏文字负担。
+- 全部 HTML 静态资源版本参数升级到 `v=0.11.0`。
+- `package.json` 和 `package-lock.json` 版本升级到 `0.11.0`。
+- README 和 CHANGELOG 同步更新当前版本、视觉体验说明、完成状态和验证记录。
+
+### 涉及文件
+
+- `styles.css`
+- `index.html`
+- 全部 HTML 静态资源版本参数
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 保留现有路由、业务 JS 和后端 API，不重写审核、报名、登录逻辑，降低功能回归风险。
+- 公开页面采用“社区公共客厅 / 城市公告栏 / 真实照片”的视觉方向，替换原先偏通用的 Apple 蓝、玻璃卡片和科技感按钮。
+- 后台和“我的”页面按产品界面处理：控件间距、表单焦点、筛选面板、工作台入口卡片保持克制和一致，不加入装饰性动效。
+- 工作台卡片使用 `auto-fit` 自适应网格，避免管理员、成员、协作员入口数量不同时出现空列。
+- 四宫格 bento 规则只在桌面宽度启用，移动端统一回到单列，避免隐式列导致横向溢出。
+
+### 当前完成情况
+
+- 已完成代码开发和文档更新。
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
+- `npm run build:cloudbase` 已通过。
+- `git diff --check` 已通过。
+- 本地 Playwright 视觉检查通过：`index.html`、`login.html`、`activities.html`、`admin.html` 在 1440px 和 390px 关键视口下无横向溢出。
+- 本地验证中，`13377779999` 不存在于当前 JSON 种子数据；使用本地种子管理员 `18800000000` 登录验证后台跳转和管理员工作台。
+
+### 遗留问题
+
+- 0.11.0 尚未部署到 CloudBase 线上环境，需要后续执行 `npm run deploy:cloudbase` 并做线上只读冒烟。
+- 当前视觉改版以 CSS 覆盖层为主，后续如继续大改，可考虑整理 `styles.css`，把旧 Apple 风格覆盖层合并清理，降低长期维护成本。
+- 公开页面仍依赖现有少量真实照片和占位照片位，后续应补充更多饭桌、活动、街区和空间照片。
+
+### 下一步建议
+
+1. 部署 0.11.0 到 CloudBase，并确认线上静态页已引用 `v=0.11.0`。
+2. 用真实活动数据复查首页近期活动和活动列表卡片，必要时微调封面比例和空状态。
+3. 把 `styles.css` 做一次结构化整理，拆出设计 token、公开页面组件和后台产品组件三段，减少后续改版冲突。
+
+## 2026-07-11 - 0.12.0 艺术化视觉升级
+
+### 任务目标
+
+根据反馈继续提升网站精致度和艺术感，充分使用 `design-taste-frontend` 和 `impeccable` 两个 skill，将公开页从相对简洁的社区册页继续推进到更接近艺术网站 / 展览网站的视觉效果，同时保持后台功能页的稳定可读。
+
+### 具体修改内容
+
+- `styles.css` 新增 0.12 艺术化视觉层：公开页切换为深色展场氛围、真实照片首屏、图片拼贴、暗色活动公告和更强色彩对比。
+- `script.js` 新增页面分类：公开页添加 `public-surface`，后台和成员工作台添加 `product-surface`。
+- `script.js` 新增桌面端指针聚光动效：通过 CSS 变量驱动背景光感和卡片局部高光，尊重 `prefers-reduced-motion`。
+- `activity-editor.html` 给发起活动页补充 `data-activity-editor-page`，避免公开页艺术化样式误伤活动编辑表单。
+- 全部 HTML 静态资源版本参数升级到 `v=0.12.0`。
+- `package.json` 和 `package-lock.json` 版本升级到 `0.12.0`。
+- README 和 CHANGELOG 同步更新当前版本、视觉体验和验证结果。
+
+### 涉及文件
+
+- `styles.css`
+- `script.js`
+- `activity-editor.html`
+- 全部 HTML 静态资源版本参数
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 公开页和产品页分层处理：公开页承担品牌感和艺术感，产品页保留任务导向的浅色工具台，避免管理操作被复杂动效和深色背景干扰。
+- 动效优先使用 CSS transform / opacity / filter 和 IntersectionObserver，不引入 GSAP 或其他大依赖，保持当前 Vanilla JS 项目的轻量结构。
+- 指针聚光只在 `pointer: fine` 且未开启减少动态效果时启用，移动端和减少动态效果用户不会承担额外动效负担。
+- 继续使用现有真实图片资产，不引入外链图片，避免 CloudBase 静态资源依赖外部可用性。
+
+### 当前完成情况
+
+- 已完成代码开发和文档更新。
+- 已完成 `node --check script.js`。
+- 本地 Playwright 视觉检查通过：`index.html` 桌面 1440px、首页手机 390px、`activities.html` 手机 390px、`admin.html` 手机 390px 均无横向溢出。
+- 本地 Playwright 复查通过：`login.html` 手机 390px 登录卡片与说明区不再重叠，`admin.html` 手机 390px 产品页顶部标签对比度已修正。
+- 修复检查中发现的五类视觉问题：移动端 Hero 竖排、活动页标签对比度、后台按钮和空状态可读性、登录页移动端重叠、产品页顶部标签对比度。
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
+- `npm run build:cloudbase` 已通过。
+- `git diff --check` 已通过。
+
+### 遗留问题
+
+- 0.12.0 尚未部署到 CloudBase 线上环境，需要后续执行 `npm run deploy:cloudbase` 并做线上只读冒烟。
+- `styles.css` 目前通过 0.11 和 0.12 两层覆盖实现快速迭代，长期应整理为结构化样式文件，降低覆盖规则复杂度。
+- 公开页更依赖视觉资产质量，后续建议补充真实饭桌、活动、街区、夜晚和空间细节照片，替换少量重复图片。
+
+### 下一步建议
+
+1. 完成完整自动化测试和构建后，部署 0.12.0 到 CloudBase。
+2. 用线上真实活动数据复查活动卡片封面、空状态和报名页详情。
+3. 把视觉系统整理成三层：基础 token、公开页艺术组件、后台产品组件。
+
+## 2026-07-11 - 0.13.1 主题切换与旧标识清理
+
+### 任务目标
+
+根据最新优化要求，为全站增加白天 / 黑夜 / 跟随系统主题切换；管理员、成员、协作员登录后的后台页面也支持主题切换；增加一键回到首页按钮；移除网站中所有旧标识相关信息。
+
+### 具体修改内容
+
+- 新增 `theme.js`，在 CSS 加载前读取本地主题偏好，设置 `html[data-theme]` 和 `html[data-theme-mode]`，并监听系统深浅色变化。
+- `script.js` 新增顶部导航主题切换控件，包含白天、黑夜、跟随系统三个按钮；新增浮动「首页」按钮。
+- `styles.css` 新增 0.13 主题层：公开页支持白天主题，后台产品页支持黑夜主题，并补充主题按钮、图标和浮动首页按钮样式。
+- 全部 HTML 页面引入 `theme.js`，静态资源参数升级到 `v=0.13.1`。
+- 新增 `assets/youkong-gathering.png`，从现有材料中裁出不含旧标识信息的饭桌现场图。
+- 新增 `assets/youkong-hero-illustration.png`，作为首页 Hero 专用背景图。
+- 首页、关于页、社区共识页替换旧图片和相关文案。
+- 首页 Hero 背景引用切换为用户提供的新图，右侧内容图继续使用饭桌现场图。
+- 顶部导航从 `position: sticky` 调整为全站 `position: fixed`，并补充 `body` 顶部空间和移动端菜单展开位置，确保滚动到页面底部仍固定可见。
+- 删除含旧标识信息的旧图片素材文件。
+- `tests/smoke.test.js` 将封面上传测试图片改为新的饭桌图。
+- `package.json` 和 `package-lock.json` 版本升级到 `0.13.1`。
+- README 和 CHANGELOG 同步更新。
+
+### 涉及文件
+
+- `theme.js`
+- `script.js`
+- `styles.css`
+- `index.html`
+- `about.html`
+- `whitepaper.html`
+- 全部 HTML 静态资源版本参数
+- `assets/youkong-gathering.png`
+- `assets/youkong-hero-illustration.png`
+- `tests/smoke.test.js`
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 主题预设放在独立 `theme.js` 并在 `<head>` 中优先加载，减少深浅色切换初始闪烁。
+- 主题状态只存本地 `localStorage`，不写入后端，避免增加登录与权限复杂度。
+- 公开页和后台页继续保留 `public-surface` / `product-surface` 分层：公开页白天与黑夜都强调品牌感，后台暗色模式保持产品工具可读性。
+- 回首页按钮由 `script.js` 注入，避免逐页复制 HTML，同时保证所有页面一致。
+- 顶部导航使用 fixed 层级覆盖替代 sticky，避免在复杂背景层、页脚和长页面滚动到底部时出现固定失效；通过 `--header-height` 统一桌面和移动端正文避让。
+- 首页背景图只替换 Hero 背景，不替换白皮书、关于页和内容图，控制视觉变更范围。
+- 对旧标识信息采取“移除引用 + 删除静态资源”的处理，避免即使页面不引用、旧图片仍被静态托管访问。
+
+### 当前完成情况
+
+- 已完成代码开发和文档更新。
+- `node --check theme.js script.js` 已通过。
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
+- `npm run build:cloudbase` 已通过。
+- `git diff --check` 已通过。
+- 本地 Playwright 视觉检查通过：首页白天 / 黑夜 / 跟随系统切换正常，移动端导航主题按钮可用，后台暗色模式可读，浮动首页按钮可见，无横向溢出。
+- 本地 Playwright 视觉检查通过：首页桌面和移动端滚动到底部后顶部导航仍固定可见，首页 Hero 背景已加载 `youkong-hero-illustration.png`。
+- 构建产物检查通过：`dist/assets` 中不再包含旧图片素材，页面文本不含旧标识信息。
+
+### 遗留问题
+
+- 主题系统目前是本地偏好，不跟随账号同步；如果未来有多端登录需求，可考虑把主题偏好写入成员资料。
+- 当前安全视觉素材只有一张饭桌裁剪图，公开页仍需要补充更多不含旧标识信息的真实活动、街区和空间照片。
+- `styles.css` 覆盖层继续增加，后续建议拆分为基础 token、公开页主题、后台产品主题和组件样式。
+
+### 下一步建议
+
+1. 使用 Playwright 验证首页白天 / 黑夜 / 跟随系统切换、后台暗色模式和移动端导航。
+2. 部署 0.13.1 到 CloudBase 并确认线上旧图片不再出现在构建产物中。
+3. 补充新的真实照片素材库，逐步替换重复使用的饭桌裁剪图。

@@ -24,6 +24,7 @@ const files = [
   "activity.html",
   "success.html",
   "styles.css",
+  "theme.js",
   "script.js",
   "app.js",
 ];

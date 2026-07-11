@@ -1,13 +1,13 @@
 {
   "name": "youkong-living-room",
-  "version": "0.10.0",
+  "version": "0.13.1",
   "private": true,
   "description": "有空客厅官网与活动系统 MVP",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
     "test": "npm run test:syntax && npm run test:smoke",
-    "test:syntax": "node --check app.js lib/app.js lib/store.js script.js server.js scripts/build-static.js scripts/build-function.js",
+    "test:syntax": "node --check app.js lib/app.js lib/store.js theme.js script.js server.js scripts/build-static.js scripts/build-function.js",
     "test:smoke": "node --test tests/*.test.js",
     "build:static": "node scripts/build-static.js",
     "build:function": "node scripts/build-function.js",

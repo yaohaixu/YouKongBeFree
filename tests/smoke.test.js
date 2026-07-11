@@ -252,12 +252,12 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(ongoing?.status, "published");
   assert.equal(ongoing?.endsAt, localDateTimeFromNow(1, 10, 0));
 
-  const coverBuffer = fs.readFileSync(path.join(__dirname, "..", "assets", "youkong-room.jpeg"));
+  const coverBuffer = fs.readFileSync(path.join(__dirname, "..", "assets", "youkong-gathering.png"));
   const pending = await createActivity(member.token, {
     title: "带封面审核测试活动",
     cover: {
-      blob: new Blob([coverBuffer], { type: "image/jpeg" }),
-      name: "youkong-room.jpeg",
+      blob: new Blob([coverBuffer], { type: "image/png" }),
+      name: "youkong-gathering.png",
     },
   });
   assert.equal(pending.activity.status, "admin_review");
