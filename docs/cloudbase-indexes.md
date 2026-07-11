@@ -1,6 +1,6 @@
 # CloudBase 查询与索引建议
 
-本项目 `0.7.0` 起，活动、成员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。`0.8.0` 起，活动自动结束任务也会按 `status + startsAt` 查询过期待归档活动。`0.9.0` 起，跨天活动可填写 `endsAt`，但 sweep 仍用 `status + startsAt` 缩小候选，再用 `endsAt` 做最终判断，暂不要求新增 `endsAt` 索引。
+本项目 `0.7.0` 起，活动、成员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。`0.8.0` 起，活动自动结束任务也会按 `status + startsAt` 查询过期待归档活动。`0.9.0` 起，跨天活动可填写 `endsAt`，但 sweep 仍用 `status + startsAt` 缩小候选，再用 `endsAt` 做最终判断，暂不要求新增 `endsAt` 索引。`0.10.0` 起，报名记录新增 `phoneHash` 用于重复报名识别，操作日志手机号改为脱敏保存。
 
 ## 推荐索引
 
@@ -31,16 +31,19 @@
 
 - `createdAt`：操作日志默认倒序。
 - `action`：按操作类型排查。
-- `actorPhone`：按手机号追踪操作。
+- `actorPhone`：按脱敏手机号追踪操作，不能再用完整手机号精确搜索。
+- `actorName`：按操作人昵称搜索。
 - `targetName`：按活动 / 模块 / 成员名称搜索。
 
 ### `yk_registrations`
 
 - `activityId + createdAt`：活动报名表。
 - `activityId + phone`：重复报名识别。
+- `activityId + phoneHash`：`0.10.0` 之后新增报名记录的重复报名识别，建议优先使用。
 
 ## 仍需注意
 
 - 当前关键词搜索使用正则匹配，适合 MVP 阶段；如果日志或活动数量继续增长，建议增加更明确的筛选条件，例如操作类型、操作人、时间范围，而不是依赖宽泛关键词。
 - 活动列表里的模块名、发起人名、协作员名仍由 API 聚合补齐；如需完全基于索引搜索这些派生字段，可在活动记录中增加冗余字段并在对应对象更新时同步维护。
+- 旧报名记录可能没有 `phoneHash` 字段；代码仍兼容 `phone` 判断。后续如做数据整理，可批量回填 `phoneHash`。
 - CloudBase 控制台中的索引变更属于线上数据配置，不提交 Git；每次新增筛选字段后都应同步更新本文档。

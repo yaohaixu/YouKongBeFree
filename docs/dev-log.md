@@ -949,3 +949,67 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 
 1. 观察 GitHub Actions 首次运行结果，如 Playwright 依赖安装过慢，可增加更细缓存或改用官方 Playwright GitHub Action。
 2. 后续可增加 CloudBase 数据备份脚本，并把备份校验纳入定期运维。
+
+## 2026-07-11 - 报名保护、安全日志与运营归档加固
+
+### 任务目标
+
+根据下一阶段优化清单，优先处理长期运营最容易出问题的底座能力：报名名额保护、重复报名幂等、日志隐私、活动操作限流、过期 session 清理和管理员手动归档能力。
+
+### 具体修改内容
+
+- `lib/app.js` 新增活动维度报名写入锁 `withMutationLock()`，报名、删除报名和取消报名按活动串行执行。
+- 新增幂等报名 ID：同一活动同一手机号生成稳定 `reg_` ID，并保存 `phoneHash`，重复提交可稳定返回已有报名。
+- 新增 `syncActivityRegistrationCount()`，统一维护报名数和 `published` / `full` 状态切换。
+- 活动创建、编辑、审核、撤回、取消、结束接口增加成员级细粒度限流。
+- 操作日志中的 `actorPhone` 改为脱敏手机号，减少日志长期保存完整手机号。
+- 登录和本地服务启动时清理过期 session。
+- 自动归档日志记录归档日期和触发来源；新增管理员手动触发归档接口 `/api/system/auto-end`。
+- `tests/smoke.test.js` 增加一人名额并发报名、满员删除报名后释放名额、日志手机号脱敏、手动归档接口断言。
+- 版本号、静态资源参数和云函数构建版本升级到 `0.10.0`。
+- README、CHANGELOG、`docs/security.md`、`docs/cloudbase-indexes.md` 和开发日志同步更新。
+
+### 涉及文件
+
+- `lib/app.js`
+- `tests/smoke.test.js`
+- `package.json`
+- `package-lock.json`
+- `scripts/build-function.js`
+- 全部 HTML 静态资源版本参数
+- `README.md`
+- `CHANGELOG.md`
+- `docs/security.md`
+- `docs/cloudbase-indexes.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 报名保护先采用活动维度进程锁和幂等报名 ID：实现成本低，能覆盖当前单实例、本地测试和大多数低并发场景；同时文档明确多实例下仍需升级数据库事务、唯一索引或队列锁。
+- 报名 ID 使用活动 ID + 手机号哈希生成，避免重复请求生成多条不同 ID 的报名记录；报名表仍保留完整手机号供发起人和管理员联系报名者。
+- 操作日志改为保存脱敏手机号，而不是只在前端展示时脱敏，降低后端日志数据本身的隐私风险。
+- 活动报名数状态统一收口到 `syncActivityRegistrationCount()`，减少未来维护时新增、删除、取消报名三处逻辑不一致。
+- 管理员手动归档接口只暴露给 YKadmin，用于运营排查和补扫；正常情况下仍依赖定时 / 请求兜底 sweep。
+
+### 当前完成情况
+
+- 已完成代码开发和文档更新。
+- 已补充自动化测试覆盖上述关键路径。
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
+- `git diff --check` 已通过。
+- `npm run build:cloudbase` 已通过。
+- CloudBase `0.10.0` 已部署成功：静态托管上传 29 个文件，云函数 `youkongApi` 部署成功。
+- 线上只读冒烟通过：`index.html` 已引用 `v=0.10.0`，`/api/activities?view=upcoming&page=1&pageSize=3` 返回活动数据和 `pageInfo`，`/api/system/auto-end` 未登录返回 `403`。
+- 待执行：GitHub 双分支推送和 CI 观察。
+
+### 遗留问题
+
+- 当前活动维度报名锁仍是进程内锁，CloudBase 多实例或高并发场景下不能替代全局事务。
+- 旧报名记录可能没有 `phoneHash` 字段，代码已兼容旧 `phone` 判断；后续可做一次数据回填。
+- 取消报名页仍以报名 ID 作为访问凭据，后续可增加一次性 token 或手机号二次校验。
+
+### 下一步建议
+
+1. 为 CloudBase `yk_registrations` 增加 `activityId + phoneHash` 索引。
+2. 设计数据库级报名事务或队列锁，彻底解决多实例并发名额问题。
+3. 增加通知系统雏形：审核通过 / 退回通知发起人，有人报名通知发起人。

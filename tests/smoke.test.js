@@ -159,6 +159,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   });
   assert.equal(duplicate.existing, true);
   assert.equal(duplicate.registration.id, registration.registration.id);
+  assert.ok(registration.registration.id.startsWith("reg_"));
 
   const registrations = await request(`/api/activities/${created.activity.id}/registrations`, {}, member.token);
   assert.equal(registrations.registrations.length, 1);
@@ -170,6 +171,45 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const logs = await request("/api/logs?page=1&pageSize=5&q=测试活动", {}, admin.token);
   assert.ok(logs.logs.length >= 1);
   assert.equal(logs.pageInfo.pageSize, 5);
+  const registrationLogs = await request("/api/logs?page=1&pageSize=10&q=报名活动", {}, admin.token);
+  assert.ok(registrationLogs.logs.some((log) => log.actorPhone.includes("****")));
+  assert.ok(registrationLogs.logs.every((log) => log.actorPhone !== "18800001111"));
+
+  const limited = await createActivity(member.token, {
+    title: "一人名额保护测试活动",
+    capacity: "1",
+  });
+  await request(`/api/activities/${limited.activity.id}/review`, {
+    method: "POST",
+    body: { action: "approve", comment: "管理员通过" },
+  }, admin.token);
+  await request(`/api/activities/${limited.activity.id}/review`, {
+    method: "POST",
+    body: { action: "approve", comment: "协作员通过" },
+  }, collaborator.token);
+  const limitedAttempts = await Promise.allSettled([
+    request(`/api/activities/${limited.activity.id}/register`, {
+      method: "POST",
+      body: { nickname: "报名甲", phone: "18800002222" },
+    }),
+    request(`/api/activities/${limited.activity.id}/register`, {
+      method: "POST",
+      body: { nickname: "报名乙", phone: "18800003333" },
+    }),
+  ]);
+  assert.equal(limitedAttempts.filter((item) => item.status === "fulfilled").length, 1);
+  assert.equal(limitedAttempts.filter((item) => item.status === "rejected").length, 1);
+  const fullActivity = await request(`/api/activities/${limited.activity.id}`);
+  assert.equal(fullActivity.activity.status, "full");
+  assert.equal(fullActivity.activity.registrationCount, 1);
+  const limitedRegistrations = await request(`/api/activities/${limited.activity.id}/registrations`, {}, member.token);
+  assert.equal(limitedRegistrations.registrations.length, 1);
+  await request(`/api/activities/${limited.activity.id}/registrations/${limitedRegistrations.registrations[0].id}`, {
+    method: "DELETE",
+  }, member.token);
+  const reopenedActivity = await request(`/api/activities/${limited.activity.id}`);
+  assert.equal(reopenedActivity.activity.status, "published");
+  assert.equal(reopenedActivity.activity.registrationCount, 0);
 
   const expired = await createActivity(member.token, {
     title: "应自动结束的历史活动",
@@ -188,6 +228,11 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const history = await request("/api/activities?view=history&page=1&pageSize=20");
   const endedActivity = history.activities.find((activity) => activity.id === expired.activity.id);
   assert.equal(endedActivity?.status, "ended");
+  const manualSweep = await request("/api/system/auto-end", {
+    method: "POST",
+    body: {},
+  }, admin.token);
+  assert.ok(Object.hasOwn(manualSweep, "endedCount"));
 
   const crossDay = await createActivity(member.token, {
     title: "跨天未结束活动",
