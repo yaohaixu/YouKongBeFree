@@ -1314,7 +1314,13 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 ### 当前完成情况
 
 - 已完成代码开发和文档更新。
-- 待执行 `npm test`、`npm run build:cloudbase`、Git 提交、推送、合并 main 和 CloudBase 部署。
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过；新增断言覆盖成员 / 管理员 dashboard API。
+- `npm run build:cloudbase` 已通过：静态站点和云函数包均可构建。
+- Git 已提交 `dd911e1 feat(dashboard): optimize workspace loading`，并推送到 `dev` 与 `main`。
+- CloudBase 静态托管已部署成功：上传 28 个文件，访问地址为 `https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com`。
+- CloudBase 云函数 `youkongApi` 已部署成功，HTTP API 地址为 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
+- 线上冒烟通过：`index.html` 已引用 `v=0.13.4`，线上 `app.js` 已包含 `/api/dashboard/me` 调用。
+- 线上 API 冒烟通过：管理员手机号 `13377779999` 可登录，`/api/dashboard/admin` 返回活动、成员、模块和待办计数；本次实测 dashboard 响应约 662ms。
 
 ### 遗留问题
 

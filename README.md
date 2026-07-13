@@ -316,8 +316,9 @@ npm run deploy:cloudbase
 - CloudBase `0.8.0` 活动归档与列表页版本部署通过：静态托管上传 29 个文件，`activities.html` 可访问，首页和活动页已引用 `v=0.8.0`；线上 `/api/activities?view=upcoming` 和 `/api/activities?view=history` 均返回正确 `pageInfo`。
 - CloudBase `0.9.0` 结束时间与 CI 版本部署通过：静态托管上传 29 个文件，云函数 `youkongApi` 部署成功；线上 `activity-editor.html` 已引用 `v=0.9.0` 并包含 `endsAt` 字段，线上 `app.js` 已包含 `formatActivityTime` 和 `activity.endsAt` 逻辑，线上近期活动 API 返回正确 `pageInfo`。
 - CloudBase `0.10.0` 报名保护与安全日志版本部署通过：静态托管上传 29 个文件，云函数 `youkongApi` 部署成功；线上 `index.html` 已引用 `v=0.10.0`，近期活动 API 返回正确 `pageInfo`，手动归档接口未登录返回 `403`。
+- CloudBase `0.13.4` 工作台性能优化版本部署通过：静态托管上传 28 个文件，云函数 `youkongApi` 部署成功；线上 `index.html` 已引用 `v=0.13.4`，线上 `app.js` 已包含 `/api/dashboard/me` 调用，管理员 dashboard API 返回活动、成员、模块和待办计数。
 - 线上冒烟产生的测试成员、活动和报名记录已清理。
-- GitHub 状态：当前工作区为 `0.13.4` 工作台性能优化待提交 / 待部署状态，推送到 `dev` / `main` 后 GitHub Actions 会自动运行测试与构建；最新提交请以 `git log --oneline --decorate --graph --all` 为准。
+- GitHub 状态：`0.13.4` 工作台性能优化已提交并推送到 `dev` 和 `main`，CloudBase 已部署；最新提交请以 `git log --oneline --decorate --graph --all` 为准。
 
 ## 正在开发 / 待完善
 
