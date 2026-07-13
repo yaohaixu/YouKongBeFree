@@ -79,6 +79,7 @@ GitHub Pages 静态展示：
 - 配置：dotenv、CloudBase CLI、`cloudbaserc.json`
 - 测试验证：`npm test` 自动运行语法检查、Node API 冒烟和 Playwright 浏览器布局 / 流程验证
 - CI：GitHub Actions 在 `dev` / `main` push 和 PR 时运行 `npm ci`、`npm test` 和 `npm run build:cloudbase`
+- 依赖锁定：`package-lock.json` 使用官方 npm registry 的 tarball 地址，避免 CI 被第三方镜像源 404 阻断
 
 ## 项目目录结构
 
@@ -295,6 +296,7 @@ npm run deploy:cloudbase
 - 本地 Playwright 检查通过：`0.13.3` 成员工作台「工作台概览」位于所有入口模块之后，390px 移动端主题按钮保持可见且不会随导航重绘消失。
 - 本地 Playwright 检查通过：`0.13.3` 主题按钮在系统、黑夜、白天三种模式下仅显示当前图标，图标居中且无上一状态残影。
 - 本地 API 冒烟通过：`0.13.4` 新增 `/api/dashboard/me` 和 `/api/dashboard/admin`，可返回工作台计数、待办总数和少量待办预览，成员工作台不再依赖完整活动列表加载入口卡片。
+- 本地 CI 依赖安装验证通过：`npm ci --registry=https://registry.npmjs.org` 可成功安装依赖，避免 GitHub Actions 因 `npmmirror` tarball 404 失败。
 - 本地浏览器回归通过：`0.6.0` 管理员工作台、成员工作台、发起活动、我的活动、审核待办、全部活动、成员管理、模块管理、报名表、操作日志均可打开，控制台无错误。
 - 本地浏览器流程通过：普通成员不展示审核待办；发起活动提交管理员审核；管理员可查看审核详情封面并通过；协作员完成第二岗审核后活动发布；报名、重复报名找回确认页、取消报名均可用。
 - 本地移动端 390px 验证通过：工作台卡片、全部活动筛选、列表和导航自然换行，无隐藏控件外露。
