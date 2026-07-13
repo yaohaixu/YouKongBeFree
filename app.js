@@ -55,6 +55,7 @@ let mePageState = {
   modules: [],
   collaborators: [],
   editingActivity: null,
+  richEditor: null,
   submitIntent: "submit",
   pageSize: 12,
   myActivityPage: 1,
@@ -79,6 +80,32 @@ const actionLabels = {
   "activity.cancel": "取消活动",
   "activity.end": "结束活动",
 };
+
+const logActionOptions = [
+  ["", "全部操作"],
+  ["login", "登录"],
+  ["logout", "退出"],
+  ["user.create", "新增成员"],
+  ["user.update", "保存成员"],
+  ["user.delete", "删除成员"],
+  ["module.create", "新增模块"],
+  ["module.update", "保存模块"],
+  ["module.delete", "删除模块"],
+  ["activity.create_draft", "保存活动草稿"],
+  ["activity.create_submit", "提交活动审核"],
+  ["activity.update_draft", "保存活动草稿"],
+  ["activity.update_submit", "重新提交活动审核"],
+  ["activity.withdraw", "撤回活动"],
+  ["activity.review.approve", "审核通过"],
+  ["activity.review.return", "审核退回"],
+  ["activity.review.reject", "审核拒绝"],
+  ["activity.cancel", "取消活动"],
+  ["activity.end", "结束活动"],
+  ["activity.auto_end", "自动结束活动"],
+  ["registration.create", "新增报名"],
+  ["registration.delete", "删除报名"],
+  ["registration.cancel", "取消报名"],
+];
 
 const statusOptions = [
   ["", "全部状态"],
@@ -118,6 +145,10 @@ function showToast(text = "保存成功") {
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
 }
+
+window.addEventListener("youkong-toast", (event) => {
+  showToast(event.detail || "操作完成");
+});
 
 function revealDynamicContent(root) {
   if (!root || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -184,7 +215,48 @@ function escapeHtml(value = "") {
     .replaceAll("'", "&#039;");
 }
 
+function hasRichMarkup(value = "") {
+  return /<(p|h2|h3|ul|ol|li|blockquote|strong|b|em|i|u|a|img|br|hr)(\s|>|\/)/i.test(String(value || ""));
+}
+
+function sanitizeRichHtml(value = "") {
+  const template = document.createElement("template");
+  template.innerHTML = String(value || "").replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "");
+  const allowed = new Set(["P", "H2", "H3", "UL", "OL", "LI", "BLOCKQUOTE", "STRONG", "B", "EM", "I", "U", "A", "IMG", "BR", "HR"]);
+  const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_ELEMENT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach((node) => {
+    if (!allowed.has(node.tagName)) {
+      node.replaceWith(...Array.from(node.childNodes));
+      return;
+    }
+    const href = node.getAttribute("href") || "";
+    const source = node.getAttribute("src") || "";
+    const alt = node.getAttribute("alt") || "";
+    Array.from(node.attributes).forEach((attribute) => node.removeAttribute(attribute.name));
+    if (node.tagName === "A") {
+      if (/^(https?:|mailto:)/i.test(href) || (href.startsWith("/") && !href.startsWith("//"))) {
+        node.setAttribute("href", href);
+        node.setAttribute("target", "_blank");
+        node.setAttribute("rel", "noopener noreferrer");
+      }
+    }
+    if (node.tagName === "IMG") {
+      if (/^(https?:\/\/|\/|data:image\/(png|jpeg|jpg|webp|gif);base64,)/i.test(source)) {
+        node.setAttribute("src", source);
+        node.setAttribute("alt", alt);
+        node.setAttribute("loading", "lazy");
+      } else {
+        node.remove();
+      }
+    }
+  });
+  return template.innerHTML;
+}
+
 function descriptionToHtml(value = "") {
+  if (hasRichMarkup(value)) return sanitizeRichHtml(value);
   return escapeHtml(value.replaceAll("\\n", "\n"))
     .split(/\n{2,}/)
     .map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br />")}</p>`)
@@ -512,6 +584,7 @@ async function initActivityEditorPage() {
   mePageState.user = user;
   qs("[data-user-name]") && (qs("[data-user-name]").textContent = user.nickname);
   resetActivityForm(form);
+  mePageState.richEditor = window.youkongRichEditor ? window.youkongRichEditor.mount(form) : null;
   mePageState.modules = await fillModuleSelect(form.moduleId);
   mePageState.collaborators = await fillCollaboratorSelect(form.collaboratorId);
 
@@ -534,6 +607,7 @@ async function initActivityEditorPage() {
   const message = qs("[data-activity-message]");
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    window.youkongRichEditor?.sync(form);
     const formData = new FormData(form);
     const editing = mePageState.editingActivity;
     const intent = mePageState.submitIntent || "submit";
@@ -567,6 +641,7 @@ function resetActivityForm(form) {
   form.reset();
   form.initiator.value = mePageState.user ? mePageState.user.nickname : "";
   if (form.collaboratorId) form.collaboratorId.value = "";
+  window.youkongRichEditor?.reset(form);
   qs("[data-activity-form-title]", form)?.replaceChildren(document.createTextNode("添加活动"));
   qs("[data-activity-submit]", form).textContent = "提交审核";
   qs("[data-cancel-edit]", form).hidden = true;
@@ -583,6 +658,7 @@ function fillActivityForm(form, activity) {
   form.capacity.value = activity.capacity || "";
   form.collaboratorId.value = activity.collaboratorId || "";
   form.description.value = activity.description || "";
+  window.youkongRichEditor?.setHtml(form, activity.description || "");
   form.cover.value = "";
   qs("[data-activity-form-title]", form)?.replaceChildren(document.createTextNode("编辑活动"));
   qs("[data-activity-submit]", form).textContent = "提交审核";
@@ -918,6 +994,11 @@ async function initActivityPage() {
           <span>${activity.capacity ? `限额 ${activity.capacity} 人` : "人数无上限"}</span>
           <span>已报名 ${activity.registrationCount} 人</span>
         </div>
+        <div class="activity-share-actions" aria-label="活动分享操作">
+          <button class="button ghost" type="button" data-download-poster>分享海报</button>
+          <button class="button outline" type="button" data-copy-registration-link>复制报名链接</button>
+          <button class="button outline" type="button" data-download-calendar>加到日历</button>
+        </div>
       </div>
       ${
         activity.coverUrl
@@ -955,6 +1036,7 @@ async function initActivityPage() {
     </section>
   `;
   revealDynamicContent(root);
+  window.youkongActivityShare?.mount(root, activity, { showToast, formatActivityTime });
 
   const form = qs("[data-register-form]");
   if (!form) return;
@@ -1193,6 +1275,7 @@ async function initAdminLogsPage() {
   const user = await requireAdminUser(root);
   if (!user) return;
   const filters = qs("[data-log-filters]", root);
+  await fillLogFilters(filters);
   filters?.addEventListener("submit", (event) => {
     event.preventDefault();
     resetPagedState("logs");
@@ -1208,6 +1291,30 @@ async function initAdminLogsPage() {
 function fillStatusSelect(select) {
   if (!select) return;
   select.innerHTML = statusOptions.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
+}
+
+async function fillLogFilters(form) {
+  if (!form) return;
+  const actionSelect = qs("[data-log-action-filter]", form);
+  if (actionSelect) {
+    actionSelect.innerHTML = logActionOptions
+      .map(([value, label]) => `<option value="${value}">${label}</option>`)
+      .join("");
+  }
+
+  const actorSelect = qs("[data-log-actor-filter]", form);
+  if (!actorSelect) return;
+  actorSelect.innerHTML = `<option value="">全部操作人</option><option value="system">系统</option>`;
+  try {
+    const { users } = await api.get("/api/users?page=1&pageSize=100");
+    actorSelect.innerHTML = [
+      `<option value="">全部操作人</option>`,
+      `<option value="system">系统</option>`,
+      ...users.map((item) => `<option value="${item.id}">${escapeHtml(item.nickname)}</option>`),
+    ].join("");
+  } catch {
+    actorSelect.innerHTML = `<option value="">全部操作人</option><option value="system">系统</option>`;
+  }
 }
 
 function bindAdminForms() {

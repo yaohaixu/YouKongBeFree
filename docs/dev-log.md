@@ -1396,3 +1396,86 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 
 1. 增加受控恢复脚本，要求显式确认目标环境和备份文件。
 2. 在 CloudBase 控制台补齐 `docs/operations.md` 和 `docs/cloudbase-indexes.md` 中列出的索引。
+
+## 2026-07-13 - 0.14.0 活动运营增强：富文本、分享、日志筛选和 CI dry-run
+
+### 任务目标
+
+根据新的运营优化需求，补齐三个直接影响日常使用的能力：关键操作审计可筛选、活动发起更像公众号编辑、活动详情更方便传播；同时启动前后端拆分和 CI 发版前检查。
+
+### 具体修改内容
+
+- 操作日志页新增操作类型、操作人、角色、开始日期和结束日期筛选。
+- `/api/logs` 支持服务端字段筛选，并将日志路由拆到 `lib/routes/logs.js`。
+- 删除报名记录日志补充被删除报名人的昵称和脱敏手机号；删除成员日志补充脱敏手机号；取消活动继续进入操作日志。
+- 新增 `lib/rich-text.js`，服务端对白名单富文本标签、链接和图片做清洗。
+- 新增 `assets/js/rich-editor.js`，活动发起页支持正文段落、二级/三级标题、加粗、引用、列表、分隔线和正文小图。
+- 新增 `assets/js/activity-share.js`，活动详情页支持生成 PNG 分享海报、复制报名链接和下载 `.ics` 日历文件。
+- 浮动「首页」按钮改为滚动后显示，避免移动端首屏遮挡表单。
+- 新增 `scripts/verify-cloudbase-package.js` 和 `npm run deploy:dry-run`，检查 CloudBase 构建产物完整性和敏感文件误打包。
+- 新增 `scripts/visual-snapshots.js` 和 `npm run test:visual`，生成关键页面桌面 / 移动端截图。
+- GitHub Actions 改为 Node.js 24，并新增 CloudBase dry-run 与视觉截图 artifact 上传。
+- `scripts/build-function.js` 中云函数包版本改为读取根 `package.json`，避免部署包版本号漂移。
+- `package.json` / `package-lock.json` 版本升级到 `0.14.0`，全部 HTML 静态资源参数升级到 `v=0.14.0`。
+- README、CHANGELOG、`docs/cloudbase-indexes.md`、`docs/operations.md` 同步更新。
+
+### 涉及文件
+
+- `app.js`
+- `script.js`
+- `styles.css`
+- `activity.html`
+- `activity-editor.html`
+- `admin-logs.html`
+- `assets/js/rich-editor.js`
+- `assets/js/activity-share.js`
+- `lib/app.js`
+- `lib/rich-text.js`
+- `lib/routes/logs.js`
+- `scripts/verify-cloudbase-package.js`
+- `scripts/visual-snapshots.js`
+- `scripts/build-function.js`
+- `.github/workflows/ci.yml`
+- `tests/smoke.test.js`
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/cloudbase-indexes.md`
+- `docs/operations.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 富文本不引入外部 CDN 或大型编辑器，避免 CSP、体积和移动端加载复杂度上升；先实现小而可控的白名单编辑能力。
+- 富文本最终以 HTML 片段保存，但服务端只允许有限标签和安全图片地址；客户端渲染前也做一次白名单清理，降低篡改请求带来的风险。
+- 正文图片限制为小图，适合插入活动说明中的小插图；大图仍建议走首页图上传，避免单条活动记录过大。
+- 日志筛选走服务端分页查询，不在前端拉全量后筛选，符合此前“点击筛选才查询”的性能原则。
+- 后端路由拆分先从日志路由开始，因为日志状态机少、依赖清晰；活动、用户和模块路由保留在 `lib/app.js`，后续单独拆分更稳。
+- CI 的视觉回归先保存截图 artifact，不做像素差异硬拦截；当前项目视觉还在快速迭代，先沉淀可查看的发版证据更实用。
+
+### 当前完成情况
+
+- 已完成代码开发和文档更新。
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
+- `npm run deploy:dry-run` 已通过：静态站点和云函数包可构建，关键产物存在且未打包敏感文件。
+- `npm run test:visual` 已通过：桌面 / 移动端首页、登录、后台和活动编辑页截图已生成到 `test-results/visual/`。
+- 本地视觉抽查通过：移动端活动编辑页不再被浮动「首页」按钮遮挡，富文本工具栏和表单单列布局正常。
+- Git 已提交本次变更，提交信息为 `feat(activity): add rich editor sharing and log filters`。
+- CloudBase 静态托管已部署成功：上传 30 个文件。
+- CloudBase 云函数 `youkongApi` 已部署成功，HTTP API 地址为 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
+- 线上冒烟通过：`activity-editor.html` 已引用 `rich-editor.js?v=0.14.0`，`activity.html` 已引用 `activity-share.js?v=0.14.0`，`/api/session` 返回 200，管理员手机号 `13377779999` 可登录，`/api/dashboard/admin` 和 `/api/logs?action=login` 返回 200。
+- GitHub 推送待重试：首次 `git push origin dev` 和 `git -c http.version=HTTP/1.1 push origin dev` 均因连接 GitHub 443 超时失败，本地 `dev` 已领先远端。
+
+### 遗留问题
+
+- 后端 route 拆分只完成日志路由；auth、activities、users、modules 仍在 `lib/app.js`。
+- 当前富文本是轻量编辑器，不支持复杂图文模板、拖拽排序、图片压缩上传和草稿自动保存。
+- CI 视觉截图暂不做像素基线比对，只提供 artifact 给人工检查。
+- CloudBase 需要在控制台补充 `yk_logs.action + createdAt`、`yk_logs.actorId + createdAt`、`yk_logs.actorRole + createdAt` 等索引。
+
+### 下一步建议
+
+1. 继续拆分后端路由，优先迁移 auth 和 activities，同时为活动状态字段补 JSDoc / TypeScript 类型边界。
+2. 为富文本正文图片增加压缩和上传到 CloudBase Storage 的能力，避免 data URL 进入数据库。
+3. 为视觉截图建立人工审核基线，待视觉趋稳后再考虑像素 diff 阈值。

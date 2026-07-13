@@ -71,5 +71,28 @@ API_SLOW_LOG_MS=1200
 - `yk_registrations`: `activityId + createdAt`
 - `yk_registrations`: `activityId + phoneHash`
 - `yk_logs`: `createdAt`
+- `yk_logs`: `action + createdAt`
+- `yk_logs`: `actorId + createdAt`
+- `yk_logs`: `actorRole + createdAt`
 
 新增筛选条件后，需要同步更新 `docs/cloudbase-indexes.md` 和本文件。
+
+## 部署前检查
+
+每次准备发布前先执行：
+
+```bash
+npm run deploy:dry-run
+```
+
+该命令会重新构建 CloudBase Hosting 静态目录和云函数包，并检查关键文件是否存在、是否误打包 `.env`、`node_modules` 或真实数据文件。
+
+## 视觉截图
+
+需要人工查看关键页面视觉状态时执行：
+
+```bash
+npm run test:visual
+```
+
+截图输出到 `test-results/visual/`，本地不会提交 Git。GitHub Actions 会在 CI 中生成同样截图并上传为 artifact，便于发版前对比首页、登录、后台和活动编辑页。

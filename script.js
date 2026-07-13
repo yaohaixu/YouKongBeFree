@@ -80,6 +80,12 @@ function mountQuickHome() {
   home.setAttribute("aria-label", "一键回到首页");
   home.innerHTML = '<span class="quick-home-icon" aria-hidden="true"></span><span>首页</span>';
   document.body.append(home);
+
+  const syncQuickHome = () => {
+    home.classList.toggle("is-visible", window.scrollY > Math.min(window.innerHeight * 0.55, 520));
+  };
+  window.addEventListener("scroll", syncQuickHome, { passive: true });
+  syncQuickHome();
 }
 
 window.addEventListener("youkong-theme-change", mountThemeSwitch);

@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.13.5`
+当前版本：`0.14.0`
 
-状态：`0.13.5` 已补齐基础运维能力：新增本地 / CloudBase 数据备份脚本，API 慢请求和 5xx 错误会写入服务端日志，并新增 `docs/operations.md` 运维手册。`0.13.4` 的工作台性能优化和 `0.13.3` 的主题修复继续保留。
+状态：`0.14.0` 已补齐活动运营增强能力：操作日志支持操作类型 / 操作人 / 日期筛选，活动编辑页支持轻量富文本排版和正文图片，活动详情页支持分享海报、复制报名链接和一键加日历；同时新增 CloudBase 部署 dry-run、视觉截图 CI artifact，并开始拆分前端功能模块和后端日志路由。
 
 ## 访问地址
 
@@ -41,14 +41,15 @@ GitHub Pages 静态展示：
 - YKadmin 后台：入口型工作台；全部活动、成员管理、模块管理、审核待办拆分为独立子页面。
 - YKadmin 子页面：成员新增、编辑、删除；成员/协作员角色单选；活动模块新增、编辑、删除；管理员待办审核；按关键词、模块、状态、时间、报名数筛选全部活动。
 - YKadmin 活动管理：可查看全部状态活动，可取消或结束活动，可进入独立报名表页面。
-- YKadmin 操作日志：记录登录、退出、新增、保存、删除、提交、审核、退回、拒绝、撤回、报名、取消报名、取消活动、结束活动和自动归档等关键动作，支持关键词搜索和分页加载；日志手机号脱敏保存，仅保留最近 30 天。
+- YKadmin 操作日志：记录登录、退出、新增、保存、删除、提交、审核、退回、拒绝、撤回、报名、取消报名、删除报名、取消活动、结束活动和自动归档等关键动作，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载；日志手机号脱敏保存，仅保留最近 30 天。
 - 成员「我的」工作台：待办任务置顶，入口卡片作为主操作区，工作台概览放在底部；发起活动、我的活动、审核待办进入独立页面处理。
 - 成员活动管理：保存活动草稿、选择协作员、提交活动审核、查看自己活动状态、撤回活动、查看独立报名表。
+- 活动富文本编辑：发起活动页提供轻量富文本工具栏，支持正文段落、二级/三级标题、加粗、引用、列表、分隔线和正文小图插入；服务端会对白名单标签做二次清洗。
 - 普通成员只看到发起活动和自己活动管理；协作员才会看到自己的审核待办。
 - 活动双岗审核：管理员通过后进入协作员审核，协作员通过后公开发布；任一岗位可退回，拒绝后不可编辑。
 - 审核待办详情支持查看活动描述、审核记录和上传封面图；审核意见默认「请选择」。
 - 活动人数限制：发起活动时人数限额留空默认 99 人，最大 99 人。
-- 活动详情页：公开发布活动支持未登录访客填写昵称和手机号报名；重复报名会直接返回原报名确认页；草稿和审核中活动不开放报名；同一活动报名写入按活动维度串行化，降低并发超员风险。
+- 活动详情页：公开发布活动支持未登录访客填写昵称和手机号报名；重复报名会直接返回原报名确认页；草稿和审核中活动不开放报名；同一活动报名写入按活动维度串行化，降低并发超员风险；活动详情支持生成分享海报、复制报名链接和下载 `.ics` 日历文件。
 - 活动时间：活动必须填写开始时间，可选填写结束时间；列表、详情、报名确认页会展示起止时间。
 - 活动自动结束：系统按北京时间判断活动结束日期；若填写结束时间则以结束时间为准，否则沿用活动日期次日 0 点归档。已发布 / 已满员活动归档后从首页和近期活动列表移除；管理员可手动触发一次归档扫描。
 - 独立活动列表页：首页最多展示 3 条近期活动；`activities.html` 展示所有近期活动，`activities.html?view=history` 展示历史活动。
@@ -58,16 +59,16 @@ GitHub Pages 静态展示：
 - 筛选与分页：活动、成员、模块、日志列表只在点击「筛选」后查询，API 按页返回数据，加载更多请求下一页。
 - 全站管理操作提供轻提示反馈，删除类操作需要确认弹窗。
 - 视觉体验：公开页支持白天 / 黑夜 / 跟随系统主题切换；黑夜模式保留艺术网站式深色展场、真实照片主视觉、图片拼贴、公告栏式活动模块、砖红主按钮、指针聚光、图片浮动和滚动入场动效；后台和成员工作台同样支持主题切换，并保持清晰表单和稳定移动端单列布局。
-- 全站辅助入口：顶部导航栏固定展示，品牌右侧提供单图标三态主题切换键，所有页面提供浮动「首页」按钮，方便快速回到官网首页。
+- 全站辅助入口：顶部导航栏固定展示，品牌右侧提供单图标三态主题切换键；深度滚动后显示浮动「首页」按钮，方便快速回到官网首页且避免遮挡首屏表单。
 - 首页主视觉：首页 Hero 背景使用用户提供的新图 `assets/youkong-hero-illustration.png`，右侧内容图继续使用不含旧标识信息的饭桌现场图。
 - 内容清理：公开站点已移除旧标识相关文案与图片素材，公开视觉统一使用不含旧标识信息的饭桌现场图。
 - 安全加固：API 安全响应头、静态页 HTML CSP、CORS 白名单、非 GET API 安全校验头、登录和写操作限流、活动操作细粒度限流、Session 哈希存储、过期清理、上传图片白名单、手机号和文本长度校验、日志手机号脱敏。
-- 运维能力：提供 `npm run backup:data` 数据备份脚本；API 慢请求和 5xx 错误会输出到本地 / CloudBase 云函数日志；运维手册集中记录备份、慢接口和索引检查流程。
+- 运维能力：提供 `npm run backup:data` 数据备份脚本；API 慢请求和 5xx 错误会输出到本地 / CloudBase 云函数日志；`npm run deploy:dry-run` 可检查 CloudBase 构建产物；运维手册集中记录备份、慢接口和索引检查流程。
 - CloudBase NoSQL 落库与 CloudBase Storage 活动封面存储。
 
 ## 技术栈
 
-- 前端：HTML、CSS、Vanilla JavaScript
+- 前端：HTML、CSS、Vanilla JavaScript；富文本编辑器和活动分享能力已拆到 `assets/js/`
 - 本地后端：Node.js、Express
 - 云端后端：CloudBase 云函数 + `serverless-http`
 - 数据存储：本地 JSON 或 CloudBase NoSQL
@@ -80,8 +81,8 @@ GitHub Pages 静态展示：
 - 文件上传：Multer；线上封面上传至 CloudBase Storage
 - 登录态：HTTP-only Cookie Session + 前端 Bearer token 兜底，改善移动端跨域 Cookie 兼容性
 - 配置：dotenv、CloudBase CLI、`cloudbaserc.json`
-- 测试验证：`npm test` 自动运行语法检查、Node API 冒烟和 Playwright 浏览器布局 / 流程验证
-- CI：GitHub Actions 在 `dev` / `main` push 和 PR 时运行 `npm ci`、`npm test` 和 `npm run build:cloudbase`
+- 测试验证：`npm test` 自动运行语法检查、Node API 冒烟和 Playwright 浏览器布局 / 流程验证；`npm run test:visual` 生成关键页面视觉截图
+- CI：GitHub Actions 在 `dev` / `main` push 和 PR 时运行 `npm ci`、`npm test`、`npm run deploy:dry-run` 和视觉截图 artifact 上传
 - 依赖锁定：`package-lock.json` 使用官方 npm registry 的 tarball 地址，并避免锁定不存在的依赖版本
 
 ## 项目目录结构
@@ -113,6 +114,9 @@ GitHub Pages 静态展示：
 ├── server.js               # 本地 Express 启动入口
 ├── lib/
 │   ├── app.js              # Express 应用与 API 路由
+│   ├── rich-text.js        # 活动富文本服务端白名单清洗
+│   ├── routes/
+│   │   └── logs.js         # 操作日志 API 路由
 │   └── store.js            # JSON / CloudBase 双存储实现
 ├── .github/
 │   └── workflows/
@@ -122,8 +126,13 @@ GitHub Pages 静态展示：
 ├── scripts/
 │   ├── build-static.js     # 生成 CloudBase Hosting 静态目录
 │   ├── build-function.js   # 生成 CloudBase 云函数部署包
-│   └── backup-data.js      # 导出本地 / CloudBase 数据备份
-├── assets/                 # 官网图片与图标
+│   ├── backup-data.js      # 导出本地 / CloudBase 数据备份
+│   ├── verify-cloudbase-package.js # CloudBase dry-run 产物检查
+│   └── visual-snapshots.js # Playwright 关键页面视觉截图
+├── assets/                 # 官网图片、图标和前端功能模块
+│   └── js/
+│       ├── rich-editor.js  # 活动富文本编辑器
+│       └── activity-share.js # 活动详情分享、海报和日历
 ├── data/
 │   └── example-db.json     # 示例数据结构，真实运行数据不提交 Git
 ├── uploads/
@@ -213,8 +222,22 @@ npm test
 测试内容包括：
 
 - 语法检查：核心前后端脚本和构建脚本。
-- API 冒烟：登录安全头、成员/协作员新增、活动提审、双岗审核、报名、重复报名、一人名额并发保护、报名表、日志脱敏、日志查询、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
-- Playwright 浏览器冒烟：管理员登录跳转、移动端关键页面无横向溢出、近期 / 历史活动页、审核默认「请选择」和审核封面图展示。
+- API 冒烟：登录安全头、成员/协作员新增、活动提审、双岗审核、富文本清洗、报名、重复报名、一人名额并发保护、报名表、删除报名日志、删除成员日志、取消活动日志、日志脱敏、日志字段筛选、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
+- Playwright 浏览器冒烟：管理员登录跳转、移动端关键页面无横向溢出、近期 / 历史活动页、富文本工具栏、活动分享按钮、审核默认「请选择」和审核封面图展示。
+
+CloudBase 部署 dry-run：
+
+```bash
+npm run deploy:dry-run
+```
+
+生成视觉截图：
+
+```bash
+npm run test:visual
+```
+
+截图输出到 `test-results/visual/`，该目录不提交 Git；GitHub Actions 会把截图作为 artifact 上传。
 
 数据备份：
 
@@ -233,6 +256,12 @@ STORE_DRIVER=cloudbase CLOUDBASE_ENV_ID=youkong-d5gh4x0ayc29a2187 npm run backup
 
 ```bash
 npm run build:cloudbase
+```
+
+部署前 dry-run 检查：
+
+```bash
+npm run deploy:dry-run
 ```
 
 部署静态站点：
@@ -271,7 +300,7 @@ npm run deploy:cloudbase
 - YKadmin 全部活动独立管理页，支持关键词、模块、状态、时间和排序筛选。
 - YKadmin 成员管理独立页。
 - YKadmin 活动模块管理独立页。
-- YKadmin 操作日志独立页，支持关键词搜索和分页加载，并仅保留最近 30 天日志。
+- YKadmin 操作日志独立页，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载，并仅保留最近 30 天日志。
 - YKadmin 可取消或结束活动。
 - 成员工作台入口卡片，工作台概览位于所有入口模块之后。
 - 发起活动独立编辑页。
@@ -284,10 +313,12 @@ npm run deploy:cloudbase
 - `npm test` 自动化冒烟流程，覆盖 API 主链路和关键移动端浏览器布局。
 - 审核待办独立页，管理员和协作员按自己的待办进入。
 - 成员活动草稿、提审、编辑退回活动。
+- 活动富文本编辑器：支持段落标题、加粗、引用、列表、分隔线和正文小图，服务端白名单清洗后保存。
 - 双岗审核流：管理员审核、协作员审核、通过/退回/拒绝。
 - 发起人查看审核状态：草稿、审核中、退回、拒绝、活动发布、活动人满、活动取消、活动结束。
 - 发起人可撤回审核中、已发布、已满员活动，撤回后回到草稿。
 - 活动详情页和访客报名。
+- 活动详情页分享能力：生成分享海报、复制报名链接、下载 `.ics` 日历文件。
 - 活动可选结束时间：支持跨天活动更精确归档，结束时间不能早于开始时间。
 - 重复报名自动进入已有报名确认页。
 - 报名成功后进入确认页，展示活动信息、报名昵称和手机号，并可取消报名。
@@ -302,13 +333,17 @@ npm run deploy:cloudbase
 - CloudBase 动态部署、NoSQL 落库和 Storage 封面上传。
 - 基础安全加固：CSP 等响应头、请求意图校验、限流、Session 哈希、上传白名单、输入校验、过期 session 清理、日志手机号脱敏和最小化手机号返回。
 - 基础工程规范：`.gitignore`、环境变量示例、README、CHANGELOG、开发日志和 GitHub Actions CI。
+- 前端功能模块拆分：富文本编辑器和活动分享能力已从主 `app.js` 拆到 `assets/js/`。
+- 后端路由拆分起步：操作日志路由已拆到 `lib/routes/logs.js`。
+- CI 增强：CloudBase dry-run 产物检查和 Playwright 视觉截图 artifact。
 - CloudBase 查询和索引建议文档：`docs/cloudbase-indexes.md`。
 
 ## 已验证
 
-- `node --check` 通过：`app.js`、`script.js`、`server.js`、`lib/app.js`、`lib/store.js`、构建脚本和备份脚本。
-- `npm test` 通过：语法检查、隔离 JSON 数据库 API 冒烟和 Playwright 浏览器冒烟；覆盖 30 天前操作日志自动清理、工作台 dashboard 计数和待办预览。
-- `npm run build:cloudbase` 通过，CloudBase 静态站点和云函数均可构建。
+- `node --check` 通过：`app.js`、`assets/js/rich-editor.js`、`assets/js/activity-share.js`、`script.js`、`server.js`、`lib/app.js`、`lib/store.js`、`lib/rich-text.js`、`lib/routes/logs.js`、构建脚本、备份脚本、dry-run 脚本和视觉截图脚本。
+- `npm test` 通过：语法检查、隔离 JSON 数据库 API 冒烟和 Playwright 浏览器冒烟；覆盖 30 天前操作日志自动清理、工作台 dashboard 计数、富文本清洗、日志字段筛选、删除报名日志、删除成员日志、取消活动日志、活动分享按钮和待办预览。
+- `npm run deploy:dry-run` 通过，CloudBase 静态站点和云函数包均可构建，并通过产物完整性和敏感文件检查。
+- `npm run test:visual` 通过，已生成桌面 / 移动端首页、登录、后台和活动编辑页截图到 `test-results/visual/`。
 - 本地浏览器视觉检查通过：`0.11.0` 首页、登录页、活动页、管理员工作台在 1440px 和 390px 视口下无横向溢出；登录页输入框与按钮间距正常；后台入口卡片、待办区和活动公告列表排版稳定。
 - 本地浏览器视觉检查通过：`0.12.0` 首页桌面 / 手机、活动页手机、登录页手机、管理员工作台手机均无横向溢出；公开页识别为 `public-surface`，后台识别为 `product-surface`；活动页标签对比度、登录页移动端重叠、后台按钮和顶部标签可读性已修正。
 - 本地浏览器视觉检查通过：`0.13.3` 首页白天 / 黑夜 / 跟随系统切换正常，顶部导航滚动到底部仍固定可见，主题切换键在首页、社区共识、活动与参与、捐赠支持、关于与联系、登录和我的页面均稳定出现在品牌右侧；白天模式 Hero 数字条、捐赠说明、联系方式、模块管理表单和按钮文字可读。
@@ -340,17 +375,18 @@ npm run deploy:cloudbase
 - CloudBase `0.10.0` 报名保护与安全日志版本部署通过：静态托管上传 29 个文件，云函数 `youkongApi` 部署成功；线上 `index.html` 已引用 `v=0.10.0`，近期活动 API 返回正确 `pageInfo`，手动归档接口未登录返回 `403`。
 - CloudBase `0.13.4` 工作台性能优化版本部署通过：静态托管上传 28 个文件，云函数 `youkongApi` 部署成功；线上 `index.html` 已引用 `v=0.13.4`，线上 `app.js` 已包含 `/api/dashboard/me` 调用，管理员 dashboard API 返回活动、成员、模块和待办计数。
 - CloudBase `0.13.5` 运维增强版本部署通过：静态托管上传 28 个文件，云函数 `youkongApi` 部署成功；线上 `/api/session`、管理员登录和 `/api/dashboard/admin` 冒烟通过。
+- CloudBase `0.14.0` 活动运营增强版本部署通过：静态托管上传 30 个文件，云函数 `youkongApi` 部署成功；线上 `activity-editor.html` 已引用 `rich-editor.js?v=0.14.0`，`activity.html` 已引用 `activity-share.js?v=0.14.0`，线上 `/api/session`、管理员登录、`/api/dashboard/admin` 和 `/api/logs?action=login` 冒烟通过。
 - 线上冒烟产生的测试成员、活动和报名记录已清理。
 - GitHub 状态：项目按 `dev` / `main` 双分支维护；最新提交和分支状态请以 `git status --short --branch` 与 `git log --oneline --decorate --graph --all` 为准。
 
 ## 正在开发 / 待完善
 
 - 生产级身份验证：短信验证码、密码或微信登录，替代当前手机号白名单免密登录。
-- 富文本编辑器和图片排版能力。
 - 管理员仪表盘统计。
 - CloudBase 恢复演练和权限策略文档。
-- CloudBase 控制台建议补充 `yk_sessions.tokenHash`、`yk_users.phone` 等字段索引，保证登录态和工作台接口随数据量增长仍保持稳定。
+- CloudBase 控制台建议补充 `yk_sessions.tokenHash`、`yk_users.phone`、`yk_logs.action + createdAt`、`yk_logs.actorId + createdAt` 等字段索引，保证登录态、工作台和日志筛选随数据量增长仍保持稳定。
 - 自定义域名和同源 API 路由，减少跨域 Cookie 运维复杂度。
+- 继续拆分后端路由：优先迁移 auth、activities、users、modules，并逐步补 JSDoc / TypeScript 类型边界。
 - 如报名量继续增大，需要把当前进程内活动报名锁升级为数据库事务、唯一索引或队列型全局锁。
 
 ## 未来规划
@@ -358,7 +394,7 @@ npm run deploy:cloudbase
 - 支持审核通知、审核超时提醒和更细权限模型。
 - 支持 Notion / 飞书表格同步活动日历。
 - 增加财务公示模块和捐赠记录管理。
-- 为 CloudBase NoSQL 增加数据导出和定期备份脚本。
+- 为 CloudBase NoSQL 增加受控恢复脚本和定期备份自动化。
 
 ## Git 分支规范
 

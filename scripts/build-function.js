@@ -3,10 +3,11 @@ const path = require("path");
 
 const root = path.join(__dirname, "..");
 const output = path.join(root, "tmp", "cloudfunctions", "youkongApi");
+const rootPackage = require(path.join(root, "package.json"));
 
 const packageJson = {
   name: "youkong-api-function",
-  version: "0.9.0",
+  version: rootPackage.version,
   private: true,
   main: "index.js",
   scripts: {

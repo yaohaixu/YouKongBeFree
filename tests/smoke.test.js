@@ -52,6 +52,18 @@ function localDateTimeFromNow(days, hour = 19, minute = 30) {
   return `${values.year}-${values.month}-${values.day}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
+function localDateInput(days = 0) {
+  const date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 async function createActivity(token, overrides = {}) {
   const modules = await request("/api/modules");
   const admin = await login("13377779999");
@@ -129,11 +141,15 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const created = await createActivity(member.token, {
     title: "分页和日志测试活动",
     endsAt: localDateTimeFromNow(30, 22, 0),
+    description: '<h2>活动段落标题</h2><p>正文<strong>重点</strong><script>alert("x")</script></p><img src="data:image/png;base64,iVBORw0KGgo=" alt="内文图">',
   });
   assert.equal(created.activity.capacity, 99);
   assert.equal(created.activity.registrationCount, 0);
   assert.equal(created.activity.status, "admin_review");
   assert.equal(created.activity.endsAt, localDateTimeFromNow(30, 22, 0));
+  assert.match(created.activity.description, /<h2>活动段落标题<\/h2>/);
+  assert.match(created.activity.description, /<strong>重点<\/strong>/);
+  assert.doesNotMatch(created.activity.description, /script|alert/i);
 
   const owned = await request("/api/activities?owner=me&page=1&pageSize=1", {}, member.token);
   assert.equal(owned.activities.length, 1);
@@ -183,6 +199,10 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const logs = await request("/api/logs?page=1&pageSize=5&q=测试活动", {}, admin.token);
   assert.ok(logs.logs.length >= 1);
   assert.equal(logs.pageInfo.pageSize, 5);
+  const submitLogs = await request(`/api/logs?page=1&pageSize=10&action=activity.create_submit&actorId=${member.user.id}&from=${localDateInput()}&to=${localDateInput()}`, {}, admin.token);
+  assert.ok(submitLogs.logs.some((log) => log.targetName === "分页和日志测试活动"));
+  assert.ok(submitLogs.logs.every((log) => log.action === "activity.create_submit"));
+  assert.ok(submitLogs.logs.every((log) => log.actorId === member.user.id));
   const registrationLogs = await request("/api/logs?page=1&pageSize=10&q=报名活动", {}, admin.token);
   assert.ok(registrationLogs.logs.some((log) => log.actorPhone.includes("****")));
   assert.ok(registrationLogs.logs.every((log) => log.actorPhone !== "18800001111"));
@@ -233,12 +253,38 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(fullActivity.activity.registrationCount, 1);
   const limitedRegistrations = await request(`/api/activities/${limited.activity.id}/registrations`, {}, member.token);
   assert.equal(limitedRegistrations.registrations.length, 1);
+  const deletedRegistration = limitedRegistrations.registrations[0];
   await request(`/api/activities/${limited.activity.id}/registrations/${limitedRegistrations.registrations[0].id}`, {
     method: "DELETE",
   }, member.token);
   const reopenedActivity = await request(`/api/activities/${limited.activity.id}`);
   assert.equal(reopenedActivity.activity.status, "published");
   assert.equal(reopenedActivity.activity.registrationCount, 0);
+  const deleteRegistrationLogs = await request(`/api/logs?page=1&pageSize=10&action=registration.delete&q=${encodeURIComponent(deletedRegistration.nickname)}`, {}, admin.token);
+  assert.ok(deleteRegistrationLogs.logs.some((log) => log.detail.includes(deletedRegistration.nickname)));
+
+  const temporaryUser = await request("/api/users", {
+    method: "POST",
+    body: { nickname: "待删除成员", phone: "13300003333", role: "member" },
+  }, admin.token);
+  await request(`/api/users/${temporaryUser.user.id}`, { method: "DELETE" }, admin.token);
+  const deleteUserLogs = await request(`/api/logs?page=1&pageSize=10&action=user.delete&actorId=admin&q=${encodeURIComponent("待删除成员")}`, {}, admin.token);
+  assert.ok(deleteUserLogs.logs.some((log) => log.action === "user.delete" && log.targetName === "待删除成员"));
+
+  const cancellable = await createActivity(member.token, {
+    title: "管理员取消日志测试活动",
+  });
+  await request(`/api/activities/${cancellable.activity.id}/review`, {
+    method: "POST",
+    body: { action: "approve", comment: "管理员通过" },
+  }, admin.token);
+  await request(`/api/activities/${cancellable.activity.id}/review`, {
+    method: "POST",
+    body: { action: "approve", comment: "协作员通过" },
+  }, collaborator.token);
+  await request(`/api/activities/${cancellable.activity.id}/cancel`, { method: "POST", body: {} }, admin.token);
+  const cancelLogs = await request(`/api/logs?page=1&pageSize=10&action=activity.cancel&q=${encodeURIComponent("管理员取消日志测试活动")}`, {}, admin.token);
+  assert.ok(cancelLogs.logs.some((log) => log.action === "activity.cancel"));
 
   const expired = await createActivity(member.token, {
     title: "应自动结束的历史活动",
@@ -305,6 +351,30 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-members.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-logs.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/registrations.html?id=${created.activity.id}`);
+
+    await page.goto(`${baseUrl}/activity-editor.html`);
+    await page.waitForLoadState("networkidle");
+    const editorState = await page.evaluate(() => ({
+      hasEditor: Boolean(document.querySelector("[data-rich-editor]")),
+      toolCount: document.querySelectorAll("[data-rich-command]").length,
+    }));
+    assert.equal(editorState.hasEditor, true);
+    assert.ok(editorState.toolCount >= 8);
+
+    await page.goto(`${baseUrl}/activity.html?id=${created.activity.id}`);
+    await page.waitForLoadState("networkidle");
+    const shareState = await page.evaluate(() => ({
+      poster: Boolean(document.querySelector("[data-download-poster]")),
+      copy: Boolean(document.querySelector("[data-copy-registration-link]")),
+      calendar: Boolean(document.querySelector("[data-download-calendar]")),
+      richHeading: Boolean(document.querySelector(".article-content h2")),
+    }));
+    assert.deepEqual(shareState, {
+      poster: true,
+      copy: true,
+      calendar: true,
+      richHeading: true,
+    });
 
     await page.goto(`${baseUrl}/review-tasks.html`);
     await page.waitForLoadState("networkidle");

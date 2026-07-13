@@ -5120,7 +5120,17 @@ body.product-surface .site-footer {
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(18px) saturate(1.28);
   -webkit-backdrop-filter: blur(18px) saturate(1.28);
-  transition: transform 180ms var(--ease-out), border-color 180ms var(--ease-out), background 180ms var(--ease-out);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out), border-color 180ms var(--ease-out), background 180ms var(--ease-out);
+}
+
+.quick-home.is-visible,
+.quick-home:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .quick-home:hover {
@@ -6212,5 +6222,188 @@ html[data-theme="light"] body.product-surface .row-actions .muted-text {
 @media (prefers-reduced-motion: reduce) {
   .theme-switch-ring::before {
     opacity: 0.35;
+  }
+}
+
+/* 0.14.0 interaction modules */
+.log-filter-panel {
+  grid-template-columns: minmax(220px, 1.6fr) minmax(156px, 1fr) minmax(156px, 1fr) minmax(136px, 0.9fr) minmax(132px, 0.8fr) minmax(132px, 0.8fr) auto;
+  align-items: end;
+}
+
+.rich-source {
+  display: none !important;
+}
+
+.rich-editor {
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-strong);
+}
+
+.rich-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+}
+
+.rich-tool {
+  min-width: 38px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 180ms var(--ease-out), border-color 180ms var(--ease-out), background 180ms var(--ease-out);
+}
+
+.rich-tool:hover,
+.rich-tool:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  outline: none;
+}
+
+.rich-canvas {
+  min-height: 320px;
+  padding: 18px;
+  color: var(--ink);
+  outline: none;
+}
+
+.rich-canvas:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+}
+
+.rich-canvas h2,
+.article-content h2 {
+  margin: 1.35em 0 0.45em;
+  color: var(--ink);
+  font-size: 1.55rem;
+  line-height: 1.28;
+  text-wrap: balance;
+}
+
+.rich-canvas h3,
+.article-content h3 {
+  margin: 1.15em 0 0.4em;
+  color: var(--ink);
+  font-size: 1.2rem;
+  line-height: 1.35;
+}
+
+.rich-canvas blockquote,
+.article-content blockquote {
+  margin: 1.2em 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent-soft) 32%, transparent);
+  color: var(--ink);
+}
+
+.rich-canvas ul,
+.rich-canvas ol,
+.article-content ul,
+.article-content ol {
+  padding-left: 1.35em;
+}
+
+.rich-canvas li + li,
+.article-content li + li {
+  margin-top: 0.35em;
+}
+
+.rich-canvas img,
+.article-content img {
+  width: min(100%, 720px);
+  margin: 18px auto;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+}
+
+.rich-canvas hr,
+.article-content hr {
+  height: 1px;
+  margin: 28px 0;
+  border: 0;
+  background: var(--line);
+}
+
+.rich-hint {
+  margin: 0;
+  padding: 0 16px 16px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.activity-share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.activity-share-actions .button {
+  min-height: 42px;
+}
+
+html[data-theme="dark"] body.product-surface .rich-editor,
+html[data-theme="dark"] body.public-surface .rich-editor {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-theme="dark"] body.product-surface .rich-toolbar,
+html[data-theme="dark"] body.public-surface .rich-toolbar {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-theme="dark"] body.product-surface .rich-tool,
+html[data-theme="dark"] body.public-surface .rich-tool {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f7f3ec;
+}
+
+html[data-theme="light"] body.product-surface .rich-editor,
+html[data-theme="light"] body.public-surface .rich-editor,
+html[data-theme="light"] body.product-surface .rich-tool,
+html[data-theme="light"] body.public-surface .rich-tool {
+  background: rgba(255, 255, 255, 0.84);
+  color: #1d1d1f;
+}
+
+@media (max-width: 760px) {
+  .log-filter-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .rich-toolbar {
+    gap: 6px;
+  }
+
+  .rich-tool {
+    min-width: 36px;
+  }
+
+  .rich-canvas {
+    min-height: 260px;
+    padding: 16px;
+  }
+
+  .activity-share-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 }

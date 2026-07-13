@@ -2,6 +2,34 @@
 
 所有重要变更都会记录在此文件中。格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循语义化版本思路。
 
+## [0.14.0] - 2026-07-13
+
+### Added
+
+- 新增活动富文本编辑器，支持正文段落、二级/三级标题、加粗、引用、列表、分隔线和正文小图插入。
+- 新增服务端富文本白名单清洗模块 `lib/rich-text.js`，活动描述仅保留有限安全标签和图片地址。
+- 新增活动详情页分享能力：生成分享海报、复制报名链接、下载 `.ics` 日历文件。
+- 新增操作日志筛选条件：操作类型、操作人、角色、开始日期和结束日期。
+- 新增 `assets/js/rich-editor.js` 和 `assets/js/activity-share.js`，开始拆分前端功能模块。
+- 新增 `lib/routes/logs.js`，开始拆分后端 API route 文件。
+- 新增 `npm run deploy:dry-run` 和 `scripts/verify-cloudbase-package.js`，用于部署前检查 CloudBase 构建产物。
+- 新增 `npm run test:visual` 和 `scripts/visual-snapshots.js`，生成关键页面 Playwright 视觉截图。
+- GitHub Actions 新增 CloudBase dry-run 和视觉截图 artifact 上传。
+
+### Changed
+
+- 静态资源版本参数升级为 `v=0.14.0`，项目版本升级为 `0.14.0`。
+- `npm run test:syntax` 扩展到新增前端模块、后端富文本模块、日志路由和 CI 辅助脚本。
+- CloudBase 云函数包版本改为读取根 `package.json`，避免部署包版本号与项目版本漂移。
+- GitHub Actions Node.js 版本升级到 24，避免旧 runner Node 20 弃用提示。
+- 浮动「首页」按钮改为滚动后显示，避免移动端首屏遮挡表单控件。
+
+### Fixed
+
+- 删除报名记录日志补充被删除报名人的昵称和脱敏手机号，便于审计。
+- 删除成员日志补充被删除成员的脱敏手机号。
+- `npm test` 新增删除报名、删除成员、取消活动和日志字段筛选断言，保证关键操作进入审计日志。
+
 ## [0.13.5] - 2026-07-13
 
 ### Added

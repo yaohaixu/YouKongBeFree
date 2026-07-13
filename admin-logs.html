@@ -8,8 +8,8 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <script src="theme.js?v=0.13.4"></script>
-    <link rel="stylesheet" href="styles.css?v=0.13.4" />
+    <script src="theme.js?v=0.14.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.14.0" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -39,8 +39,20 @@
 
       <section class="section alt">
         <div class="wrap">
-          <form class="filter-panel" data-log-filters>
+          <form class="filter-panel wide log-filter-panel" data-log-filters>
             <label>搜索<input name="q" placeholder="操作 / 人员 / 手机号 / 活动 / 模块" /></label>
+            <label>操作类型<select name="action" data-log-action-filter></select></label>
+            <label>操作人<select name="actorId" data-log-actor-filter></select></label>
+            <label>角色<select name="actorRole">
+              <option value="">全部角色</option>
+              <option value="admin">管理员</option>
+              <option value="collaborator">协作员</option>
+              <option value="member">成员</option>
+              <option value="guest">访客</option>
+              <option value="system">系统</option>
+            </select></label>
+            <label>开始日期<input name="from" type="date" /></label>
+            <label>结束日期<input name="to" type="date" /></label>
             <button class="button ghost" type="submit">筛选</button>
           </form>
           <div class="list-toolbar">
@@ -59,7 +71,7 @@
         <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-activities.html">全部活动</a><a href="admin-members.html">成员管理</a></nav>
       </div>
     </footer>
-    <script src="script.js?v=0.13.4"></script>
-    <script src="app.js?v=0.13.4"></script>
+    <script src="script.js?v=0.14.0"></script>
+    <script src="app.js?v=0.14.0"></script>
   </body>
 </html>
