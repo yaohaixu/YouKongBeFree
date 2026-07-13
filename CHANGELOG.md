@@ -16,12 +16,12 @@
 - YKadmin 工作台入口卡片改用轻量 dashboard API 渲染，不再首屏拉取全部活动、全部成员和全部模块列表。
 - 活动列表 payload 改用活动记录上的 `registrationCount` 字段，避免列表接口每次读取全量报名集合。
 - 登录态校验和手机号登录改为使用存储层字段查询第一条记录，降低会话和成员集合增长后的基础查询开销。
-- `package-lock.json` 的依赖 tarball 地址统一改为官方 npm registry，降低 GitHub Actions 在镜像源 404 时失败的风险。
+- `package-lock.json` 的依赖 tarball 地址统一改为官方 npm registry，并将错误锁定的 `retry@0.13.3` 修正为官方存在的 `retry@0.13.1`。
 
 ### Fixed
 
 - 优化线上访问「我的」页面时入口模块卡片加载过慢的问题。
-- 修复 GitHub Actions `npm ci` 因 `registry.npmmirror.com/retry-0.13.3.tgz` 返回 404 导致 CI 失败的问题。
+- 修复 GitHub Actions `npm ci` 因 lockfile 指向不存在的 `retry@0.13.3` tarball 导致 CI 失败的问题。
 
 ## [0.13.3] - 2026-07-13
 

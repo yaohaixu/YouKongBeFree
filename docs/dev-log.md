@@ -1322,7 +1322,8 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 - 线上冒烟通过：`index.html` 已引用 `v=0.13.4`，线上 `app.js` 已包含 `/api/dashboard/me` 调用。
 - 线上 API 冒烟通过：管理员手机号 `13377779999` 可登录，`/api/dashboard/admin` 返回活动、成员、模块和待办计数；本次实测 dashboard 响应约 662ms。
 - GitHub Actions 初次触发后发现 `npm ci` 失败：`package-lock.json` 中的 `registry.npmmirror.com/retry-0.13.3.tgz` 在 GitHub runner 上返回 404。
-- 已将 `package-lock.json` 的依赖 tarball 地址统一替换为官方 npm registry，并用 `npm ci --registry=https://registry.npmjs.org` 本地验证通过。
+- 已将 `package-lock.json` 的依赖 tarball 地址统一替换为官方 npm registry，并把错误锁定的 `retry@0.13.3` 修正为官方存在的 `retry@0.13.1`。
+- `npm ci --registry=https://registry.npmjs.org` 已本地验证通过。
 - lockfile 修复后，`npm test` 和 `npm run build:cloudbase` 已再次通过。
 
 ### 遗留问题
