@@ -1198,3 +1198,130 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 使用 Playwright 验证首页白天 / 黑夜 / 跟随系统切换、后台暗色模式和移动端导航。
 2. 部署 0.13.1 到 CloudBase 并确认线上旧图片不再出现在构建产物中。
 3. 补充新的真实照片素材库，逐步替换重复使用的饭桌裁剪图。
+
+## 2026-07-13 - 0.13.3 三态主题、白天模式和日志保留优化
+
+### 任务目标
+
+根据最新反馈，继续修复白天模式下文字对比度不足的问题；把主题切换改为品牌右侧单图标三态循环，默认跟随系统；将成员工作台概览移动到所有入口模块底部；并让操作日志只保留最近 30 天。
+
+### 具体修改内容
+
+- `script.js` 将主题切换控件从 `.nav-links` 内部改为插入 `.brand` 后方，避免 `app.js` 重绘导航链接时移除控件。
+- `script.js` 将主题交互改为单图标三态循环：跟随系统 -> 黑夜 -> 白天 -> 跟随系统，并同步 `aria-label`、状态类名和当前解析主题。
+- `styles.css` 新增圆形主题切换按钮：月亮、太阳、小电脑三种 CSS 图标，含点击动效和减少动态效果降级。
+- `styles.css` 修复旧二态开关样式残留对三态图标的影响，使用 `data-theme-mode` 作为最终视觉状态选择，避免太阳、月亮、小电脑图标偏位或残影。
+- `styles.css` 补充公开页和产品页白天模式对比度覆盖，重点修复首页数字条、捐赠说明、二维码说明、联系信息、模块管理表单标签和主按钮文字可读性。
+- `me.html` 将「工作台概览」区块移动到入口卡片模块之后，待办仍保留在最上方。
+- `lib/app.js` 新增操作日志保留期常量、节流清理函数，写日志和查询 `/api/logs` 时会清理 30 天前日志。
+- `lib/store.js` 新增 `removeWhere()` 和 `lt` 查询操作，本地 JSON 与 CloudBase 存储共用日志清理能力。
+- `tests/smoke.test.js` 新增旧操作日志清理断言，确认超过 30 天的日志不会被返回且会从本地存储移除。
+- 全部 HTML 静态资源参数升级到 `v=0.13.3`。
+- `package.json` 和 `package-lock.json` 版本升级到 `0.13.3`。
+- README 和 CHANGELOG 同步更新。
+
+### 涉及文件
+
+- `script.js`
+- `styles.css`
+- `me.html`
+- `lib/app.js`
+- `lib/store.js`
+- `tests/smoke.test.js`
+- 全部 HTML 静态资源版本参数
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 切换键脱离 `.nav-links`，因为登录状态初始化会调用 `renderMainNav()` 重写导航 HTML；放在 `.nav-wrap` 中品牌后方能保证控件不被业务导航刷新影响。
+- 三态按钮使用当前主题模式而不是解析后的明暗状态决定下一步，避免「跟随系统」被误判成普通白天或黑夜。
+- 三态图标显示以 `data-theme-mode` 为最高优先级状态源，并移除图标透明度过渡，只保留轻微 transform 反馈，避免点击后上一状态图标短暂残留。
+- 主题按钮图形使用 CSS 形状，不引入图标库或外部资源，保持当前 Vanilla JS 和静态站点结构。
+- 白天模式修复采用末尾覆盖层，集中补齐高风险文字和控件色值，降低对既有艺术化黑夜模式的回归风险。
+- 日志保留在后端实现，前端不只做隐藏；`/api/logs` 查询同时添加保留期过滤，避免清理失败时旧日志仍被展示。
+- CloudBase 和本地 JSON 通过统一 `removeWhere()` 接口清理，避免 API 层区分存储驱动。
+
+### 当前完成情况
+
+- 已完成代码开发和文档更新。
+- `npm run test:syntax` 已通过：`app.js`、`lib/app.js`、`lib/store.js`、`theme.js`、`script.js`、`server.js` 和构建脚本语法检查通过。
+- `git diff --check` 已通过。
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过；新增断言覆盖 30 天前操作日志清理。
+- `npm run build:cloudbase` 已通过：静态站点和云函数包均可构建。
+- Playwright 视觉检查通过：主题默认跟随系统，单击后按黑夜、白天、跟随系统循环，且全站只有 1 个主题切换键。
+- Playwright 图标检查通过：系统、黑夜、白天三种模式下仅当前图标 `opacity: 1`，其余图标 `opacity: 0`；0ms、100ms、250ms 状态均无残影，图标中心与按钮圆环中心对齐。
+- Playwright 白天模式对比度抽检通过：首页数字条、Hero 正文、捐赠说明、二维码说明、关于页地址 / 微信、模块管理标签和「添加模块」按钮均达到可读对比度。
+- Playwright 工作台检查通过：「工作台概览」位于入口卡片模块之后。
+- Playwright 移动端检查通过：390px 下品牌右侧主题按钮可见且不随导航重绘消失。
+
+### 遗留问题
+
+- `styles.css` 仍以多轮版本覆盖层迭代，后续建议拆分成基础 token、公开页主题、后台产品页和组件文件。
+- 主题偏好仍保存在浏览器本地，不随账号同步。
+- 操作日志目前按自然日近似为 30 天保留；如需更严格的自然月口径，后续可改为按上海时区月历计算。
+
+### 下一步建议
+
+1. 如需上线，执行 `npm run deploy:cloudbase` 并做线上只读冒烟。
+2. 后续建议整理 `styles.css` 覆盖层，拆成主题 token、公开页组件和产品页组件，降低后续视觉迭代成本。
+
+## 2026-07-13 - 0.13.4 工作台性能优化与部署准备
+
+### 任务目标
+
+根据线上反馈，优化访问「我的」页面时入口模块卡片需要等待约 10 秒才加载的问题，并在完成后提交 GitHub、合并 main、部署到腾讯云 CloudBase。
+
+### 具体修改内容
+
+- `lib/store.js` 新增 `count()` 和 `findByFilters()`：本地 JSON 复用本地筛选语义，CloudBase 下推为 `where(...).count()` 和 `where(...).limit(1)`。
+- `lib/app.js` 新增 `/api/dashboard/me`，返回成员工作台需要的活动状态计数、审核中 / 已发布汇总、待办总数和最多 3 条待办预览。
+- `lib/app.js` 新增 `/api/dashboard/admin`，返回 YKadmin 工作台需要的活动、成员、模块、待办计数和最多 4 条管理员待办预览。
+- `lib/app.js` 将登录态校验从读取 `yk_sessions` 集合后筛选，改为按 `tokenHash` / 旧 `token` 字段查询第一条；手机号登录改为按 `phone` 字段查询。
+- `lib/app.js` 将活动列表 payload 的报名人数来源改为活动记录上的 `registrationCount`，避免列表接口每次读取全量报名集合。
+- `app.js` 将 `me.html` 和 `admin.html` 工作台入口卡片接入 dashboard API，不再依赖完整活动 / 成员 / 模块列表。
+- `tests/smoke.test.js` 增加 dashboard API 断言，覆盖成员工作台计数、管理员工作台计数和待办预览。
+- `docs/cloudbase-indexes.md` 补充 `yk_sessions.tokenHash`、`yk_sessions.expiresAt`、`yk_users.phone` 等索引建议。
+- 全部 HTML 静态资源参数升级到 `v=0.13.4`。
+- `package.json` 和 `package-lock.json` 版本升级到 `0.13.4`。
+- README 和 CHANGELOG 同步更新。
+
+### 涉及文件
+
+- `app.js`
+- `lib/app.js`
+- `lib/store.js`
+- `tests/smoke.test.js`
+- `docs/cloudbase-indexes.md`
+- 全部 HTML 静态资源版本参数
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 不在工作台继续调用完整列表接口，因为入口卡片只需要计数和少量待办预览；独立列表页仍保留完整分页接口。
+- dashboard 计数通过存储层 `count()` 下推到 CloudBase，减少云函数内存和网络响应体大小。
+- 待办预览只取 3 到 4 条，保留用户进入工作台后立即判断是否有待处理事项的能力。
+- 活动列表改用 `registrationCount` 字段，是因为报名新增、删除和取消已经统一同步该字段；完整报名表仍通过报名记录集合读取。
+- 会话和手机号查询改为字段级查询，是为了降低每个登录页面的基础查询开销，并为后续补 CloudBase 索引留下明确路径。
+
+### 当前完成情况
+
+- 已完成代码开发和文档更新。
+- 待执行 `npm test`、`npm run build:cloudbase`、Git 提交、推送、合并 main 和 CloudBase 部署。
+
+### 遗留问题
+
+- CloudBase 控制台建议补充 `yk_sessions.tokenHash`、`yk_sessions.expiresAt`、`yk_users.phone` 索引；代码可运行，但索引能保证数据量增长后的稳定性。
+- `toActivityListPayload()` 仍会读取模块和用户集合补充名称；如果成员继续增长，可进一步把模块名、发起人名和协作员名冗余到活动记录中。
+
+### 下一步建议
+
+1. 在 CloudBase 控制台补齐本次新增的登录态和手机号相关索引。
+2. 后续为线上 API 增加耗时日志或简单性能监控，定位真实慢查询。

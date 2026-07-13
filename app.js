@@ -407,20 +407,17 @@ async function initMeDashboardPage() {
   mePageState.user = user;
   qs("[data-user-name]", root).textContent = user.nickname;
 
-  const [{ activities: myActivities }, pendingResult] = await Promise.all([
-    api.get("/api/activities?owner=me"),
-    hasRole(user, "collaborator") ? api.get("/api/activities?pending=me") : Promise.resolve({ activities: [] }),
-  ]);
+  const dashboard = await api.get("/api/dashboard/me");
 
-  renderWorkspaceCards(root, user, myActivities, pendingResult.activities);
-  renderDashboardSummary(qs("[data-workspace-summary]", root), myActivities);
+  renderWorkspaceCards(root, user, dashboard.summary, dashboard.pending);
+  renderDashboardSummary(qs("[data-workspace-summary]", root), dashboard.summary);
 
   const pendingPreview = qs("[data-my-pending]", root);
   const pendingSection = qs("[data-my-pending-section]", root);
   if (pendingSection && !hasRole(user, "collaborator")) {
     pendingSection.hidden = true;
   } else {
-    renderPendingTasks(pendingPreview, pendingResult.activities.slice(0, 3), { compact: true });
+    renderPendingTasks(pendingPreview, (dashboard.pending?.activities || []).slice(0, 3), { compact: true });
   }
 }
 
@@ -431,24 +428,28 @@ function countByStatus(activities) {
   }, {});
 }
 
-function renderDashboardSummary(container, activities) {
+function renderDashboardSummary(container, summary) {
   if (!container) return;
-  const counts = countByStatus(activities);
-  const reviewing = (counts.admin_review || 0) + (counts.collaborator_review || 0);
+  const counts = Array.isArray(summary) ? countByStatus(summary) : (summary?.byStatus || {});
+  const total = Array.isArray(summary) ? summary.length : Number(summary?.total || 0);
+  const reviewing = Number(summary?.reviewing ?? ((counts.admin_review || 0) + (counts.collaborator_review || 0)));
+  const published = Number(summary?.published ?? ((counts.published || 0) + (counts.full || 0)));
   container.innerHTML = `
-    <div class="stat"><strong>${activities.length}</strong><span>我发起的活动</span></div>
+    <div class="stat"><strong>${total}</strong><span>我发起的活动</span></div>
     <div class="stat"><strong>${counts.draft || 0}</strong><span>草稿</span></div>
     <div class="stat"><strong>${reviewing}</strong><span>审核中</span></div>
-    <div class="stat"><strong>${(counts.published || 0) + (counts.full || 0)}</strong><span>已发布</span></div>
+    <div class="stat"><strong>${published}</strong><span>已发布</span></div>
   `;
   revealDynamicContent(container);
 }
 
-function renderWorkspaceCards(root, user, myActivities, pendingActivities) {
+function renderWorkspaceCards(root, user, summary, pendingSummary) {
   const container = qs("[data-workspace-cards]", root);
   if (!container) return;
-  const counts = countByStatus(myActivities);
-  const reviewing = (counts.admin_review || 0) + (counts.collaborator_review || 0);
+  const counts = Array.isArray(summary) ? countByStatus(summary) : (summary?.byStatus || {});
+  const total = Array.isArray(summary) ? summary.length : Number(summary?.total || 0);
+  const reviewing = Number(summary?.reviewing ?? ((counts.admin_review || 0) + (counts.collaborator_review || 0)));
+  const pendingTotal = Array.isArray(pendingSummary) ? pendingSummary.length : Number(pendingSummary?.total || 0);
   const cards = [
     {
       href: "activity-editor.html",
@@ -464,7 +465,7 @@ function renderWorkspaceCards(root, user, myActivities, pendingActivities) {
       title: "管理自己的活动和报名表",
       body: "筛选草稿、审核中、退回、已发布等状态。",
       meta: `${reviewing} 个审核中`,
-      count: myActivities.length,
+      count: total,
     },
   ];
   if (hasRole(user, "collaborator")) {
@@ -474,7 +475,7 @@ function renderWorkspaceCards(root, user, myActivities, pendingActivities) {
       title: "处理需要你审核的活动",
       body: "查看活动详情、封面、描述和审核历史。",
       meta: "协作员入口",
-      count: pendingActivities.length,
+      count: pendingTotal,
     });
   }
   if (hasRole(user, "admin")) {
@@ -1056,14 +1057,9 @@ async function initAdminPage() {
   const user = await requireAdminUser(adminRoot);
   if (!user) return;
 
-  const [{ activities }, { users }, { modules }, { activities: pendingActivities }] = await Promise.all([
-    api.get("/api/activities?all=true"),
-    api.get("/api/users"),
-    api.get("/api/modules"),
-    api.get("/api/activities?pending=me"),
-  ]);
-  renderAdminDashboardCards(adminRoot, activities, users, modules, pendingActivities);
-  renderPendingTasks(qs("[data-admin-pending]", adminRoot), pendingActivities.slice(0, 4), { compact: true });
+  const dashboard = await api.get("/api/dashboard/admin");
+  renderAdminDashboardCards(adminRoot, dashboard.activities, dashboard.users, dashboard.modules, dashboard.pending);
+  renderPendingTasks(qs("[data-admin-pending]", adminRoot), (dashboard.pending?.activities || []).slice(0, 4), { compact: true });
 }
 
 async function requireAdminUser(root) {
@@ -1078,11 +1074,15 @@ async function requireAdminUser(root) {
   return user;
 }
 
-function renderAdminDashboardCards(root, activities, users, modules, pendingActivities) {
+function renderAdminDashboardCards(root, activitiesSummary, usersSummary, modulesSummary, pendingSummary) {
   const container = qs("[data-admin-dashboard-cards]", root);
   if (!container) return;
-  const counts = countByStatus(activities);
-  const reviewing = (counts.admin_review || 0) + (counts.collaborator_review || 0);
+  const counts = activitiesSummary?.byStatus || {};
+  const reviewing = Number(activitiesSummary?.reviewing ?? ((counts.admin_review || 0) + (counts.collaborator_review || 0)));
+  const activityTotal = Number(activitiesSummary?.total || 0);
+  const userTotal = Number(usersSummary?.total || 0);
+  const moduleTotal = Number(modulesSummary?.total || 0);
+  const pendingTotal = Number(pendingSummary?.total || 0);
   const cards = [
     {
       href: "admin-activities.html",
@@ -1090,7 +1090,7 @@ function renderAdminDashboardCards(root, activities, users, modules, pendingActi
       title: "筛选和查看所有状态活动",
       body: "按标题、模块、状态、时间和报名数管理。",
       meta: `${reviewing} 个审核中`,
-      count: activities.length,
+      count: activityTotal,
     },
     {
       href: "admin-members.html",
@@ -1098,7 +1098,7 @@ function renderAdminDashboardCards(root, activities, users, modules, pendingActi
       title: "管理成员、协作员和手机号",
       body: "添加、搜索、修改、删除成员角色。",
       meta: "成员 / 协作员",
-      count: users.length,
+      count: userTotal,
     },
     {
       href: "admin-modules.html",
@@ -1106,7 +1106,7 @@ function renderAdminDashboardCards(root, activities, users, modules, pendingActi
       title: "维护活动分类模块",
       body: "管理有空放映、有空食堂等分类。",
       meta: "活动分类",
-      count: modules.length,
+      count: moduleTotal,
     },
     {
       href: "review-tasks.html",
@@ -1114,7 +1114,7 @@ function renderAdminDashboardCards(root, activities, users, modules, pendingActi
       title: "处理当前审核任务",
       body: "查看详情、封面和审核记录后处理。",
       meta: "管理员审核",
-      count: pendingActivities.length,
+      count: pendingTotal,
     },
     {
       href: "admin-logs.html",

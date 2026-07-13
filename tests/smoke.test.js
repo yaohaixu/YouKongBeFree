@@ -139,6 +139,18 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(owned.activities.length, 1);
   assert.equal(owned.pageInfo.pageSize, 1);
 
+  const memberDashboard = await request("/api/dashboard/me", {}, member.token);
+  assert.equal(memberDashboard.summary.total, 1);
+  assert.equal(memberDashboard.summary.byStatus.admin_review, 1);
+  assert.equal(memberDashboard.pending.total, 0);
+
+  const adminDashboard = await request("/api/dashboard/admin", {}, admin.token);
+  assert.ok(adminDashboard.activities.total >= 1);
+  assert.ok(adminDashboard.users.total >= 3);
+  assert.ok(adminDashboard.modules.total >= 1);
+  assert.ok(adminDashboard.pending.total >= 1);
+  assert.equal(adminDashboard.pending.activities[0].status, "admin_review");
+
   await request(`/api/activities/${created.activity.id}/review`, {
     method: "POST",
     body: { action: "approve", comment: "管理员通过" },
@@ -174,6 +186,23 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const registrationLogs = await request("/api/logs?page=1&pageSize=10&q=报名活动", {}, admin.token);
   assert.ok(registrationLogs.logs.some((log) => log.actorPhone.includes("****")));
   assert.ok(registrationLogs.logs.every((log) => log.actorPhone !== "18800001111"));
+  await store.insert("logs", {
+    id: "log_old_retention",
+    action: "test.old",
+    actionLabel: "旧日志测试",
+    actorId: "test",
+    actorName: "测试",
+    actorRole: "member",
+    actorPhone: "",
+    targetType: "system",
+    targetId: "old",
+    targetName: "旧日志保留测试",
+    detail: "超过 30 天的操作日志应被清理",
+    createdAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  const oldLogs = await request("/api/logs?page=1&pageSize=10&q=旧日志保留测试", {}, admin.token);
+  assert.equal(oldLogs.logs.length, 0);
+  assert.equal(await store.find("logs", (log) => log.id === "log_old_retention"), null);
 
   const limited = await createActivity(member.token, {
     title: "一人名额保护测试活动",
