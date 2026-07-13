@@ -385,6 +385,7 @@ npm run deploy:cloudbase
 - CloudBase `0.13.4` 工作台性能优化版本部署通过：静态托管上传 28 个文件，云函数 `youkongApi` 部署成功；线上 `index.html` 已引用 `v=0.13.4`，线上 `app.js` 已包含 `/api/dashboard/me` 调用，管理员 dashboard API 返回活动、成员、模块和待办计数。
 - CloudBase `0.13.5` 运维增强版本部署通过：静态托管上传 28 个文件，云函数 `youkongApi` 部署成功；线上 `/api/session`、管理员登录和 `/api/dashboard/admin` 冒烟通过。
 - CloudBase `0.14.0` 活动运营增强版本部署通过：静态托管上传 30 个文件，云函数 `youkongApi` 部署成功；线上 `activity-editor.html` 已引用 `rich-editor.js?v=0.14.0`，`activity.html` 已引用 `activity-share.js?v=0.14.0`，线上 `/api/session`、管理员登录、`/api/dashboard/admin` 和 `/api/logs?action=login` 冒烟通过。
+- CloudBase `0.15.0` 活动模板版本部署通过：静态托管上传 31 个文件，云函数 `youkongApi` 部署成功；线上 `activity-editor.html` 已引用 `rich-editor.js?v=0.15.0` 并包含活动描述模板下拉，`admin-templates.html` 可访问，线上 `/api/session`、管理员登录、`/api/dashboard/admin` 模板计数和 `/api/templates?page=1&pageSize=1` 冒烟通过。
 - 线上冒烟产生的测试成员、活动和报名记录已清理。
 - GitHub 状态：项目按 `dev` / `main` 双分支维护；最新提交和分支状态请以 `git status --short --branch` 与 `git log --oneline --decorate --graph --all` 为准。
 

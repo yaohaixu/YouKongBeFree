@@ -1547,6 +1547,10 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 - `npm test` 已通过：语法检查、隔离 JSON 数据库 API 冒烟和 Playwright 浏览器冒烟全部通过。
 - `npm run deploy:dry-run` 已通过：静态站点和云函数包可构建，关键产物存在且未打包敏感文件。
 - `npm run test:visual` 已通过：新增桌面 / 移动端活动模板管理页截图，视觉抽查无明显错位或横向溢出。
+- Git 已提交 `f78e299 feat(templates): add activity description templates`，并推送到 `dev` 与 `main`。
+- CloudBase 静态托管已部署成功：上传 31 个文件，新增 `admin-templates.html` 已进入线上站点。
+- CloudBase 云函数 `youkongApi` 已部署成功，HTTP API 地址为 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
+- 线上冒烟通过：`activity-editor.html` 已引用 `rich-editor.js?v=0.15.0` 并包含活动描述模板下拉；`admin-templates.html` 已引用 `v=0.15.0` 并包含模板管理表单；`/api/session` 返回 200，管理员手机号 `13377779999` 可登录，`/api/dashboard/admin` 返回 `templates` 计数，`/api/templates?page=1&pageSize=1` 返回分页信息。
 
 ### 遗留问题
 
