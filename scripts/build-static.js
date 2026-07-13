@@ -21,6 +21,7 @@ const files = [
   "admin-members.html",
   "admin-modules.html",
   "admin-templates.html",
+  "admin-template-editor.html",
   "admin-logs.html",
   "activity.html",
   "success.html",

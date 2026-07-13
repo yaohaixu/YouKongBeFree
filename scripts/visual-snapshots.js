@@ -46,6 +46,7 @@ async function main() {
     await screenshot(desktop, baseUrl, "/admin.html", "desktop-admin.png");
     await screenshot(desktop, baseUrl, "/activity-editor.html", "desktop-activity-editor.png");
     await screenshot(desktop, baseUrl, "/admin-templates.html", "desktop-admin-templates.png");
+    await screenshot(desktop, baseUrl, "/admin-template-editor.html", "desktop-admin-template-editor.png");
     await desktop.close();
 
     const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
@@ -53,6 +54,7 @@ async function main() {
     await loginAsAdmin(mobile, baseUrl);
     await screenshot(mobile, baseUrl, "/activity-editor.html", "mobile-activity-editor.png");
     await screenshot(mobile, baseUrl, "/admin-templates.html", "mobile-admin-templates.png");
+    await screenshot(mobile, baseUrl, "/admin-template-editor.html", "mobile-admin-template-editor.png");
     await mobile.close();
   } finally {
     await browser.close();

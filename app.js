@@ -363,6 +363,7 @@ function renderMainNav(navLinks, baseLinks, pageName, user) {
     "admin-members.html",
     "admin-modules.html",
     "admin-templates.html",
+    "admin-template-editor.html",
     "admin-logs.html",
   ];
   const myActive = workspacePages.includes(pageName);
@@ -1342,8 +1343,24 @@ async function initAdminTemplatesPage() {
     mePageState.templatePage += 1;
     renderTemplates();
   });
-  bindTemplateForm();
   await renderTemplates();
+}
+
+async function initAdminTemplateEditorPage() {
+  const root = qs("[data-admin-template-editor-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const form = qs("[data-template-form]", root);
+  bindTemplateForm(form);
+  const editingId = new URLSearchParams(location.search).get("id");
+  if (!editingId) return;
+  try {
+    const { template } = await api.get(`/api/templates/${encodeURIComponent(editingId)}`);
+    fillTemplateForm(form, template);
+  } catch (error) {
+    setMessage(qs("[data-template-message]", root), error.message, "error");
+  }
 }
 
 async function initAdminLogsPage() {
@@ -1440,8 +1457,7 @@ function selectedRole(root) {
   return qs('[name="role"]', root)?.value || "member";
 }
 
-function bindTemplateForm() {
-  const form = qs("[data-template-form]");
+function bindTemplateForm(form = qs("[data-template-form]")) {
   if (!form) return;
   const message = qs("[data-template-message]");
   window.youkongRichEditor?.mount(form);
@@ -1463,17 +1479,12 @@ function bindTemplateForm() {
         : await api.post("/api/templates", payload);
       setMessage(message, "模板已保存。", "success");
       showToast("保存成功");
-      resetTemplateForm(form);
-      resetPagedState("templates");
-      await renderTemplates();
+      setTimeout(() => {
+        location.href = "admin-templates.html";
+      }, 520);
     } catch (error) {
       setMessage(message, error.message, "error");
     }
-  });
-
-  qs("[data-cancel-template-edit]", form)?.addEventListener("click", () => {
-    resetTemplateForm(form);
-    setMessage(message, "已取消编辑。");
   });
 }
 
@@ -1482,8 +1493,7 @@ function resetTemplateForm(form) {
   form.reset();
   window.youkongRichEditor?.reset(form);
   qs("[data-template-form-title]", form)?.replaceChildren(document.createTextNode("新增活动模板"));
-  qs("[data-template-submit]", form).textContent = "保存模板";
-  qs("[data-cancel-template-edit]", form).hidden = true;
+  qs("[data-template-submit]", form) && (qs("[data-template-submit]", form).textContent = "保存模板");
 }
 
 function fillTemplateForm(form, template) {
@@ -1493,9 +1503,8 @@ function fillTemplateForm(form, template) {
   form.content.value = template.content || "";
   window.youkongRichEditor?.setHtml(form, template.content || "");
   qs("[data-template-form-title]", form)?.replaceChildren(document.createTextNode("编辑活动模板"));
+  qs("[data-template-editor-heading]")?.replaceChildren(document.createTextNode("编辑活动模板。"));
   qs("[data-template-submit]", form).textContent = "保存修改";
-  qs("[data-cancel-template-edit]", form).hidden = false;
-  form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderRoleControls(user = {}) {
@@ -1805,7 +1814,7 @@ async function renderTemplates() {
             <p>${formatDate(template.updatedAt || template.createdAt)}</p>
           </div>
           <div class="row-actions">
-            <button class="button outline" type="button" data-edit-template>编辑</button>
+            <a class="button outline" href="admin-template-editor.html?id=${encodeURIComponent(template.id)}">编辑</a>
             <button class="button outline danger-soft" type="button" data-delete-template>删除</button>
           </div>
         </article>
@@ -1815,10 +1824,6 @@ async function renderTemplates() {
   revealDynamicContent(list);
 
   qsa("[data-template-id]", list).forEach((row) => {
-    const template = loaded.find((item) => item.id === row.dataset.templateId);
-    qs("[data-edit-template]", row).addEventListener("click", () => {
-      fillTemplateForm(qs("[data-template-form]"), template);
-    });
     qs("[data-delete-template]", row).addEventListener("click", async () => {
       if (!confirm("确定删除这个活动模板吗？")) return;
       await api.delete(`/api/templates/${row.dataset.templateId}`);
@@ -1892,6 +1897,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(initAdminMembersPage),
     safeInit(initAdminModulesPage),
     safeInit(initAdminTemplatesPage),
+    safeInit(initAdminTemplateEditorPage),
     safeInit(initAdminLogsPage),
   ]);
 });

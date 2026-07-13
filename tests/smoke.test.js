@@ -366,6 +366,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const coverBuffer = fs.readFileSync(path.join(__dirname, "..", "assets", "youkong-gathering.png"));
   const pending = await createActivity(member.token, {
     title: "带封面审核测试活动",
+    description: `<h1>待办详情正文图</h1><p>审核时也应该能看到正文图片。</p><img src="${richImage.url}" alt="审核正文图">`,
     cover: {
       blob: new Blob([coverBuffer], { type: "image/png" }),
       name: "youkong-gathering.png",
@@ -386,6 +387,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-activities.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-members.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-templates.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-template-editor.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-logs.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/registrations.html?id=${created.activity.id}`);
 
@@ -404,12 +406,23 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 
     await page.goto(`${baseUrl}/admin-templates.html`);
     await page.waitForLoadState("networkidle");
-    const templatePageState = await page.evaluate(() => ({
+    const templateListState = await page.evaluate(() => ({
+      hasCreateLink: Boolean(document.querySelector('a[href="admin-template-editor.html"]')),
+      hasInlineForm: Boolean(document.querySelector("[data-template-form]")),
+    }));
+    assert.deepEqual(templateListState, {
+      hasCreateLink: true,
+      hasInlineForm: false,
+    });
+
+    await page.goto(`${baseUrl}/admin-template-editor.html`);
+    await page.waitForLoadState("networkidle");
+    const templateEditorState = await page.evaluate(() => ({
       hasForm: Boolean(document.querySelector("[data-template-form]")),
       hasEditor: Boolean(document.querySelector("[data-template-form] [data-rich-editor]")),
       hasContentSource: Boolean(document.querySelector('textarea[name="content"][data-rich-source]')),
     }));
-    assert.deepEqual(templatePageState, {
+    assert.deepEqual(templateEditorState, {
       hasForm: true,
       hasEditor: true,
       hasContentSource: true,
@@ -422,12 +435,14 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       copy: Boolean(document.querySelector("[data-copy-registration-link]")),
       calendar: Boolean(document.querySelector("[data-download-calendar]")),
       richHeading: Boolean(document.querySelector(".article-content h1")),
+      richImage: Boolean(document.querySelector(".article-content img")),
     }));
     assert.deepEqual(shareState, {
       poster: true,
       copy: true,
       calendar: true,
       richHeading: true,
+      richImage: true,
     });
 
     await page.goto(`${baseUrl}/review-tasks.html`);
@@ -436,10 +451,12 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       value: document.querySelector("[data-review-action]")?.value,
       text: document.querySelector("[data-review-action] option:checked")?.textContent.trim(),
       coverCount: document.querySelectorAll(".review-cover").length,
+      richImageCount: document.querySelectorAll(".review-detail .article-content img").length,
     }));
     assert.equal(reviewState.value, "");
     assert.equal(reviewState.text, "请选择");
     assert.equal(reviewState.coverCount, 1);
+    assert.ok(reviewState.richImageCount >= 1);
   } finally {
     await browser.close();
   }

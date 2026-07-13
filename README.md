@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.15.0`
+当前版本：`0.15.1`
 
-状态：`0.15.0` 正在补齐活动描述生产能力：富文本正文图片改为 10MB 原图内浏览器压缩后上传，图片不计入 50000 字描述校验；富文本新增一级标题；YKadmin 新增活动模板管理页，成员发起活动时可选择模板一键填充活动描述。
+状态：`0.15.1` 优化活动模板管理的信息架构：模板列表页只负责搜索和管理，新增 / 编辑进入独立详情页；富文本正文图片改为稳定代理链接，修复审核页和公开报名页不显示正文上传图片的问题。
 
 ## 访问地址
 
@@ -25,6 +25,7 @@ CloudBase 动态线上站点：
 - 成员管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-members.html
 - 模块管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-modules.html
 - 活动模板：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-templates.html
+- 新增活动模板：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-template-editor.html
 - 报名表：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/registrations.html
 - 操作日志：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-logs.html
 - API 服务：https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api
@@ -45,8 +46,8 @@ GitHub Pages 静态展示：
 - YKadmin 操作日志：记录登录、退出、新增、保存、删除、提交、审核、退回、拒绝、撤回、报名、取消报名、删除报名、取消活动、结束活动和自动归档等关键动作，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载；日志手机号脱敏保存，仅保留最近 30 天。
 - 成员「我的」工作台：待办任务置顶，入口卡片作为主操作区，工作台概览放在底部；发起活动、我的活动、审核待办进入独立页面处理。
 - 成员活动管理：保存活动草稿、选择协作员、提交活动审核、查看自己活动状态、撤回活动、查看独立报名表。
-- 活动富文本编辑：发起活动页提供轻量富文本工具栏，支持正文段落、一级/二级/三级标题、加粗、引用、列表、分隔线和正文图片插入；正文图片可选择 10MB 以内原图，浏览器会压缩到约 1MB 后上传，图片标签不计入 50000 字描述上限；服务端会对白名单标签做二次清洗。
-- 活动描述模板：YKadmin 可维护常用活动描述模板；成员发起活动时默认「无，自己写」，选择模板只覆盖活动描述，若已有正文会先确认是否覆盖。
+- 活动富文本编辑：发起活动页提供轻量富文本工具栏，支持正文段落、一级/二级/三级标题、加粗、引用、列表、分隔线和正文图片插入；正文图片可选择 10MB 以内原图，浏览器会压缩到约 1MB 后上传，图片保存为稳定代理链接，图片标签不计入 50000 字描述上限；服务端会对白名单标签做二次清洗。
+- 活动描述模板：YKadmin 可维护常用活动描述模板；模板列表页负责搜索、编辑入口和删除，新增 / 编辑进入独立详情页；成员发起活动时默认「无，自己写」，选择模板只覆盖活动描述，若已有正文会先确认是否覆盖。
 - 普通成员只看到发起活动和自己活动管理；协作员才会看到自己的审核待办。
 - 活动双岗审核：管理员通过后进入协作员审核，协作员通过后公开发布；任一岗位可退回，拒绝后不可编辑。
 - 审核待办详情支持查看活动描述、审核记录和上传封面图；审核意见默认「请选择」。
@@ -80,7 +81,7 @@ GitHub Pages 静态展示：
 - API 诊断：慢请求 / 5xx 响应写入服务端日志，默认阈值 1200ms
 - 数据备份：`scripts/backup-data.js` 导出 JSON 备份，默认不导出 sessions
 - 报名一致性：活动维度写入锁 + 幂等报名 ID + 报名数统一同步函数
-- 文件上传：Multer；线上封面和正文图片上传至 CloudBase Storage
+- 文件上传：Multer；线上封面和正文图片上传至 CloudBase Storage，正文图片通过 `/api/files?fileId=...` 代理获取最新临时访问地址
 - 登录态：HTTP-only Cookie Session + 前端 Bearer token 兜底，改善移动端跨域 Cookie 兼容性
 - 配置：dotenv、CloudBase CLI、`cloudbaserc.json`
 - 测试验证：`npm test` 自动运行语法检查、Node API 冒烟和 Playwright 浏览器布局 / 流程验证；`npm run test:visual` 生成关键页面视觉截图
@@ -108,6 +109,7 @@ GitHub Pages 静态展示：
 ├── admin-members.html      # 成员管理
 ├── admin-modules.html      # 活动模块管理
 ├── admin-templates.html    # 活动描述模板管理
+├── admin-template-editor.html # 新增 / 编辑活动描述模板
 ├── admin-logs.html         # 管理员操作日志
 ├── activity.html           # 活动详情与报名页面
 ├── success.html            # 报名成功 / 确认页面
@@ -345,6 +347,9 @@ npm run deploy:cloudbase
 
 ## 已验证
 
+- `0.15.1` 本地验证通过：`npm run test:syntax`、`npm test`、`npm run deploy:dry-run` 和 `npm run test:visual` 均通过。
+- `0.15.1` API / 浏览器冒烟覆盖：模板列表页不再内嵌新增表单，新增 / 编辑详情页富文本编辑器可挂载，活动详情页和审核待办均能渲染正文上传图片。
+- `0.15.1` 视觉截图通过：桌面 / 移动端活动模板列表页和详情页已生成截图到 `test-results/visual/`，移动端详情页无明显错位或横向溢出。
 - `0.15.0` 本地验证通过：`npm run test:syntax`、`npm test`、`npm run deploy:dry-run` 和 `npm run test:visual` 均通过。
 - `0.15.0` API 冒烟覆盖：活动模板新增 / 编辑 / 删除、模板日志、正文图片上传、H1 富文本清洗、正文图片不计入 50000 字描述校验、成员读取模板和管理员 dashboard 模板计数。
 - `0.15.0` Playwright 冒烟覆盖：活动编辑页模板下拉、H1 工具、活动模板管理页富文本编辑器挂载、移动端活动模板页无横向溢出。

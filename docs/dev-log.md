@@ -1563,3 +1563,66 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 上线后在 CloudBase 控制台确认 `yk_templates` 集合已创建，并补充 `updatedAt + createdAt` 索引。
 2. 后续可继续拆分 `app.js` 中的模板、活动、工作台逻辑，降低主文件体积。
 3. 若模板数量增多，可增加模板适用模块字段，让发起活动页根据所选模块筛选模板。
+
+## 2026-07-13 - 0.15.1 活动模板详情页拆分与正文图片显示修复
+
+### 任务目标
+
+根据新的优化反馈，将活动模板管理从“列表页内嵌新增表单”调整为“列表页 + 新增 / 编辑详情页”的结构，同时修复活动描述和活动模板里上传的正文图片在审核待办和公开活动报名页不展示的问题。
+
+### 具体修改内容
+
+- 新增 `admin-template-editor.html`，作为活动模板新增 / 编辑详情页。
+- `admin-templates.html` 移除内嵌新增表单，改为搜索列表页，并增加「新增活动模板」入口。
+- `app.js` 新增 `initAdminTemplateEditorPage()`，支持通过 `?id=` 加载模板详情、编辑保存和保存后返回列表。
+- `app.js` 中模板列表的编辑按钮改为跳转详情页，删除仍保留在列表页。
+- `lib/app.js` 新增 `GET /api/templates/:id`，供模板详情页读取单个模板。
+- `lib/app.js` 新增 `GET /api/files?fileId=...`，正文图片通过稳定代理链接访问 CloudBase 最新临时文件地址。
+- `/api/uploads/rich-image` 在 CloudBase 模式下返回 `/api/files?fileId=...` 稳定链接，避免将一次性临时 URL 长期保存到富文本正文里。
+- `script.js`、`scripts/build-static.js`、`scripts/verify-cloudbase-package.js`、`scripts/visual-snapshots.js` 同步纳入新页面。
+- `tests/smoke.test.js` 新增模板列表 / 详情页结构断言，并增加审核待办和活动详情页正文图片渲染断言。
+- `package.json` / `package-lock.json` 版本升级到 `0.15.1`，全部 HTML 静态资源参数升级到 `v=0.15.1`。
+- README 和 CHANGELOG 同步更新。
+
+### 涉及文件
+
+- `admin-templates.html`
+- `admin-template-editor.html`
+- 全部 HTML 静态资源版本参数
+- `app.js`
+- `script.js`
+- `styles.css`
+- `lib/app.js`
+- `tests/smoke.test.js`
+- `scripts/build-static.js`
+- `scripts/verify-cloudbase-package.js`
+- `scripts/visual-snapshots.js`
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 模板列表页只做检索、入口和删除，详情页承担写作任务，降低后台列表页的信息密度，也符合产品界面“一个页面一个主要任务”的原则。
+- 正文图片采用 API 代理链接，而不是继续保存 CloudBase 临时 URL；公开活动页和审核待办页无需登录即可通过稳定链接获取最新临时图片地址。
+- 保留原有富文本白名单和图片大小限制，不增加新的外部编辑器依赖。
+
+### 当前完成情况
+
+- 已完成代码开发和文档更新。
+- `npm run test:syntax` 已通过。
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
+- `npm run deploy:dry-run` 已通过：静态站点和云函数包可构建，新增 `admin-template-editor.html` 已进入 CloudBase dry-run 检查。
+- `npm run test:visual` 已通过：新增桌面 / 移动端活动模板详情页截图，移动端视觉抽查无明显错位或横向溢出。
+
+### 遗留问题
+
+- 已经保存为旧 CloudBase 临时 URL 且不包含 `fileId` 的历史正文图片无法自动恢复；本次修复保证新上传图片使用稳定代理链接。
+- `/api/files` 当前按 `fileId` 公开重定向，适合公开活动正文图片；如果后续出现私密文件，需要增加访问权限判断或分桶策略。
+
+### 下一步建议
+
+1. 上线后创建一条包含正文图片的测试活动，走审核到公开页，确认线上 CloudBase 图片代理链路可用。
+2. 后续可继续把模板逻辑从主 `app.js` 拆到独立前端模块。

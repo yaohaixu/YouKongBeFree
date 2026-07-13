@@ -13,7 +13,7 @@
 - API 和本地 Express 静态服务返回安全响应头：CSP、`X-Frame-Options`、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy`，HTTPS 环境返回 HSTS。
 - CloudBase Hosting 静态页补充 HTML `Content-Security-Policy` meta 和 referrer meta，提供基础浏览器侧约束。
 - 上传封面只允许 JPG、PNG、WebP、GIF，单文件最大 6MB，拒绝 SVG、HTML 和脚本类文件。
-- 富文本正文图片需先在浏览器压缩后上传，原图最大 10MB，服务端只接受压缩后约 1MB 以内的图片，并存储到本地 `uploads/` 或 CloudBase Storage。
+- 富文本正文图片需先在浏览器压缩后上传，原图最大 10MB，服务端只接受压缩后约 1MB 以内的图片，并存储到本地 `uploads/` 或 CloudBase Storage；CloudBase 正文图片通过 `/api/files?fileId=...` 代理生成最新临时地址，避免公开页保存过期临时 URL。
 - 手机号、昵称、模块、活动标题、地点、描述、审核意见等字段有格式和长度校验。
 - 活动描述和模板内容只保留有限富文本白名单标签；正文图片标签不会计入 50000 字描述上限，避免上传图片后被 base64 或长 URL 误伤校验。
 - 公开协作员接口不返回手机号；只有管理员成员管理接口返回成员手机号。
