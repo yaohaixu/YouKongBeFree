@@ -8,8 +8,8 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <script src="theme.js?v=0.14.0"></script>
-    <link rel="stylesheet" href="styles.css?v=0.14.0" />
+    <script src="theme.js?v=0.15.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.15.0" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -52,6 +52,7 @@
               <label>人数限额<input name="capacity" type="number" min="1" max="99" placeholder="留空默认 99 人" /></label>
             </div>
             <label>上传首页图<input name="cover" type="file" accept="image/jpeg,image/png,image/webp,image/gif" /></label>
+            <label>活动描述模板<select name="templateId" data-template-select></select></label>
             <label>活动描述</label>
             <textarea name="description" class="rich-textarea" required placeholder="像写一篇公众号短文一样介绍活动：为什么想发起、会发生什么、适合谁来、需要注意什么。可以分段书写。"></textarea>
             <div class="form-actions">
@@ -81,8 +82,8 @@
         <nav class="footer-links"><a href="me.html">工作台</a><a href="my-activities.html">我的活动</a><a href="participate.html">活动与参与</a></nav>
       </div>
     </footer>
-    <script src="script.js?v=0.14.0"></script>
-    <script src="assets/js/rich-editor.js?v=0.14.0"></script>
-    <script src="app.js?v=0.14.0"></script>
+    <script src="script.js?v=0.15.0"></script>
+    <script src="assets/js/rich-editor.js?v=0.15.0"></script>
+    <script src="app.js?v=0.15.0"></script>
   </body>
 </html>

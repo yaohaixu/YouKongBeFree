@@ -7,6 +7,7 @@ const productSurfaceSelectors = [
   "[data-admin-activities-page]",
   "[data-admin-members-page]",
   "[data-admin-modules-page]",
+  "[data-admin-templates-page]",
   "[data-admin-logs-page]",
   "[data-me-dashboard]",
   "[data-my-activities-page]",

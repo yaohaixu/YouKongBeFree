@@ -4,6 +4,7 @@ const path = require("path");
 const root = path.join(__dirname, "..");
 const requiredFiles = [
   "dist/index.html",
+  "dist/admin-templates.html",
   "dist/app.js",
   "dist/styles.css",
   "dist/assets/js/rich-editor.js",

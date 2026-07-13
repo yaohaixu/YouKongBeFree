@@ -1479,3 +1479,83 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 继续拆分后端路由，优先迁移 auth 和 activities，同时为活动状态字段补 JSDoc / TypeScript 类型边界。
 2. 为富文本正文图片增加压缩和上传到 CloudBase Storage 的能力，避免 data URL 进入数据库。
 3. 为视觉截图建立人工审核基线，待视觉趋稳后再考虑像素 diff 阈值。
+
+## 2026-07-13 - 0.15.0 活动描述模板与正文图片上传
+
+### 任务目标
+
+根据活动发起页的进一步优化需求，补齐更接近公众号写作的正文能力：正文图片不再以 base64 进入活动描述，支持 10MB 原图内浏览器压缩后上传；富文本新增一级标题；YKadmin 可以维护活动描述模板，成员发起活动时一键套用。
+
+### 具体修改内容
+
+- `lib/rich-text.js` 新增 H1 白名单，并新增 `richTextLengthExcludingImages()`，用于活动描述和模板内容的 50000 字校验。
+- `assets/js/rich-editor.js` 新增 H1 工具、正文图片压缩上传链路和通用 textarea 挂载能力，可复用于活动描述和模板内容。
+- `lib/store.js` 新增 `templates` 集合，并支持 CloudBase 上传时通过 `directory` 区分 `activity-covers` 和 `rich-images`。
+- `lib/app.js` 新增 `/api/uploads/rich-image`、`/api/templates`、`POST /api/templates`、`PUT /api/templates/:id`、`DELETE /api/templates/:id`。
+- `activity-editor.html` 新增「活动描述模板」下拉框；选择模板只影响活动描述，已有正文时弹窗确认是否覆盖。
+- 新增 `admin-templates.html` 活动模板管理页，并在 YKadmin 工作台增加「活动模板」入口卡片。
+- `app.js` 新增模板分页读取、模板表单增删改、模板下拉填充和套用确认逻辑。
+- `styles.css` 增加富文本 H1 样式和模板管理页细节样式。
+- `tests/smoke.test.js` 新增模板增删改、模板日志、正文图上传、图片不计入描述长度校验、模板页富文本挂载和 H1 工具断言。
+- `scripts/build-static.js`、`scripts/verify-cloudbase-package.js`、`scripts/visual-snapshots.js` 同步纳入 `admin-templates.html`。
+- `data/example-db.json` 补充 `templates` 和 `logs` 集合示例。
+- `package.json` / `package-lock.json` 版本升级到 `0.15.0`，全部 HTML 静态资源参数升级到 `v=0.15.0`。
+- README、CHANGELOG、`docs/cloudbase-indexes.md`、`docs/operations.md`、`docs/security.md` 同步更新。
+
+### 涉及文件
+
+- `admin-templates.html`
+- `activity-editor.html`
+- `admin.html`
+- `admin-activities.html`
+- `admin-members.html`
+- `admin-modules.html`
+- `admin-logs.html`
+- 全部 HTML 静态资源版本参数
+- `app.js`
+- `assets/js/rich-editor.js`
+- `styles.css`
+- `lib/app.js`
+- `lib/rich-text.js`
+- `lib/store.js`
+- `tests/smoke.test.js`
+- `scripts/build-static.js`
+- `scripts/verify-cloudbase-package.js`
+- `scripts/visual-snapshots.js`
+- `data/example-db.json`
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/cloudbase-indexes.md`
+- `docs/operations.md`
+- `docs/security.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 正文图片改为“浏览器压缩后上传”，避免 data URL 长期写入数据库，也避免图片内容挤占活动描述字数上限。
+- 前端压缩目标设为约 1MB、最长边 1600px；服务端再次限制压缩后大小，防止绕过前端直接上传过大文件。
+- 模板使用独立 `yk_templates` 集合，而不是写死在前端或模块配置里，便于运营人员后续持续维护。
+- 模板只覆盖活动描述，不影响标题、时间、地点、模块和协作员，避免套用模板时误改结构化字段。
+- 富文本仍维持轻量白名单编辑器，不引入大型富文本依赖，继续降低 CSP、包体和维护复杂度。
+
+### 当前完成情况
+
+- 已完成代码开发和文档更新。
+- `npm run test:syntax` 已通过。
+- `npm test` 已通过：语法检查、隔离 JSON 数据库 API 冒烟和 Playwright 浏览器冒烟全部通过。
+- `npm run deploy:dry-run` 已通过：静态站点和云函数包可构建，关键产物存在且未打包敏感文件。
+- `npm run test:visual` 已通过：新增桌面 / 移动端活动模板管理页截图，视觉抽查无明显错位或横向溢出。
+
+### 遗留问题
+
+- 富文本图片压缩会统一输出 JPEG，GIF 动图会被压成静态图；当前按活动正文图片场景接受该取舍。
+- 模板内容暂不支持版本历史或恢复；删除前只有确认弹窗和操作日志。
+- CloudBase 线上仍建议为 `yk_templates.updatedAt + createdAt` 建立索引，保证模板管理页数据增长后仍稳定。
+
+### 下一步建议
+
+1. 上线后在 CloudBase 控制台确认 `yk_templates` 集合已创建，并补充 `updatedAt + createdAt` 索引。
+2. 后续可继续拆分 `app.js` 中的模板、活动、工作台逻辑，降低主文件体积。
+3. 若模板数量增多，可增加模板适用模块字段，让发起活动页根据所选模块筛选模板。

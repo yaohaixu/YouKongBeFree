@@ -138,16 +138,46 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(modulesPage.pageInfo.pageSize, 2);
 
   const member = await login("13300002222");
+  const richImageBuffer = fs.readFileSync(path.join(__dirname, "..", "assets", "youkong-gathering.png"));
+  const richImageForm = new FormData();
+  richImageForm.set("image", new Blob([richImageBuffer], { type: "image/png" }), "rich-body.png");
+  const richImage = await request("/api/uploads/rich-image", { method: "POST", body: richImageForm }, member.token);
+  assert.match(richImage.url, /\/uploads\/.+\.png$/);
+
+  const template = await request("/api/templates", {
+    method: "POST",
+    body: {
+      name: "有空放映模板",
+      description: "适合放映类活动的默认正文",
+      content: `<h1>先写清楚为什么放映</h1><p>这里放活动缘起、流程和注意事项。</p><img src="${richImage.url}" alt="模板图">`,
+    },
+  }, admin.token);
+  assert.match(template.template.content, /<h1>先写清楚为什么放映<\/h1>/);
+  assert.match(template.template.content, /<img src="\/uploads\//);
+  const updatedTemplate = await request(`/api/templates/${template.template.id}`, {
+    method: "PUT",
+    body: {
+      name: "有空放映模板·新版",
+      description: "更新后的放映活动底稿",
+      content: "<h1>放映之前</h1><p>先把问题交给观众。</p>",
+    },
+  }, admin.token);
+  assert.equal(updatedTemplate.template.name, "有空放映模板·新版");
+  const memberTemplates = await request("/api/templates?page=1&pageSize=10&q=放映", {}, member.token);
+  assert.ok(memberTemplates.templates.some((item) => item.id === template.template.id));
+
+  const longDescriptionWithImage = `<h1>活动段落标题</h1><p>${"有".repeat(49880)}</p><img src="${richImage.url}" alt="正文图">`;
   const created = await createActivity(member.token, {
     title: "分页和日志测试活动",
     endsAt: localDateTimeFromNow(30, 22, 0),
-    description: '<h2>活动段落标题</h2><p>正文<strong>重点</strong><script>alert("x")</script></p><img src="data:image/png;base64,iVBORw0KGgo=" alt="内文图">',
+    description: `${longDescriptionWithImage}<p>正文<strong>重点</strong><script>alert("x")</script></p>`,
   });
   assert.equal(created.activity.capacity, 99);
   assert.equal(created.activity.registrationCount, 0);
   assert.equal(created.activity.status, "admin_review");
   assert.equal(created.activity.endsAt, localDateTimeFromNow(30, 22, 0));
-  assert.match(created.activity.description, /<h2>活动段落标题<\/h2>/);
+  assert.match(created.activity.description, /<h1>活动段落标题<\/h1>/);
+  assert.match(created.activity.description, /<img src="\/uploads\//);
   assert.match(created.activity.description, /<strong>重点<\/strong>/);
   assert.doesNotMatch(created.activity.description, /script|alert/i);
 
@@ -164,6 +194,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.ok(adminDashboard.activities.total >= 1);
   assert.ok(adminDashboard.users.total >= 3);
   assert.ok(adminDashboard.modules.total >= 1);
+  assert.ok(adminDashboard.templates.total >= 1);
   assert.ok(adminDashboard.pending.total >= 1);
   assert.equal(adminDashboard.pending.activities[0].status, "admin_review");
 
@@ -285,6 +316,11 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   await request(`/api/activities/${cancellable.activity.id}/cancel`, { method: "POST", body: {} }, admin.token);
   const cancelLogs = await request(`/api/logs?page=1&pageSize=10&action=activity.cancel&q=${encodeURIComponent("管理员取消日志测试活动")}`, {}, admin.token);
   assert.ok(cancelLogs.logs.some((log) => log.action === "activity.cancel"));
+  await request(`/api/templates/${template.template.id}`, { method: "DELETE" }, admin.token);
+  const templateLogs = await request("/api/logs?page=1&pageSize=20&q=放映模板", {}, admin.token);
+  assert.ok(templateLogs.logs.some((log) => log.action === "template.create"));
+  assert.ok(templateLogs.logs.some((log) => log.action === "template.update"));
+  assert.ok(templateLogs.logs.some((log) => log.action === "template.delete"));
 
   const expired = await createActivity(member.token, {
     title: "应自动结束的历史活动",
@@ -349,6 +385,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/activities.html?view=history`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-activities.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-members.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-templates.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-logs.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/registrations.html?id=${created.activity.id}`);
 
@@ -357,9 +394,26 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     const editorState = await page.evaluate(() => ({
       hasEditor: Boolean(document.querySelector("[data-rich-editor]")),
       toolCount: document.querySelectorAll("[data-rich-command]").length,
+      hasH1Tool: Boolean(document.querySelector('[data-rich-command="h1"]')),
+      hasTemplateSelect: Boolean(document.querySelector("[data-template-select]")),
     }));
     assert.equal(editorState.hasEditor, true);
     assert.ok(editorState.toolCount >= 8);
+    assert.equal(editorState.hasH1Tool, true);
+    assert.equal(editorState.hasTemplateSelect, true);
+
+    await page.goto(`${baseUrl}/admin-templates.html`);
+    await page.waitForLoadState("networkidle");
+    const templatePageState = await page.evaluate(() => ({
+      hasForm: Boolean(document.querySelector("[data-template-form]")),
+      hasEditor: Boolean(document.querySelector("[data-template-form] [data-rich-editor]")),
+      hasContentSource: Boolean(document.querySelector('textarea[name="content"][data-rich-source]')),
+    }));
+    assert.deepEqual(templatePageState, {
+      hasForm: true,
+      hasEditor: true,
+      hasContentSource: true,
+    });
 
     await page.goto(`${baseUrl}/activity.html?id=${created.activity.id}`);
     await page.waitForLoadState("networkidle");
@@ -367,7 +421,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       poster: Boolean(document.querySelector("[data-download-poster]")),
       copy: Boolean(document.querySelector("[data-copy-registration-link]")),
       calendar: Boolean(document.querySelector("[data-download-calendar]")),
-      richHeading: Boolean(document.querySelector(".article-content h2")),
+      richHeading: Boolean(document.querySelector(".article-content h1")),
     }));
     assert.deepEqual(shareState, {
       poster: true,

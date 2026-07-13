@@ -4613,6 +4613,7 @@ body:has(main[data-admin-dashboard]),
 body:has(main[data-admin-activities-page]),
 body:has(main[data-admin-members-page]),
 body:has(main[data-admin-modules-page]),
+body:has(main[data-admin-templates-page]),
 body:has(main[data-admin-logs-page]),
 body:has(main[data-me-dashboard]),
 body:has(main[data-my-activities-page]),
@@ -6284,6 +6285,15 @@ html[data-theme="light"] body.product-surface .row-actions .muted-text {
   color: var(--muted);
 }
 
+.rich-canvas h1,
+.article-content h1 {
+  margin: 1.35em 0 0.5em;
+  color: var(--ink);
+  font-size: clamp(1.75rem, 5vw, 2.35rem);
+  line-height: 1.14;
+  text-wrap: balance;
+}
+
 .rich-canvas h2,
 .article-content h2 {
   margin: 1.35em 0 0.45em;
@@ -6355,6 +6365,14 @@ html[data-theme="light"] body.product-surface .row-actions .muted-text {
 
 .activity-share-actions .button {
   min-height: 42px;
+}
+
+.template-form-panel .rich-canvas {
+  min-height: 380px;
+}
+
+.template-row .row-actions {
+  align-self: center;
 }
 
 html[data-theme="dark"] body.product-surface .rich-editor,

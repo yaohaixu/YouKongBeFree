@@ -55,6 +55,7 @@ let mePageState = {
   modules: [],
   collaborators: [],
   editingActivity: null,
+  editingTemplate: null,
   richEditor: null,
   submitIntent: "submit",
   pageSize: 12,
@@ -62,6 +63,7 @@ let mePageState = {
   adminActivityPage: 1,
   userPage: 1,
   modulePage: 1,
+  templatePage: 1,
   logPage: 1,
   publicActivityPage: 1,
   myActivities: [],
@@ -69,6 +71,7 @@ let mePageState = {
   publicActivities: [],
   users: [],
   modulesPageItems: [],
+  templates: [],
   logs: [],
 };
 
@@ -91,6 +94,9 @@ const logActionOptions = [
   ["module.create", "新增模块"],
   ["module.update", "保存模块"],
   ["module.delete", "删除模块"],
+  ["template.create", "新增模板"],
+  ["template.update", "保存模板"],
+  ["template.delete", "删除模板"],
   ["activity.create_draft", "保存活动草稿"],
   ["activity.create_submit", "提交活动审核"],
   ["activity.update_draft", "保存活动草稿"],
@@ -216,13 +222,13 @@ function escapeHtml(value = "") {
 }
 
 function hasRichMarkup(value = "") {
-  return /<(p|h2|h3|ul|ol|li|blockquote|strong|b|em|i|u|a|img|br|hr)(\s|>|\/)/i.test(String(value || ""));
+  return /<(p|h1|h2|h3|ul|ol|li|blockquote|strong|b|em|i|u|a|img|br|hr)(\s|>|\/)/i.test(String(value || ""));
 }
 
 function sanitizeRichHtml(value = "") {
   const template = document.createElement("template");
   template.innerHTML = String(value || "").replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "");
-  const allowed = new Set(["P", "H2", "H3", "UL", "OL", "LI", "BLOCKQUOTE", "STRONG", "B", "EM", "I", "U", "A", "IMG", "BR", "HR"]);
+  const allowed = new Set(["P", "H1", "H2", "H3", "UL", "OL", "LI", "BLOCKQUOTE", "STRONG", "B", "EM", "I", "U", "A", "IMG", "BR", "HR"]);
   const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_ELEMENT);
   const nodes = [];
   while (walker.nextNode()) nodes.push(walker.currentNode);
@@ -261,6 +267,14 @@ function descriptionToHtml(value = "") {
     .split(/\n{2,}/)
     .map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br />")}</p>`)
     .join("");
+}
+
+function hasMeaningfulRichText(value = "") {
+  return String(value || "")
+    .replace(/<img\b[^>]*>/gi, "x")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .trim().length > 0;
 }
 
 function hasRole(user, role) {
@@ -348,6 +362,7 @@ function renderMainNav(navLinks, baseLinks, pageName, user) {
     "admin-activities.html",
     "admin-members.html",
     "admin-modules.html",
+    "admin-templates.html",
     "admin-logs.html",
   ];
   const myActive = workspacePages.includes(pageName);
@@ -398,6 +413,16 @@ async function fillModuleFilterSelect(select) {
   const { modules } = await api.get("/api/modules");
   select.innerHTML = `<option value="">全部模块</option>${modules.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("")}`;
   return modules;
+}
+
+async function fillTemplateSelect(select) {
+  if (!select) return [];
+  const { templates } = await api.get("/api/templates?page=1&pageSize=100");
+  select.innerHTML = [
+    `<option value="">无，自己写</option>`,
+    ...templates.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`),
+  ].join("");
+  return templates;
 }
 
 function toDatetimeLocal(value) {
@@ -587,6 +612,8 @@ async function initActivityEditorPage() {
   mePageState.richEditor = window.youkongRichEditor ? window.youkongRichEditor.mount(form) : null;
   mePageState.modules = await fillModuleSelect(form.moduleId);
   mePageState.collaborators = await fillCollaboratorSelect(form.collaboratorId);
+  mePageState.templates = await fillTemplateSelect(qs("[data-template-select]", form));
+  bindTemplateSelect(form);
 
   const editingId = new URLSearchParams(location.search).get("id");
   if (editingId) {
@@ -636,11 +663,32 @@ async function initActivityEditorPage() {
   });
 }
 
+function bindTemplateSelect(form) {
+  const select = qs("[data-template-select]", form);
+  if (!select) return;
+  select.addEventListener("change", () => {
+    const templateId = select.value;
+    if (!templateId) return;
+    const template = (mePageState.templates || []).find((item) => item.id === templateId);
+    if (!template) return;
+    const current = window.youkongRichEditor?.sync(form) || form.description.value || "";
+    if (hasMeaningfulRichText(current) && !confirm("是否覆盖当前活动描述？")) {
+      select.value = "";
+      return;
+    }
+    window.youkongRichEditor?.setHtml(form, template.content || "");
+    form.description.value = template.content || "";
+    showToast("模板已应用");
+  });
+}
+
 function resetActivityForm(form) {
   mePageState.editingActivity = null;
   form.reset();
   form.initiator.value = mePageState.user ? mePageState.user.nickname : "";
   if (form.collaboratorId) form.collaboratorId.value = "";
+  const templateSelect = qs("[data-template-select]", form);
+  if (templateSelect) templateSelect.value = "";
   window.youkongRichEditor?.reset(form);
   qs("[data-activity-form-title]", form)?.replaceChildren(document.createTextNode("添加活动"));
   qs("[data-activity-submit]", form).textContent = "提交审核";
@@ -680,6 +728,7 @@ function resetPagedState(key) {
     adminActivities: "adminActivityPage",
     users: "userPage",
     modulesPageItems: "modulePage",
+    templates: "templatePage",
     logs: "logPage",
     publicActivities: "publicActivityPage",
   };
@@ -1140,7 +1189,7 @@ async function initAdminPage() {
   if (!user) return;
 
   const dashboard = await api.get("/api/dashboard/admin");
-  renderAdminDashboardCards(adminRoot, dashboard.activities, dashboard.users, dashboard.modules, dashboard.pending);
+  renderAdminDashboardCards(adminRoot, dashboard.activities, dashboard.users, dashboard.modules, dashboard.templates, dashboard.pending);
   renderPendingTasks(qs("[data-admin-pending]", adminRoot), (dashboard.pending?.activities || []).slice(0, 4), { compact: true });
 }
 
@@ -1156,7 +1205,7 @@ async function requireAdminUser(root) {
   return user;
 }
 
-function renderAdminDashboardCards(root, activitiesSummary, usersSummary, modulesSummary, pendingSummary) {
+function renderAdminDashboardCards(root, activitiesSummary, usersSummary, modulesSummary, templatesSummary, pendingSummary) {
   const container = qs("[data-admin-dashboard-cards]", root);
   if (!container) return;
   const counts = activitiesSummary?.byStatus || {};
@@ -1164,6 +1213,7 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
   const activityTotal = Number(activitiesSummary?.total || 0);
   const userTotal = Number(usersSummary?.total || 0);
   const moduleTotal = Number(modulesSummary?.total || 0);
+  const templateTotal = Number(templatesSummary?.total || 0);
   const pendingTotal = Number(pendingSummary?.total || 0);
   const cards = [
     {
@@ -1189,6 +1239,14 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
       body: "管理有空放映、有空食堂等分类。",
       meta: "活动分类",
       count: moduleTotal,
+    },
+    {
+      href: "admin-templates.html",
+      label: "活动模板",
+      title: "维护活动描述模板",
+      body: "给放映、食堂、夜校等活动准备可复用正文。",
+      meta: "描述模板",
+      count: templateTotal,
     },
     {
       href: "review-tasks.html",
@@ -1267,6 +1325,25 @@ async function initAdminModulesPage() {
   });
   bindAdminForms();
   await renderModules();
+}
+
+async function initAdminTemplatesPage() {
+  const root = qs("[data-admin-templates-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const filters = qs("[data-template-filters]", root);
+  filters?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    resetPagedState("templates");
+    renderTemplates();
+  });
+  qs("[data-load-more-templates]", root)?.addEventListener("click", () => {
+    mePageState.templatePage += 1;
+    renderTemplates();
+  });
+  bindTemplateForm();
+  await renderTemplates();
 }
 
 async function initAdminLogsPage() {
@@ -1361,6 +1438,64 @@ function bindAdminForms() {
 
 function selectedRole(root) {
   return qs('[name="role"]', root)?.value || "member";
+}
+
+function bindTemplateForm() {
+  const form = qs("[data-template-form]");
+  if (!form) return;
+  const message = qs("[data-template-message]");
+  window.youkongRichEditor?.mount(form);
+  resetTemplateForm(form);
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    window.youkongRichEditor?.sync(form);
+    const editing = mePageState.editingTemplate;
+    const payload = {
+      name: form.name.value,
+      description: form.description.value,
+      content: form.content.value,
+    };
+    setMessage(message, editing ? "正在保存模板..." : "正在新增模板...");
+    try {
+      editing
+        ? await api.put(`/api/templates/${editing.id}`, payload)
+        : await api.post("/api/templates", payload);
+      setMessage(message, "模板已保存。", "success");
+      showToast("保存成功");
+      resetTemplateForm(form);
+      resetPagedState("templates");
+      await renderTemplates();
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+
+  qs("[data-cancel-template-edit]", form)?.addEventListener("click", () => {
+    resetTemplateForm(form);
+    setMessage(message, "已取消编辑。");
+  });
+}
+
+function resetTemplateForm(form) {
+  mePageState.editingTemplate = null;
+  form.reset();
+  window.youkongRichEditor?.reset(form);
+  qs("[data-template-form-title]", form)?.replaceChildren(document.createTextNode("新增活动模板"));
+  qs("[data-template-submit]", form).textContent = "保存模板";
+  qs("[data-cancel-template-edit]", form).hidden = true;
+}
+
+function fillTemplateForm(form, template) {
+  mePageState.editingTemplate = template;
+  form.name.value = template.name || "";
+  form.description.value = template.description || "";
+  form.content.value = template.content || "";
+  window.youkongRichEditor?.setHtml(form, template.content || "");
+  qs("[data-template-form-title]", form)?.replaceChildren(document.createTextNode("编辑活动模板"));
+  qs("[data-template-submit]", form).textContent = "保存修改";
+  qs("[data-cancel-template-edit]", form).hidden = false;
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderRoleControls(user = {}) {
@@ -1642,6 +1777,58 @@ async function renderModules() {
   });
 }
 
+async function renderTemplates() {
+  const list = qs("[data-template-list]");
+  if (!list) return;
+  const filters = qs("[data-template-filters]");
+  const query = queryFromForm(filters, {
+    page: mePageState.templatePage,
+    pageSize: mePageState.pageSize,
+  });
+  const { templates, pageInfo } = await api.get(`/api/templates${query}`);
+  const loaded = mergePageItems("templates", mePageState.templatePage, templates);
+  updatePagedCount(qs("[data-template-count]"), loaded.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-templates]"), loaded.length, pageInfo?.total || loaded.length);
+  if (!loaded.length) {
+    list.innerHTML = `<div class="empty-state"><strong>还没有活动模板</strong><p>可以先新增一个放映、食堂或夜校的常用描述。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = loaded
+    .map(
+      (template) => `
+        <article class="event-row template-row" data-template-id="${template.id}">
+          <div>
+            <span class="tag">活动模板</span>
+            <h3>${escapeHtml(template.name)}</h3>
+            <p>${escapeHtml(template.description || "暂无说明")}</p>
+            <p>${formatDate(template.updatedAt || template.createdAt)}</p>
+          </div>
+          <div class="row-actions">
+            <button class="button outline" type="button" data-edit-template>编辑</button>
+            <button class="button outline danger-soft" type="button" data-delete-template>删除</button>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+  revealDynamicContent(list);
+
+  qsa("[data-template-id]", list).forEach((row) => {
+    const template = loaded.find((item) => item.id === row.dataset.templateId);
+    qs("[data-edit-template]", row).addEventListener("click", () => {
+      fillTemplateForm(qs("[data-template-form]"), template);
+    });
+    qs("[data-delete-template]", row).addEventListener("click", async () => {
+      if (!confirm("确定删除这个活动模板吗？")) return;
+      await api.delete(`/api/templates/${row.dataset.templateId}`);
+      showToast("删除成功");
+      resetPagedState("templates");
+      await renderTemplates();
+    });
+  });
+}
+
 async function renderLogs() {
   const list = qs("[data-log-list]");
   if (!list) return;
@@ -1704,6 +1891,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(initAdminActivitiesPage),
     safeInit(initAdminMembersPage),
     safeInit(initAdminModulesPage),
+    safeInit(initAdminTemplatesPage),
     safeInit(initAdminLogsPage),
   ]);
 });

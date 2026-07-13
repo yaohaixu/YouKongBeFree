@@ -20,6 +20,7 @@ STORE_DRIVER=cloudbase CLOUDBASE_ENV_ID=youkong-d5gh4x0ayc29a2187 npm run backup
 
 - `users`
 - `modules`
+- `templates`
 - `activities`
 - `registrations`
 - `logs`
@@ -68,6 +69,7 @@ API_SLOW_LOG_MS=1200
 - `yk_activities`: `createdBy + createdAt`
 - `yk_activities`: `status + collaboratorId + createdAt`
 - `yk_activities`: `status + startsAt`
+- `yk_templates`: `updatedAt + createdAt`
 - `yk_registrations`: `activityId + createdAt`
 - `yk_registrations`: `activityId + phoneHash`
 - `yk_logs`: `createdAt`
@@ -95,4 +97,4 @@ npm run deploy:dry-run
 npm run test:visual
 ```
 
-截图输出到 `test-results/visual/`，本地不会提交 Git。GitHub Actions 会在 CI 中生成同样截图并上传为 artifact，便于发版前对比首页、登录、后台和活动编辑页。
+截图输出到 `test-results/visual/`，本地不会提交 Git。GitHub Actions 会在 CI 中生成同样截图并上传为 artifact，便于发版前对比首页、登录、后台、活动编辑页和活动模板管理页。

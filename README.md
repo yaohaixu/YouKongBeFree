@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.14.0`
+当前版本：`0.15.0`
 
-状态：`0.14.0` 已补齐活动运营增强能力：操作日志支持操作类型 / 操作人 / 日期筛选，活动编辑页支持轻量富文本排版和正文图片，活动详情页支持分享海报、复制报名链接和一键加日历；同时新增 CloudBase 部署 dry-run、视觉截图 CI artifact，并开始拆分前端功能模块和后端日志路由。
+状态：`0.15.0` 正在补齐活动描述生产能力：富文本正文图片改为 10MB 原图内浏览器压缩后上传，图片不计入 50000 字描述校验；富文本新增一级标题；YKadmin 新增活动模板管理页，成员发起活动时可选择模板一键填充活动描述。
 
 ## 访问地址
 
@@ -24,6 +24,7 @@ CloudBase 动态线上站点：
 - 全部活动管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-activities.html
 - 成员管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-members.html
 - 模块管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-modules.html
+- 活动模板：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-templates.html
 - 报名表：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/registrations.html
 - 操作日志：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-logs.html
 - API 服务：https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api
@@ -39,12 +40,13 @@ GitHub Pages 静态展示：
 - 中文响应式官网：首页、社区共识、活动与参与、捐赠支持、关于与联系。
 - 手机号白名单登录：YKadmin 先在后台录入成员昵称和手机号，成员再用手机号登录。
 - YKadmin 后台：入口型工作台；全部活动、成员管理、模块管理、审核待办拆分为独立子页面。
-- YKadmin 子页面：成员新增、编辑、删除；成员/协作员角色单选；活动模块新增、编辑、删除；管理员待办审核；按关键词、模块、状态、时间、报名数筛选全部活动。
+- YKadmin 子页面：成员新增、编辑、删除；成员/协作员角色单选；活动模块新增、编辑、删除；活动描述模板新增、编辑、删除；管理员待办审核；按关键词、模块、状态、时间、报名数筛选全部活动。
 - YKadmin 活动管理：可查看全部状态活动，可取消或结束活动，可进入独立报名表页面。
 - YKadmin 操作日志：记录登录、退出、新增、保存、删除、提交、审核、退回、拒绝、撤回、报名、取消报名、删除报名、取消活动、结束活动和自动归档等关键动作，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载；日志手机号脱敏保存，仅保留最近 30 天。
 - 成员「我的」工作台：待办任务置顶，入口卡片作为主操作区，工作台概览放在底部；发起活动、我的活动、审核待办进入独立页面处理。
 - 成员活动管理：保存活动草稿、选择协作员、提交活动审核、查看自己活动状态、撤回活动、查看独立报名表。
-- 活动富文本编辑：发起活动页提供轻量富文本工具栏，支持正文段落、二级/三级标题、加粗、引用、列表、分隔线和正文小图插入；服务端会对白名单标签做二次清洗。
+- 活动富文本编辑：发起活动页提供轻量富文本工具栏，支持正文段落、一级/二级/三级标题、加粗、引用、列表、分隔线和正文图片插入；正文图片可选择 10MB 以内原图，浏览器会压缩到约 1MB 后上传，图片标签不计入 50000 字描述上限；服务端会对白名单标签做二次清洗。
+- 活动描述模板：YKadmin 可维护常用活动描述模板；成员发起活动时默认「无，自己写」，选择模板只覆盖活动描述，若已有正文会先确认是否覆盖。
 - 普通成员只看到发起活动和自己活动管理；协作员才会看到自己的审核待办。
 - 活动双岗审核：管理员通过后进入协作员审核，协作员通过后公开发布；任一岗位可退回，拒绝后不可编辑。
 - 审核待办详情支持查看活动描述、审核记录和上传封面图；审核意见默认「请选择」。
@@ -64,7 +66,7 @@ GitHub Pages 静态展示：
 - 内容清理：公开站点已移除旧标识相关文案与图片素材，公开视觉统一使用不含旧标识信息的饭桌现场图。
 - 安全加固：API 安全响应头、静态页 HTML CSP、CORS 白名单、非 GET API 安全校验头、登录和写操作限流、活动操作细粒度限流、Session 哈希存储、过期清理、上传图片白名单、手机号和文本长度校验、日志手机号脱敏。
 - 运维能力：提供 `npm run backup:data` 数据备份脚本；API 慢请求和 5xx 错误会输出到本地 / CloudBase 云函数日志；`npm run deploy:dry-run` 可检查 CloudBase 构建产物；运维手册集中记录备份、慢接口和索引检查流程。
-- CloudBase NoSQL 落库与 CloudBase Storage 活动封面存储。
+- CloudBase NoSQL 落库与 CloudBase Storage 活动封面 / 富文本正文图片存储。
 
 ## 技术栈
 
@@ -78,7 +80,7 @@ GitHub Pages 静态展示：
 - API 诊断：慢请求 / 5xx 响应写入服务端日志，默认阈值 1200ms
 - 数据备份：`scripts/backup-data.js` 导出 JSON 备份，默认不导出 sessions
 - 报名一致性：活动维度写入锁 + 幂等报名 ID + 报名数统一同步函数
-- 文件上传：Multer；线上封面上传至 CloudBase Storage
+- 文件上传：Multer；线上封面和正文图片上传至 CloudBase Storage
 - 登录态：HTTP-only Cookie Session + 前端 Bearer token 兜底，改善移动端跨域 Cookie 兼容性
 - 配置：dotenv、CloudBase CLI、`cloudbaserc.json`
 - 测试验证：`npm test` 自动运行语法检查、Node API 冒烟和 Playwright 浏览器布局 / 流程验证；`npm run test:visual` 生成关键页面视觉截图
@@ -105,6 +107,7 @@ GitHub Pages 静态展示：
 ├── admin-activities.html   # 全部活动管理与筛选
 ├── admin-members.html      # 成员管理
 ├── admin-modules.html      # 活动模块管理
+├── admin-templates.html    # 活动描述模板管理
 ├── admin-logs.html         # 管理员操作日志
 ├── activity.html           # 活动详情与报名页面
 ├── success.html            # 报名成功 / 确认页面
@@ -187,7 +190,7 @@ YK_DB_FILE=
 
 - `.env` 不允许提交到 Git。
 - 本地默认使用 `STORE_DRIVER=json`，数据写入 `data/youkong-db.json`。
-- 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_activities`、`yk_registrations`、`yk_sessions`、`yk_logs`。
+- 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_templates`、`yk_activities`、`yk_registrations`、`yk_sessions`、`yk_logs`。
 - `CORS_ORIGINS` 用英文逗号分隔允许跨域访问 API 的前端域名；`SESSION_MAX_AGE_DAYS` 会被限制在 1 到 30 天之间。
 - `ACTIVITY_AUTO_END_INTERVAL_MS` 控制本地 / 常驻服务的自动结束轮询间隔，默认 15 分钟；`ACTIVITY_AUTO_END_MIN_SWEEP_MS` 控制请求兜底 sweep 的最小间隔；`DISABLE_ACTIVITY_AUTO_END=true` 可关闭后台轮询。
 - `API_TIMING_LOGS=false` 可关闭 API 耗时日志；`API_SLOW_LOG_MS` 控制慢请求阈值，默认 1200ms。
@@ -222,8 +225,8 @@ npm test
 测试内容包括：
 
 - 语法检查：核心前后端脚本和构建脚本。
-- API 冒烟：登录安全头、成员/协作员新增、活动提审、双岗审核、富文本清洗、报名、重复报名、一人名额并发保护、报名表、删除报名日志、删除成员日志、取消活动日志、日志脱敏、日志字段筛选、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
-- Playwright 浏览器冒烟：管理员登录跳转、移动端关键页面无横向溢出、近期 / 历史活动页、富文本工具栏、活动分享按钮、审核默认「请选择」和审核封面图展示。
+- API 冒烟：登录安全头、成员/协作员新增、活动模板增删改、正文图片上传、活动提审、双岗审核、富文本清洗、正文图片不计入描述长度校验、报名、重复报名、一人名额并发保护、报名表、删除报名日志、删除成员日志、取消活动日志、模板日志、日志脱敏、日志字段筛选、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
+- Playwright 浏览器冒烟：管理员登录跳转、移动端关键页面无横向溢出、近期 / 历史活动页、活动编辑页模板下拉和 H1 工具、活动模板管理页富文本编辑器、活动分享按钮、审核默认「请选择」和审核封面图展示。
 
 CloudBase 部署 dry-run：
 
@@ -287,7 +290,7 @@ npm run deploy:cloudbase
 - 静态页面通过 CloudBase Hosting 托管。
 - 动态接口通过 HTTP 访问服务 `/api` 绑定云函数 `youkongApi`。
 - 云函数使用 `serverless-http` 复用 Express API。
-- 活动封面在云端写入 CloudBase Storage，本地仍写入 `uploads/`。
+- 活动封面和富文本正文图片在云端写入 CloudBase Storage，本地仍写入 `uploads/`。
 
 ## 已完成功能
 
@@ -300,6 +303,7 @@ npm run deploy:cloudbase
 - YKadmin 全部活动独立管理页，支持关键词、模块、状态、时间和排序筛选。
 - YKadmin 成员管理独立页。
 - YKadmin 活动模块管理独立页。
+- YKadmin 活动描述模板管理独立页，支持模板搜索、新增、编辑、删除和富文本正文维护。
 - YKadmin 操作日志独立页，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载，并仅保留最近 30 天日志。
 - YKadmin 可取消或结束活动。
 - 成员工作台入口卡片，工作台概览位于所有入口模块之后。
@@ -308,12 +312,13 @@ npm run deploy:cloudbase
 - 活动、成员、模块和日志列表使用 API 分页；搜索条件只在点击「筛选」时生效。
 - CloudBase 模式下列表查询通过存储层 `where/orderBy/skip/limit/count` 执行，避免云函数读取集合全量后再分页。
 - CloudBase 模式下登录态、手机号登录和工作台概览使用字段级查询与计数，降低已登录页面首屏等待时间。
-- 数据备份脚本支持本地 JSON 和 CloudBase NoSQL，默认导出成员、模块、活动、报名和操作日志。
+- 数据备份脚本支持本地 JSON 和 CloudBase NoSQL，默认导出成员、模块、活动模板、活动、报名和操作日志。
 - API 慢请求日志支持通过 `API_SLOW_LOG_MS` 调节阈值，便于定位缺索引和慢接口。
 - `npm test` 自动化冒烟流程，覆盖 API 主链路和关键移动端浏览器布局。
 - 审核待办独立页，管理员和协作员按自己的待办进入。
 - 成员活动草稿、提审、编辑退回活动。
-- 活动富文本编辑器：支持段落标题、加粗、引用、列表、分隔线和正文小图，服务端白名单清洗后保存。
+- 活动富文本编辑器：支持一级/二级/三级标题、加粗、引用、列表、分隔线和正文图片；正文图片 10MB 内可选，浏览器压缩后上传，服务端白名单清洗后保存。
+- 发起活动页支持选择活动描述模板，默认不套用；已有正文时选择模板会弹窗确认是否覆盖当前描述。
 - 双岗审核流：管理员审核、协作员审核、通过/退回/拒绝。
 - 发起人查看审核状态：草稿、审核中、退回、拒绝、活动发布、活动人满、活动取消、活动结束。
 - 发起人可撤回审核中、已发布、已满员活动，撤回后回到草稿。
@@ -340,6 +345,10 @@ npm run deploy:cloudbase
 
 ## 已验证
 
+- `0.15.0` 本地验证通过：`npm run test:syntax`、`npm test`、`npm run deploy:dry-run` 和 `npm run test:visual` 均通过。
+- `0.15.0` API 冒烟覆盖：活动模板新增 / 编辑 / 删除、模板日志、正文图片上传、H1 富文本清洗、正文图片不计入 50000 字描述校验、成员读取模板和管理员 dashboard 模板计数。
+- `0.15.0` Playwright 冒烟覆盖：活动编辑页模板下拉、H1 工具、活动模板管理页富文本编辑器挂载、移动端活动模板页无横向溢出。
+- `0.15.0` 视觉截图通过：桌面 / 移动端活动模板管理页已生成截图到 `test-results/visual/`，人工抽查无明显错位或输入框越界。
 - `node --check` 通过：`app.js`、`assets/js/rich-editor.js`、`assets/js/activity-share.js`、`script.js`、`server.js`、`lib/app.js`、`lib/store.js`、`lib/rich-text.js`、`lib/routes/logs.js`、构建脚本、备份脚本、dry-run 脚本和视觉截图脚本。
 - `npm test` 通过：语法检查、隔离 JSON 数据库 API 冒烟和 Playwright 浏览器冒烟；覆盖 30 天前操作日志自动清理、工作台 dashboard 计数、富文本清洗、日志字段筛选、删除报名日志、删除成员日志、取消活动日志、活动分享按钮和待办预览。
 - `npm run deploy:dry-run` 通过，CloudBase 静态站点和云函数包均可构建，并通过产物完整性和敏感文件检查。
@@ -384,7 +393,7 @@ npm run deploy:cloudbase
 - 生产级身份验证：短信验证码、密码或微信登录，替代当前手机号白名单免密登录。
 - 管理员仪表盘统计。
 - CloudBase 恢复演练和权限策略文档。
-- CloudBase 控制台建议补充 `yk_sessions.tokenHash`、`yk_users.phone`、`yk_logs.action + createdAt`、`yk_logs.actorId + createdAt` 等字段索引，保证登录态、工作台和日志筛选随数据量增长仍保持稳定。
+- CloudBase 控制台建议补充 `yk_sessions.tokenHash`、`yk_users.phone`、`yk_templates.updatedAt + createdAt`、`yk_logs.action + createdAt`、`yk_logs.actorId + createdAt` 等字段索引，保证登录态、工作台、模板管理和日志筛选随数据量增长仍保持稳定。
 - 自定义域名和同源 API 路由，减少跨域 Cookie 运维复杂度。
 - 继续拆分后端路由：优先迁移 auth、activities、users、modules，并逐步补 JSDoc / TypeScript 类型边界。
 - 如报名量继续增大，需要把当前进程内活动报名锁升级为数据库事务、唯一索引或队列型全局锁。

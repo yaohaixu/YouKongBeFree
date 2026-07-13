@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>活动模板｜有空客厅</title>
+    <meta name="description" content="YKadmin 新增、搜索、编辑和删除活动描述模板。" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <script src="theme.js?v=0.15.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.15.0" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html"><span class="brand-mark">有空</span><span class="brand-text">有空客厅</span></a>
+        <button class="menu-toggle" type="button" aria-label="打开导航" aria-expanded="false"><span></span><span></span><span></span></button>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="whitepaper.html">社区共识</a>
+          <a href="participate.html">活动与参与</a>
+          <a href="donate.html">捐赠支持</a>
+          <a href="about.html">关于与联系</a>
+          <span class="session-nav" data-session-nav><a href="login.html">我的</a></span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" data-admin-templates-page>
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">活动模板</p>
+          <h1>把常用活动描述，整理成可以一键套用的底稿。</h1>
+          <p>模板只会填充「活动描述」正文，不会影响标题、时间、地点、模块和协作员。成员选择模板时，若已有正文会先询问是否覆盖。</p>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap manager-layout template-manager-layout">
+          <div>
+            <form class="filter-panel" data-template-filters>
+              <label>搜索<input name="q" placeholder="模板名称 / 说明 / 正文" /></label>
+              <button class="button ghost" type="submit">筛选</button>
+            </form>
+            <div class="list-toolbar">
+              <span data-template-count>正在读取模板...</span>
+              <a class="button ghost" href="admin.html">回后台</a>
+            </div>
+            <div class="event-list rows" data-template-list></div>
+            <button class="button ghost load-more" type="button" data-load-more-templates hidden>加载更多</button>
+          </div>
+
+          <aside class="form-note sticky-panel template-form-panel">
+            <h3 data-template-form-title>新增活动模板</h3>
+            <form data-template-form>
+              <label>模板名称<input name="name" required placeholder="比如：有空放映默认介绍" /></label>
+              <label>模板说明<input name="description" placeholder="一句话说明适用场景" /></label>
+              <label>模板内容</label>
+              <textarea name="content" class="rich-textarea" data-rich-textarea required placeholder="写下模板正文。可以包含一级标题、段落、列表和正文图片。"></textarea>
+              <div class="form-actions">
+                <button class="button primary" type="submit" data-template-submit>保存模板</button>
+                <button class="button outline" type="button" data-cancel-template-edit hidden>取消</button>
+              </div>
+              <p class="form-message" data-template-message></p>
+            </form>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><div class="footer-brand">有空客厅</div><div>模板只是底稿，真正的活动还要长出自己的样子。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-activities.html">全部活动</a><a href="admin-members.html">成员管理</a><a href="admin-modules.html">模块管理</a><a href="admin-logs.html">操作日志</a></nav>
+      </div>
+    </footer>
+    <script src="script.js?v=0.15.0"></script>
+    <script src="assets/js/rich-editor.js?v=0.15.0"></script>
+    <script src="app.js?v=0.15.0"></script>
+  </body>
+</html>
