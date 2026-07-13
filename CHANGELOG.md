@@ -2,6 +2,21 @@
 
 所有重要变更都会记录在此文件中。格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循语义化版本思路。
 
+## [0.13.5] - 2026-07-13
+
+### Added
+
+- 新增 `scripts/backup-data.js` 和 `npm run backup:data`，支持导出本地 JSON 或 CloudBase NoSQL 数据备份。
+- 新增 `docs/operations.md` 运维手册，集中记录数据备份、API 慢请求日志和 CloudBase 索引检查流程。
+- 新增 API 慢请求 / 5xx 响应日志，默认记录超过 1200ms 的 API 请求到本地控制台或 CloudBase 云函数日志。
+- 新增 `API_TIMING_LOGS` 和 `API_SLOW_LOG_MS` 环境变量，用于关闭耗时日志或调整慢请求阈值。
+
+### Changed
+
+- 静态资源不变，项目版本升级为 `0.13.5`。
+- `npm run test:syntax` 增加 `scripts/backup-data.js` 语法检查。
+- `docs/cloudbase-indexes.md` 补充 `status + createdAt` 索引建议，便于管理员待办和 dashboard 查询。
+
 ## [0.13.4] - 2026-07-13
 
 ### Added

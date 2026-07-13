@@ -1335,3 +1335,64 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 
 1. 在 CloudBase 控制台补齐本次新增的登录态和手机号相关索引。
 2. 后续为线上 API 增加耗时日志或简单性能监控，定位真实慢查询。
+
+## 2026-07-13 - 0.13.5 运维增强：备份脚本和 API 慢请求日志
+
+### 任务目标
+
+根据项目下一步优化方向，优先补齐稳定运营底座：数据备份、API 慢请求观测和索引检查文档，让后续上线和排障更可控。
+
+### 具体修改内容
+
+- `lib/app.js` 新增 `apiTimingLogger()` 中间件，记录超过阈值的 API 请求和所有 5xx 响应。
+- 新增环境变量 `API_TIMING_LOGS` 和 `API_SLOW_LOG_MS`，默认启用 API 耗时日志，慢请求阈值为 1200ms。
+- 新增 `scripts/backup-data.js`，支持导出本地 JSON 或 CloudBase NoSQL 数据。
+- 新增 `npm run backup:data`，并将 `scripts/backup-data.js` 加入 `npm run test:syntax`。
+- 新增 `docs/operations.md`，记录备份命令、慢请求日志格式和 CloudBase 索引检查清单。
+- `docs/cloudbase-indexes.md` 补充 `status + createdAt` 索引建议，对应管理员待办、状态计数和 dashboard 预览。
+- `.env.example` 新增 API 耗时日志配置项。
+- `package.json` 和 `package-lock.json` 版本升级到 `0.13.5`。
+- README 和 CHANGELOG 同步更新。
+
+### 涉及文件
+
+- `lib/app.js`
+- `scripts/backup-data.js`
+- `docs/operations.md`
+- `docs/cloudbase-indexes.md`
+- `.env.example`
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 慢请求日志只写本地控制台 / CloudBase 云函数日志，不写入 `yk_logs` 操作日志集合，避免高频访问把业务审计日志刷爆。
+- 慢请求日志只记录 `method`、`path`、状态码、耗时和存储驱动，不记录 query、body、手机号或昵称，降低日志隐私风险。
+- 数据备份默认排除 `sessions`，避免把 session hash 写入备份文件；需要排查登录态时可显式追加 `--include-sessions`。
+- 备份脚本复用现有存储层 `store.query()`，因此本地 JSON 和 CloudBase 使用同一条导出路径。
+- 备份文件默认输出到 `output/backups/`，该目录已经被 `.gitignore` 忽略，避免误提交生产数据。
+
+### 当前完成情况
+
+- 已完成代码开发和文档更新。
+- 本地备份脚本验证通过：`npm run backup:data -- --out tmp/backup-test.json --include-sessions` 可导出完整 JSON；默认模式可排除 `sessions`。
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
+- `npm run build:cloudbase` 已通过：静态站点和云函数包均可构建。
+- Git 已提交本次运维增强变更。
+- CloudBase 静态托管已部署成功：上传 28 个文件。
+- CloudBase 云函数 `youkongApi` 已部署成功，HTTP API 地址为 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
+- 线上冒烟通过：`/api/session` 返回 200，管理员手机号 `13377779999` 可登录，`/api/dashboard/admin` 返回活动、成员、模块和待办计数；本次实测 dashboard 响应约 452ms。
+- 待执行：GitHub `dev` / `main` 推送和 CI 观察。
+
+### 遗留问题
+
+- 当前只有导出备份，尚未实现一键恢复脚本；恢复仍需人工确认后导入，避免误覆盖线上数据。
+- CloudBase 索引仍需要在控制台手动创建，代码和文档只提供检查清单。
+
+### 下一步建议
+
+1. 增加受控恢复脚本，要求显式确认目标环境和备份文件。
+2. 在 CloudBase 控制台补齐 `docs/operations.md` 和 `docs/cloudbase-indexes.md` 中列出的索引。

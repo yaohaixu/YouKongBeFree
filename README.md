@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.13.4`
+当前版本：`0.13.5`
 
-状态：`0.13.4` 已完成成员「我的」和 YKadmin 工作台性能优化：工作台入口卡片改用轻量 dashboard API 获取计数和少量待办预览，不再等待完整活动 / 成员 / 模块列表；登录态和手机号登录改为按字段查询；活动列表组装不再读取全量报名集合。`0.13.3` 的主题切换、白天模式和日志保留优化继续保留。
+状态：`0.13.5` 已补齐基础运维能力：新增本地 / CloudBase 数据备份脚本，API 慢请求和 5xx 错误会写入服务端日志，并新增 `docs/operations.md` 运维手册。`0.13.4` 的工作台性能优化和 `0.13.3` 的主题修复继续保留。
 
 ## 访问地址
 
@@ -62,6 +62,7 @@ GitHub Pages 静态展示：
 - 首页主视觉：首页 Hero 背景使用用户提供的新图 `assets/youkong-hero-illustration.png`，右侧内容图继续使用不含旧标识信息的饭桌现场图。
 - 内容清理：公开站点已移除旧标识相关文案与图片素材，公开视觉统一使用不含旧标识信息的饭桌现场图。
 - 安全加固：API 安全响应头、静态页 HTML CSP、CORS 白名单、非 GET API 安全校验头、登录和写操作限流、活动操作细粒度限流、Session 哈希存储、过期清理、上传图片白名单、手机号和文本长度校验、日志手机号脱敏。
+- 运维能力：提供 `npm run backup:data` 数据备份脚本；API 慢请求和 5xx 错误会输出到本地 / CloudBase 云函数日志；运维手册集中记录备份、慢接口和索引检查流程。
 - CloudBase NoSQL 落库与 CloudBase Storage 活动封面存储。
 
 ## 技术栈
@@ -73,6 +74,8 @@ GitHub Pages 静态展示：
 - 查询分页：本地 JSON 模拟查询；CloudBase 使用 `where`、`orderBy`、`skip`、`limit` 和 `count`
 - 活动归档：Express 启动定时轮询 + 公开活动列表请求前兜底 sweep；CloudBase 云函数入口按节流策略执行 sweep
 - 操作日志：写入和查询时自动清理 30 天前日志，管理员日志页只查询保留期内记录
+- API 诊断：慢请求 / 5xx 响应写入服务端日志，默认阈值 1200ms
+- 数据备份：`scripts/backup-data.js` 导出 JSON 备份，默认不导出 sessions
 - 报名一致性：活动维度写入锁 + 幂等报名 ID + 报名数统一同步函数
 - 文件上传：Multer；线上封面上传至 CloudBase Storage
 - 登录态：HTTP-only Cookie Session + 前端 Bearer token 兜底，改善移动端跨域 Cookie 兼容性
@@ -118,7 +121,8 @@ GitHub Pages 静态展示：
 │   └── smoke.test.js       # API + Playwright 浏览器冒烟测试
 ├── scripts/
 │   ├── build-static.js     # 生成 CloudBase Hosting 静态目录
-│   └── build-function.js   # 生成 CloudBase 云函数部署包
+│   ├── build-function.js   # 生成 CloudBase 云函数部署包
+│   └── backup-data.js      # 导出本地 / CloudBase 数据备份
 ├── assets/                 # 官网图片与图标
 ├── data/
 │   └── example-db.json     # 示例数据结构，真实运行数据不提交 Git
@@ -127,6 +131,7 @@ GitHub Pages 静态展示：
 ├── docs/
 │   ├── dev-log.md          # 开发日志
 │   ├── cloudbase-indexes.md # CloudBase 查询字段和推荐索引
+│   ├── operations.md       # 备份、慢请求日志和索引检查运维手册
 │   └── security.md         # 安全控制和遗留风险说明
 ├── cloudbaserc.json        # CloudBase 环境与云函数配置
 ├── package.json
@@ -164,6 +169,8 @@ SESSION_MAX_AGE_DAYS=14
 ACTIVITY_AUTO_END_INTERVAL_MS=900000
 ACTIVITY_AUTO_END_MIN_SWEEP_MS=60000
 DISABLE_ACTIVITY_AUTO_END=false
+API_TIMING_LOGS=true
+API_SLOW_LOG_MS=1200
 YK_DB_FILE=
 ```
 
@@ -174,6 +181,7 @@ YK_DB_FILE=
 - 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_activities`、`yk_registrations`、`yk_sessions`、`yk_logs`。
 - `CORS_ORIGINS` 用英文逗号分隔允许跨域访问 API 的前端域名；`SESSION_MAX_AGE_DAYS` 会被限制在 1 到 30 天之间。
 - `ACTIVITY_AUTO_END_INTERVAL_MS` 控制本地 / 常驻服务的自动结束轮询间隔，默认 15 分钟；`ACTIVITY_AUTO_END_MIN_SWEEP_MS` 控制请求兜底 sweep 的最小间隔；`DISABLE_ACTIVITY_AUTO_END=true` 可关闭后台轮询。
+- `API_TIMING_LOGS=false` 可关闭 API 耗时日志；`API_SLOW_LOG_MS` 控制慢请求阈值，默认 1200ms。
 - 如果数据不存在，服务会初始化默认管理员和默认活动模块。
 
 ## 运行方式
@@ -207,6 +215,15 @@ npm test
 - 语法检查：核心前后端脚本和构建脚本。
 - API 冒烟：登录安全头、成员/协作员新增、活动提审、双岗审核、报名、重复报名、一人名额并发保护、报名表、日志脱敏、日志查询、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
 - Playwright 浏览器冒烟：管理员登录跳转、移动端关键页面无横向溢出、近期 / 历史活动页、审核默认「请选择」和审核封面图展示。
+
+数据备份：
+
+```bash
+npm run backup:data
+STORE_DRIVER=cloudbase CLOUDBASE_ENV_ID=youkong-d5gh4x0ayc29a2187 npm run backup:data
+```
+
+备份默认输出到 `output/backups/`，该目录不提交 Git；默认不导出 `sessions`，需要完整排查时可使用 `npm run backup:data -- --include-sessions`。
 
 ## CloudBase 部署
 
@@ -262,6 +279,8 @@ npm run deploy:cloudbase
 - 活动、成员、模块和日志列表使用 API 分页；搜索条件只在点击「筛选」时生效。
 - CloudBase 模式下列表查询通过存储层 `where/orderBy/skip/limit/count` 执行，避免云函数读取集合全量后再分页。
 - CloudBase 模式下登录态、手机号登录和工作台概览使用字段级查询与计数，降低已登录页面首屏等待时间。
+- 数据备份脚本支持本地 JSON 和 CloudBase NoSQL，默认导出成员、模块、活动、报名和操作日志。
+- API 慢请求日志支持通过 `API_SLOW_LOG_MS` 调节阈值，便于定位缺索引和慢接口。
 - `npm test` 自动化冒烟流程，覆盖 API 主链路和关键移动端浏览器布局。
 - 审核待办独立页，管理员和协作员按自己的待办进入。
 - 成员活动草稿、提审、编辑退回活动。
@@ -287,7 +306,7 @@ npm run deploy:cloudbase
 
 ## 已验证
 
-- `node --check` 通过：`app.js`、`script.js`、`server.js`、`lib/app.js`、`lib/store.js`、构建脚本。
+- `node --check` 通过：`app.js`、`script.js`、`server.js`、`lib/app.js`、`lib/store.js`、构建脚本和备份脚本。
 - `npm test` 通过：语法检查、隔离 JSON 数据库 API 冒烟和 Playwright 浏览器冒烟；覆盖 30 天前操作日志自动清理、工作台 dashboard 计数和待办预览。
 - `npm run build:cloudbase` 通过，CloudBase 静态站点和云函数均可构建。
 - 本地浏览器视觉检查通过：`0.11.0` 首页、登录页、活动页、管理员工作台在 1440px 和 390px 视口下无横向溢出；登录页输入框与按钮间距正常；后台入口卡片、待办区和活动公告列表排版稳定。
@@ -297,6 +316,7 @@ npm run deploy:cloudbase
 - 本地 Playwright 检查通过：`0.13.3` 主题按钮在系统、黑夜、白天三种模式下仅显示当前图标，图标居中且无上一状态残影。
 - 本地 API 冒烟通过：`0.13.4` 新增 `/api/dashboard/me` 和 `/api/dashboard/admin`，可返回工作台计数、待办总数和少量待办预览，成员工作台不再依赖完整活动列表加载入口卡片。
 - 本地 CI 依赖安装验证通过：`npm ci --registry=https://registry.npmjs.org` 可成功安装依赖，避免 GitHub Actions 因不存在的 `retry@0.13.3` tarball 失败。
+- 本地数据备份验证通过：`npm run backup:data -- --out tmp/backup-test.json --include-sessions` 可生成 JSON 备份。
 - 本地浏览器回归通过：`0.6.0` 管理员工作台、成员工作台、发起活动、我的活动、审核待办、全部活动、成员管理、模块管理、报名表、操作日志均可打开，控制台无错误。
 - 本地浏览器流程通过：普通成员不展示审核待办；发起活动提交管理员审核；管理员可查看审核详情封面并通过；协作员完成第二岗审核后活动发布；报名、重复报名找回确认页、取消报名均可用。
 - 本地移动端 390px 验证通过：工作台卡片、全部活动筛选、列表和导航自然换行，无隐藏控件外露。
@@ -319,15 +339,16 @@ npm run deploy:cloudbase
 - CloudBase `0.9.0` 结束时间与 CI 版本部署通过：静态托管上传 29 个文件，云函数 `youkongApi` 部署成功；线上 `activity-editor.html` 已引用 `v=0.9.0` 并包含 `endsAt` 字段，线上 `app.js` 已包含 `formatActivityTime` 和 `activity.endsAt` 逻辑，线上近期活动 API 返回正确 `pageInfo`。
 - CloudBase `0.10.0` 报名保护与安全日志版本部署通过：静态托管上传 29 个文件，云函数 `youkongApi` 部署成功；线上 `index.html` 已引用 `v=0.10.0`，近期活动 API 返回正确 `pageInfo`，手动归档接口未登录返回 `403`。
 - CloudBase `0.13.4` 工作台性能优化版本部署通过：静态托管上传 28 个文件，云函数 `youkongApi` 部署成功；线上 `index.html` 已引用 `v=0.13.4`，线上 `app.js` 已包含 `/api/dashboard/me` 调用，管理员 dashboard API 返回活动、成员、模块和待办计数。
+- CloudBase `0.13.5` 运维增强版本部署通过：静态托管上传 28 个文件，云函数 `youkongApi` 部署成功；线上 `/api/session`、管理员登录和 `/api/dashboard/admin` 冒烟通过。
 - 线上冒烟产生的测试成员、活动和报名记录已清理。
-- GitHub 状态：`0.13.4` 工作台性能优化已提交并推送到 `dev` 和 `main`，CloudBase 已部署；最新提交请以 `git log --oneline --decorate --graph --all` 为准。
+- GitHub 状态：项目按 `dev` / `main` 双分支维护；最新提交和分支状态请以 `git status --short --branch` 与 `git log --oneline --decorate --graph --all` 为准。
 
 ## 正在开发 / 待完善
 
 - 生产级身份验证：短信验证码、密码或微信登录，替代当前手机号白名单免密登录。
 - 富文本编辑器和图片排版能力。
 - 管理员仪表盘统计。
-- CloudBase 数据备份、恢复和权限策略文档。
+- CloudBase 恢复演练和权限策略文档。
 - CloudBase 控制台建议补充 `yk_sessions.tokenHash`、`yk_users.phone` 等字段索引，保证登录态和工作台接口随数据量增长仍保持稳定。
 - 自定义域名和同源 API 路由，减少跨域 Cookie 运维复杂度。
 - 如报名量继续增大，需要把当前进程内活动报名锁升级为数据库事务、唯一索引或队列型全局锁。
