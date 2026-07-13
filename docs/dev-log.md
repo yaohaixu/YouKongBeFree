@@ -1461,11 +1461,11 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 - `npm run deploy:dry-run` 已通过：静态站点和云函数包可构建，关键产物存在且未打包敏感文件。
 - `npm run test:visual` 已通过：桌面 / 移动端首页、登录、后台和活动编辑页截图已生成到 `test-results/visual/`。
 - 本地视觉抽查通过：移动端活动编辑页不再被浮动「首页」按钮遮挡，富文本工具栏和表单单列布局正常。
-- Git 已提交本次变更，提交信息为 `feat(activity): add rich editor sharing and log filters`。
+- Git 已提交 `3d6d53d feat(activity): add rich editor sharing and log filters`。
 - CloudBase 静态托管已部署成功：上传 30 个文件。
 - CloudBase 云函数 `youkongApi` 已部署成功，HTTP API 地址为 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
 - 线上冒烟通过：`activity-editor.html` 已引用 `rich-editor.js?v=0.14.0`，`activity.html` 已引用 `activity-share.js?v=0.14.0`，`/api/session` 返回 200，管理员手机号 `13377779999` 可登录，`/api/dashboard/admin` 和 `/api/logs?action=login` 返回 200。
-- GitHub 推送待重试：首次 `git push origin dev` 和 `git -c http.version=HTTP/1.1 push origin dev` 均因连接 GitHub 443 超时失败，本地 `dev` 已领先远端。
+- GitHub `dev` / `main` 已推送到 `3d6d53d feat(activity): add rich editor sharing and log filters`；`dev` CI、`main` CI 和 GitHub Pages 部署任务均已通过。CI 已执行 `npm test`、CloudBase dry-run 和视觉截图 artifact 上传。
 
 ### 遗留问题
 
