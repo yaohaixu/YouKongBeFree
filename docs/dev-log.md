@@ -1616,6 +1616,10 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 - `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
 - `npm run deploy:dry-run` 已通过：静态站点和云函数包可构建，新增 `admin-template-editor.html` 已进入 CloudBase dry-run 检查。
 - `npm run test:visual` 已通过：新增桌面 / 移动端活动模板详情页截图，移动端视觉抽查无明显错位或横向溢出。
+- Git 已提交 `8140a6e fix(activity): keep rich text images visible`，并推送到 `dev` 与 `main`。
+- CloudBase 静态托管已部署成功：上传 32 个文件，新增 `admin-template-editor.html` 已进入线上站点。
+- CloudBase 云函数 `youkongApi` 已部署成功，HTTP API 地址为 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
+- 线上冒烟通过：`admin-templates.html` 已引用 `v=0.15.1` 并只保留列表和新增入口；`admin-template-editor.html` 已引用 `v=0.15.1` 并包含模板详情表单；管理员手机号 `13377779999` 可登录；`/api/uploads/rich-image` 返回 `/api/files?fileId=...` 稳定代理链接，代理链接返回 302 到 CloudBase 临时图片地址；线上测试模板已创建后删除。
 
 ### 遗留问题
 
