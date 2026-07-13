@@ -1385,7 +1385,7 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 - CloudBase 静态托管已部署成功：上传 28 个文件。
 - CloudBase 云函数 `youkongApi` 已部署成功，HTTP API 地址为 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
 - 线上冒烟通过：`/api/session` 返回 200，管理员手机号 `13377779999` 可登录，`/api/dashboard/admin` 返回活动、成员、模块和待办计数；本次实测 dashboard 响应约 452ms。
-- 待执行：GitHub `dev` / `main` 推送和 CI 观察。
+- GitHub `dev` / `main` 已推送到 `403daaf feat(ops): add backup and api timing logs`；`dev` CI、`main` CI 和 GitHub Pages 部署任务均已通过。
 
 ### 遗留问题
 
