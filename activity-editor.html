@@ -8,8 +8,8 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <script src="theme.js?v=0.16.0"></script>
-    <link rel="stylesheet" href="styles.css?v=0.16.0" />
+    <script src="theme.js?v=0.16.1"></script>
+    <link rel="stylesheet" href="styles.css?v=0.16.1" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -46,6 +46,13 @@
               <label>选择协作员<select name="collaboratorId"></select></label>
               <label>标题<input name="title" required placeholder="比如：有空放映｜重庆森林" /></label>
               <label>发起人<input name="initiator" required /></label>
+              <label>是否展示活动发起人联系方式
+                <select name="showInitiatorContact" data-initiator-contact-toggle>
+                  <option value="no" selected>否</option>
+                  <option value="yes">是</option>
+                </select>
+              </label>
+              <label data-initiator-contact-field hidden>活动发起人联系方式<input name="initiatorContact" placeholder="可填写手机号、微信号或其他联系方式" /></label>
               <label>开始时间<input name="startsAt" type="datetime-local" required /></label>
               <label>结束时间（可选）<input name="endsAt" type="datetime-local" /></label>
               <label>地点<input name="location" required placeholder="有空客厅 / 流动客厅地址" /></label>
@@ -82,8 +89,8 @@
         <nav class="footer-links"><a href="me.html">工作台</a><a href="my-activities.html">我的活动</a><a href="participate.html">活动与参与</a></nav>
       </div>
     </footer>
-    <script src="script.js?v=0.16.0"></script>
-    <script src="assets/js/rich-editor.js?v=0.16.0"></script>
-    <script src="app.js?v=0.16.0"></script>
+    <script src="script.js?v=0.16.1"></script>
+    <script src="assets/js/rich-editor.js?v=0.16.1"></script>
+    <script src="app.js?v=0.16.1"></script>
   </body>
 </html>

@@ -19,6 +19,7 @@ const packageJson = {
     dotenv: "^17.4.2",
     express: "^4.21.2",
     multer: "^2.0.2",
+    qrcode: "^1.5.4",
     "serverless-http": "^4.0.0",
     ws: "^8.21.0",
   },

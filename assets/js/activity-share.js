@@ -96,29 +96,122 @@
     ctx.closePath();
   }
 
-  async function drawCover(ctx, activity) {
-    if (!activity.coverUrl) return false;
-    const image = new Image();
-    image.crossOrigin = "anonymous";
-    image.src = activity.coverUrl;
-    await image.decode();
-    ctx.save();
-    drawRoundRect(ctx, 72, 96, 936, 500, 28);
-    ctx.clip();
-    const ratio = Math.max(936 / image.width, 500 / image.height);
-    const width = image.width * ratio;
-    const height = image.height * ratio;
-    ctx.drawImage(image, 72 + (936 - width) / 2, 96 + (500 - height) / 2, width, height);
-    ctx.restore();
-    return true;
+  function apiBaseUrl() {
+    return location.hostname.endsWith("tcloudbaseapp.com")
+      ? "https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com"
+      : "";
   }
 
-  async function downloadPoster(activity, url, formatActivityTime) {
+  function loadImage(url) {
+    return new Promise((resolve, reject) => {
+      if (!url) {
+        reject(new Error("missing image url"));
+        return;
+      }
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error("image load failed"));
+      image.src = url;
+    });
+  }
+
+  async function loadQrImage(text) {
+    const response = await fetch(`${apiBaseUrl()}/api/qr?text=${encodeURIComponent(text)}`, {
+      credentials: "omit",
+    });
+    if (!response.ok) throw new Error("qr failed");
+    const svg = await response.text();
+    const blobUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+    const image = new Image();
+    image.src = blobUrl;
+    await image.decode();
+    return {
+      image,
+      revoke: () => URL.revokeObjectURL(blobUrl),
+    };
+  }
+
+  function posterTitle(activity) {
+    const title = String(activity.title || "有空活动").trim();
+    const moduleName = String(activity.moduleName || "有空活动").trim();
+    if (title.includes("丨") || title.includes("|")) return `【${title}】`;
+    return `【${moduleName}丨${title}】`;
+  }
+
+  function pad(value) {
+    return String(value).padStart(2, "0");
+  }
+
+  function posterDateRange(activity) {
+    const start = new Date(activity.startsAt || Date.now());
+    const end = activity.endsAt
+      ? new Date(activity.endsAt)
+      : new Date(start.getTime() + 2 * 60 * 60 * 1000);
+    const format = (date) => `${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    return `${format(start)} - ${format(end)}`;
+  }
+
+  function posterAddress(activity) {
+    const location = String(activity.location || "").trim();
+    if (!location || location === "有空客厅") return "有空客厅|江北劳动一村";
+    return location;
+  }
+
+  function inviteeDetails(options = {}) {
+    const fromRegistration = options.registration || {};
+    const fromGetter = typeof options.getInvitee === "function" ? options.getInvitee() || {} : {};
+    return {
+      nickname: String(fromRegistration.nickname || fromGetter.nickname || "有空的朋友").trim(),
+      phone: String(fromRegistration.phone || fromGetter.phone || "报名后填写手机号").trim(),
+    };
+  }
+
+  function drawKeyValue(ctx, label, value, x, y, maxWidth) {
+    ctx.fillStyle = "#7e3b2c";
+    ctx.font = "700 34px -apple-system, BlinkMacSystemFont, sans-serif";
+    const labelText = `${label}：`;
+    ctx.fillText(labelText, x, y);
+    const offset = ctx.measureText(labelText).width + 8;
+    ctx.fillStyle = "#17231f";
+    ctx.font = "500 34px -apple-system, BlinkMacSystemFont, sans-serif";
+    return wrapText(ctx, `【${value || "待定"}】`, x + offset, y, maxWidth - offset, 48, 2);
+  }
+
+  function drawStackedValue(ctx, label, value, x, y, maxWidth) {
+    ctx.fillStyle = "#7e3b2c";
+    ctx.font = "700 34px -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.fillText(`${label}：`, x, y);
+    ctx.fillStyle = "#17231f";
+    ctx.font = "500 36px -apple-system, BlinkMacSystemFont, sans-serif";
+    return wrapText(ctx, `【${value || "待定"}】`, x, y + 52, maxWidth, 52, 3);
+  }
+
+  function drawFullCover(ctx, image, x, y, width, height) {
+    ctx.save();
+    drawRoundRect(ctx, x, y, width, height, 28);
+    ctx.clip();
+    ctx.drawImage(image, x, y, width, height);
+    ctx.restore();
+  }
+
+  async function downloadPoster(activity, url, formatActivityTime, options = {}) {
+    let coverImage = null;
+    try {
+      coverImage = activity.coverUrl ? await loadImage(activity.coverUrl) : null;
+    } catch {
+      coverImage = null;
+    }
+    const coverWidth = 936;
+    const coverHeight = coverImage
+      ? Math.max(360, Math.round(coverWidth * (coverImage.naturalHeight || coverImage.height) / (coverImage.naturalWidth || coverImage.width)))
+      : 500;
+    const canvasHeight = Math.max(1540, 96 + coverHeight + 1040);
     const canvas = document.createElement("canvas");
     canvas.width = 1080;
-    canvas.height = 1440;
+    canvas.height = canvasHeight;
     const ctx = canvas.getContext("2d");
-    const bg = ctx.createLinearGradient(0, 0, 1080, 1440);
+    const bg = ctx.createLinearGradient(0, 0, 1080, canvasHeight);
     bg.addColorStop(0, "#f8f5ef");
     bg.addColorStop(0.56, "#e9f1ee");
     bg.addColorStop(1, "#d8e6f1");
@@ -126,16 +219,12 @@
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = "rgba(16, 32, 38, 0.08)";
-    drawRoundRect(ctx, 54, 74, 972, 1292, 36);
+    drawRoundRect(ctx, 54, 74, 972, canvasHeight - 148, 36);
     ctx.fill();
 
-    let hasCover = false;
-    try {
-      hasCover = await drawCover(ctx, activity);
-    } catch {
-      hasCover = false;
-    }
-    if (!hasCover) {
+    if (coverImage) {
+      drawFullCover(ctx, coverImage, 72, 96, coverWidth, coverHeight);
+    } else {
       ctx.fillStyle = "#203d38";
       drawRoundRect(ctx, 72, 96, 936, 500, 28);
       ctx.fill();
@@ -144,23 +233,53 @@
       ctx.fillText(activity.moduleName || "有空活动", 120, 370);
     }
 
+    const contentTop = 96 + coverHeight + 84;
     ctx.fillStyle = "#17231f";
-    ctx.font = "700 74px -apple-system, BlinkMacSystemFont, sans-serif";
-    wrapText(ctx, activity.title || "有空活动", 92, 710, 896, 92, 3);
+    ctx.font = "760 62px -apple-system, BlinkMacSystemFont, sans-serif";
+    let y = wrapText(ctx, posterTitle(activity), 92, contentTop, 896, 78, 3) + 24;
 
-    ctx.fillStyle = "#34524a";
-    ctx.font = "400 38px -apple-system, BlinkMacSystemFont, sans-serif";
-    wrapText(ctx, `${activity.location || "地点待定"} · ${formatActivityTime(activity)}`, 96, 1008, 880, 56, 3);
+    const invitee = inviteeDetails(options);
+    y = drawKeyValue(ctx, "发起人", activity.initiator || "有空伙伴", 96, y, 760);
+    y = drawKeyValue(ctx, "诚邀", invitee.nickname, 96, y + 12, 760);
+    y = drawKeyValue(ctx, "报名手机号", invitee.phone, 96, y + 12, 760);
+    y = drawStackedValue(ctx, "地址", posterAddress(activity), 96, y + 28, 620);
+    y = drawStackedValue(ctx, "日期", posterDateRange(activity) || formatActivityTime(activity), 96, y + 18, 620);
 
+    const qrSize = 218;
+    const qrX = 1080 - 96 - qrSize;
+    const qrY = canvasHeight - 96 - qrSize;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    drawRoundRect(ctx, qrX - 18, qrY - 18, qrSize + 36, qrSize + 60, 28);
+    ctx.fill();
+    let qrResource = null;
+    try {
+      qrResource = await loadQrImage(url);
+      ctx.drawImage(qrResource.image, qrX, qrY, qrSize, qrSize);
+    } catch {
+      ctx.fillStyle = "#e9f1ee";
+      ctx.fillRect(qrX, qrY, qrSize, qrSize);
+      ctx.fillStyle = "#17231f";
+      ctx.font = "700 28px -apple-system, BlinkMacSystemFont, sans-serif";
+      wrapText(ctx, "扫码报名", qrX + 38, qrY + 106, qrSize - 76, 36, 2);
+    } finally {
+      qrResource?.revoke();
+    }
+    ctx.fillStyle = "#4f665f";
+    ctx.font = "700 26px -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("活动二维码", qrX + qrSize / 2, qrY + qrSize + 34);
+    ctx.textAlign = "start";
+
+    const footerY = Math.max(y + 48, canvasHeight - 180);
     ctx.fillStyle = "#b84b38";
     ctx.font = "700 34px -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.fillText("有空客厅", 96, 1196);
+    ctx.fillText("有空客厅", 96, footerY);
     ctx.fillStyle = "#304540";
     ctx.font = "400 30px -apple-system, BlinkMacSystemFont, sans-serif";
-    wrapText(ctx, "复制报名链接，来客厅坐坐。", 96, 1250, 720, 44, 2);
+    wrapText(ctx, "来客厅坐坐，也可以把这个活动分享给朋友。", 96, footerY + 54, 620, 44, 2);
     ctx.fillStyle = "#4f665f";
     ctx.font = "400 24px -apple-system, BlinkMacSystemFont, sans-serif";
-    wrapText(ctx, url, 96, 1326, 860, 34, 2);
+    wrapText(ctx, url, 96, footerY + 128, 620, 34, 2);
 
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png", 0.94));
     if (blob) triggerDownload(blob, `${safeFileName(activity.title)}-分享海报.png`);
@@ -186,7 +305,7 @@
     });
     root.querySelector("[data-download-poster]")?.addEventListener("click", async () => {
       try {
-        await downloadPoster(activity, url, formatActivityTime);
+        await downloadPoster(activity, url, formatActivityTime, options);
         showToast("分享海报已生成");
       } catch {
         showToast("海报生成失败，请稍后再试");

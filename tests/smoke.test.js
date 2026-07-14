@@ -77,6 +77,8 @@ async function createActivity(token, overrides = {}) {
   form.set("endsAt", overrides.endsAt || "");
   form.set("location", overrides.location || "有空客厅");
   form.set("capacity", overrides.capacity || "");
+  form.set("showInitiatorContact", overrides.showInitiatorContact ? "yes" : "no");
+  form.set("initiatorContact", overrides.initiatorContact || "");
   form.set("description", overrides.description || "用于自动化测试审核、报名、日志和报名表。");
   form.set("intent", overrides.intent || "submit");
   if (overrides.cover) {
@@ -138,6 +140,11 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(modulesPage.pageInfo.pageSize, 2);
 
   const member = await login("13300002222");
+  assert.equal(member.user.phone, "13300002222");
+  const qrResponse = await fetch(`${baseUrl}/api/qr?text=${encodeURIComponent(`${baseUrl}/activity.html?id=demo`)}`);
+  assert.equal(qrResponse.ok, true);
+  assert.match(qrResponse.headers.get("content-type") || "", /image\/svg\+xml/);
+  assert.match(await qrResponse.text(), /<svg/);
   const richImageBuffer = fs.readFileSync(path.join(__dirname, "..", "assets", "youkong-gathering.png"));
   const richImageForm = new FormData();
   richImageForm.set("image", new Blob([richImageBuffer], { type: "image/png" }), "rich-body.png");
@@ -170,12 +177,16 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const created = await createActivity(member.token, {
     title: "分页和日志测试活动",
     endsAt: localDateTimeFromNow(30, 22, 0),
+    showInitiatorContact: true,
+    initiatorContact: "13300002222",
     description: `${longDescriptionWithImage}<p>正文<strong>重点</strong><script>alert("x")</script></p>`,
   });
   assert.equal(created.activity.capacity, 99);
   assert.equal(created.activity.registrationCount, 0);
   assert.equal(created.activity.status, "admin_review");
   assert.equal(created.activity.endsAt, localDateTimeFromNow(30, 22, 0));
+  assert.equal(created.activity.showInitiatorContact, true);
+  assert.equal(created.activity.initiatorContact, "13300002222");
   assert.match(created.activity.description, /<h1>活动段落标题<\/h1>/);
   assert.match(created.activity.description, /<img src="\/uploads\//);
   assert.match(created.activity.description, /<strong>重点<\/strong>/);
@@ -381,8 +392,10 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(pending.activity.status, "admin_review");
 
   const browser = await chromium.launch();
+  let context;
   try {
-    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    context = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
+    const page = await context.newPage();
     await page.goto(`${baseUrl}/login.html`);
     await page.waitForSelector("[data-theme-switch]");
     const themeSwitchState = await page.evaluate(() => {
@@ -448,11 +461,15 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       toolCount: document.querySelectorAll("[data-rich-command]").length,
       hasH1Tool: Boolean(document.querySelector('[data-rich-command="h1"]')),
       hasTemplateSelect: Boolean(document.querySelector("[data-template-select]")),
+      hasContactToggle: Boolean(document.querySelector("[data-initiator-contact-toggle]")),
+      contactHidden: document.querySelector("[data-initiator-contact-field]")?.hidden,
     }));
     assert.equal(editorState.hasEditor, true);
     assert.ok(editorState.toolCount >= 8);
     assert.equal(editorState.hasH1Tool, true);
     assert.equal(editorState.hasTemplateSelect, true);
+    assert.equal(editorState.hasContactToggle, true);
+    assert.equal(editorState.contactHidden, true);
     const richEditorCommandState = await page.evaluate(() => {
       const canvas = document.querySelector("[data-rich-canvas]");
       canvas.innerHTML = "<p>移动端标题</p>";
@@ -516,14 +533,29 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       calendar: Boolean(document.querySelector("[data-download-calendar]")),
       richHeading: Boolean(document.querySelector(".article-content h1")),
       richImage: Boolean(document.querySelector(".article-content img")),
+      contact: document.querySelector(".initiator-contact")?.textContent || "",
     }));
-    assert.deepEqual(shareState, {
+    assert.equal(shareState.poster, true);
+    assert.equal(shareState.copy, true);
+    assert.equal(shareState.calendar, true);
+    assert.equal(shareState.richHeading, true);
+    assert.equal(shareState.richImage, true);
+    assert.match(shareState.contact, /13300002222/);
+
+    await page.goto(`${baseUrl}/success.html?activity=${created.activity.id}&registration=${registration.registration.id}`);
+    await page.waitForLoadState("networkidle");
+    const successPosterState = await page.evaluate(() => ({
+      poster: Boolean(document.querySelector("[data-download-poster]")),
+      activityShareLoaded: Boolean(window.youkongActivityShare),
+    }));
+    assert.deepEqual(successPosterState, {
       poster: true,
-      copy: true,
-      calendar: true,
-      richHeading: true,
-      richImage: true,
+      activityShareLoaded: true,
     });
+    const posterDownload = page.waitForEvent("download");
+    await page.getByRole("button", { name: "下载分享海报" }).click();
+    const posterFile = await posterDownload;
+    assert.match(posterFile.suggestedFilename(), /分享海报\.png$/);
 
     await page.goto(`${baseUrl}/review-tasks.html`);
     await page.waitForLoadState("networkidle");
@@ -538,6 +570,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.equal(reviewState.coverCount, 1);
     assert.ok(reviewState.richImageCount >= 1);
   } finally {
+    if (context) await context.close();
     await browser.close();
   }
 });

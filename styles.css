@@ -1440,6 +1440,35 @@ select:disabled {
   font-size: 13px;
 }
 
+.initiator-contact {
+  width: fit-content;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: center;
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 76%, transparent);
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.initiator-contact strong {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.initiator-contact a,
+.initiator-contact span {
+  color: var(--ink);
+  font-weight: 720;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
 .event-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

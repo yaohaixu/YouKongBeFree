@@ -271,6 +271,14 @@ function descriptionToHtml(value = "") {
     .join("");
 }
 
+function renderInitiatorContact(activity) {
+  if (!activity?.showInitiatorContact || !activity.initiatorContact) return "";
+  const contact = escapeHtml(activity.initiatorContact);
+  const cleaned = String(activity.initiatorContact || "").replace(/\D/g, "");
+  const contactValue = cleaned.length >= 8 ? `<a href="tel:${cleaned}">${contact}</a>` : `<span>${contact}</span>`;
+  return `<p class="initiator-contact"><strong>发起人联系方式</strong>${contactValue}</p>`;
+}
+
 function hasMeaningfulRichText(value = "") {
   return String(value || "")
     .replace(/<img\b[^>]*>/gi, "x")
@@ -612,6 +620,7 @@ async function initActivityEditorPage() {
   mePageState.user = user;
   qs("[data-user-name]") && (qs("[data-user-name]").textContent = user.nickname);
   resetActivityForm(form);
+  bindInitiatorContactToggle(form);
   mePageState.richEditor = window.youkongRichEditor ? window.youkongRichEditor.mount(form) : null;
   mePageState.modules = await fillModuleSelect(form.moduleId);
   mePageState.collaborators = await fillCollaboratorSelect(form.collaboratorId);
@@ -666,6 +675,26 @@ async function initActivityEditorPage() {
   });
 }
 
+function bindInitiatorContactToggle(form) {
+  const select = qs("[data-initiator-contact-toggle]", form);
+  const field = qs("[data-initiator-contact-field]", form);
+  if (!select || !field || select.dataset.bound === "true") return;
+  const input = field.querySelector("input");
+  const sync = () => {
+    const shouldShow = select.value === "yes";
+    field.hidden = !shouldShow;
+    if (input) {
+      input.required = shouldShow;
+      if (shouldShow && !input.value.trim() && mePageState.user?.phone) {
+        input.value = mePageState.user.phone;
+      }
+    }
+  };
+  select.addEventListener("change", sync);
+  select.dataset.bound = "true";
+  sync();
+}
+
 function bindTemplateSelect(form) {
   const select = qs("[data-template-select]", form);
   if (!select) return;
@@ -689,6 +718,10 @@ function resetActivityForm(form) {
   mePageState.editingActivity = null;
   form.reset();
   form.initiator.value = mePageState.user ? mePageState.user.nickname : "";
+  if (form.showInitiatorContact) form.showInitiatorContact.value = "no";
+  if (form.initiatorContact) form.initiatorContact.value = mePageState.user?.phone || "";
+  bindInitiatorContactToggle(form);
+  qs("[data-initiator-contact-field]", form)?.setAttribute("hidden", "");
   if (form.collaboratorId) form.collaboratorId.value = "";
   const templateSelect = qs("[data-template-select]", form);
   if (templateSelect) templateSelect.value = "";
@@ -703,6 +736,9 @@ function fillActivityForm(form, activity) {
   form.moduleId.value = activity.moduleId;
   form.title.value = activity.title;
   form.initiator.value = activity.initiator;
+  if (form.showInitiatorContact) form.showInitiatorContact.value = activity.showInitiatorContact ? "yes" : "no";
+  if (form.initiatorContact) form.initiatorContact.value = activity.initiatorContact || mePageState.user?.phone || "";
+  bindInitiatorContactToggle(form);
   form.startsAt.value = toDatetimeLocal(activity.startsAt);
   if (form.endsAt) form.endsAt.value = toDatetimeLocal(activity.endsAt);
   form.location.value = activity.location;
@@ -1056,6 +1092,7 @@ async function initActivityPage() {
           <span>${activity.capacity ? `限额 ${activity.capacity} 人` : "人数无上限"}</span>
           <span>已报名 ${activity.registrationCount} 人</span>
         </div>
+        ${renderInitiatorContact(activity)}
         <div class="activity-share-actions" aria-label="活动分享操作">
           <button class="button ghost" type="button" data-download-poster>分享海报</button>
           <button class="button outline" type="button" data-copy-registration-link>复制报名链接</button>
@@ -1098,7 +1135,17 @@ async function initActivityPage() {
     </section>
   `;
   revealDynamicContent(root);
-  window.youkongActivityShare?.mount(root, activity, { showToast, formatActivityTime });
+  window.youkongActivityShare?.mount(root, activity, {
+    showToast,
+    formatActivityTime,
+    getInvitee: () => {
+      const form = qs("[data-register-form]", root);
+      return {
+        nickname: form?.nickname?.value || "",
+        phone: form?.phone?.value || "",
+      };
+    },
+  });
 
   const form = qs("[data-register-form]");
   if (!form) return;
@@ -1151,6 +1198,7 @@ async function initSuccessPage() {
           </div>
           <div class="button-row">
             <a class="button primary" href="activity.html?id=${encodeURIComponent(activity.id)}">查看活动</a>
+            <button class="button ghost" type="button" data-download-poster>下载分享海报</button>
             <button class="button outline danger-soft" type="button" data-cancel-registration>取消报名</button>
             <a class="button ghost" href="participate.html">看看其他活动</a>
           </div>
@@ -1158,6 +1206,11 @@ async function initSuccessPage() {
       </section>
     `;
     revealDynamicContent(root);
+    window.youkongActivityShare?.mount(root, activity, {
+      showToast,
+      formatActivityTime,
+      registration,
+    });
     qs("[data-cancel-registration]", root)?.addEventListener("click", async () => {
       if (!confirm("确定取消这次报名吗？取消后如需参加，需要重新报名。")) return;
       await api.post(`/api/activities/${activityId}/registrations/${registrationId}/cancel`, {});
