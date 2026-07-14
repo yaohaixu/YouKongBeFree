@@ -7092,6 +7092,63 @@ html[data-theme="light"] body.product-surface .form-note p {
   color: #3f493f;
 }
 
+/* 0.16.2 review task desktop alignment */
+@media (min-width: 981px) {
+  body:has(main[data-review-tasks-root]) .review-actions {
+    grid-template-columns: minmax(180px, 220px) minmax(360px, 1fr) auto;
+    gap: 14px;
+    align-items: end;
+    margin-top: 18px;
+    border: 1px solid rgba(32, 37, 31, 0.1);
+    border-radius: 18px;
+    padding: 16px;
+    background:
+      linear-gradient(180deg, rgba(255, 254, 250, 0.94), rgba(249, 250, 247, 0.88));
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
+  }
+
+  body:has(main[data-review-tasks-root]) .review-actions label {
+    grid-template-rows: auto 46px;
+    gap: 8px;
+    align-self: end;
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  body:has(main[data-review-tasks-root]) .review-actions select,
+  body:has(main[data-review-tasks-root]) .review-actions textarea {
+    height: 46px;
+    min-height: 46px;
+    margin: 0;
+    border-radius: 12px;
+  }
+
+  body:has(main[data-review-tasks-root]) .review-actions select {
+    padding: 0 38px 0 14px;
+  }
+
+  body:has(main[data-review-tasks-root]) .review-actions textarea {
+    overflow: auto;
+    padding: 12px 14px;
+    line-height: 20px;
+    resize: vertical;
+  }
+
+  body:has(main[data-review-tasks-root]) .review-actions .button {
+    height: 46px;
+    min-height: 46px;
+    align-self: end;
+    padding-inline: 20px;
+  }
+
+  html[data-theme="dark"] body:has(main[data-review-tasks-root]) .review-actions {
+    border-color: rgba(255, 241, 223, 0.14);
+    background:
+      linear-gradient(180deg, rgba(20, 28, 26, 0.86), rgba(13, 18, 17, 0.78));
+    box-shadow: 0 1px 0 rgba(255, 241, 223, 0.08) inset;
+  }
+}
+
 @media (max-width: 980px) {
   .activity-preview {
     max-width: 100%;

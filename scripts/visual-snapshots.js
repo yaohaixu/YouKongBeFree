@@ -15,6 +15,51 @@ const { createApp, store } = require("../lib/app");
 
 const outputDir = path.join(__dirname, "..", "test-results", "visual");
 
+async function seedReviewTask() {
+  const now = new Date().toISOString();
+  await store.insert("users", {
+    id: "visual_member",
+    nickname: "视觉成员",
+    phone: "13300008888",
+    role: "member",
+    roles: ["member"],
+    createdAt: now,
+    updatedAt: now,
+  });
+  await store.insert("users", {
+    id: "visual_collaborator",
+    nickname: "视觉协作员",
+    phone: "13300009999",
+    role: "collaborator",
+    roles: ["collaborator"],
+    createdAt: now,
+    updatedAt: now,
+  });
+  await store.insert("activities", {
+    id: "visual_review_activity",
+    title: "视觉检查用审核活动",
+    moduleId: "screening",
+    collaboratorId: "visual_collaborator",
+    initiator: "视觉成员",
+    showInitiatorContact: false,
+    initiatorContact: "",
+    startsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    endsAt: "",
+    location: "有空客厅",
+    capacity: 24,
+    description: "<h1>审核待办视觉检查</h1><p>这条临时数据用于截图检查 PC 端审核意见、备注和提交按钮是否对齐。</p>",
+    coverUrl: "",
+    coverFileId: "",
+    registrationCount: 0,
+    status: "admin_review",
+    reviewStep: "admin",
+    reviewLogs: [],
+    createdBy: "visual_member",
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
 async function loginAsAdmin(page, baseUrl) {
   await page.goto(`${baseUrl}/login.html`, { waitUntil: "networkidle" });
   await page.getByLabel("手机号").fill("13377779999");
@@ -32,6 +77,7 @@ async function main() {
   fs.rmSync(outputDir, { recursive: true, force: true });
   fs.mkdirSync(outputDir, { recursive: true });
   await store.ensureSeed();
+  await seedReviewTask();
 
   const server = createApp().listen(0, "127.0.0.1");
   await once(server, "listening");
