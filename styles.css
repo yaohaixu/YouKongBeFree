@@ -7208,55 +7208,70 @@ html[data-theme="light"] body.product-surface .form-note p {
   }
 }
 
-/* 0.16.4 home activity rows and compact mobile action buttons */
+/* 0.16.5 full-width home activity rows and stacked mobile action buttons */
 @media (min-width: 981px) {
+  body.public-surface #events .wrap.activity-preview {
+    display: block;
+  }
+
+  body.public-surface #events .wrap.activity-preview > div {
+    width: 100%;
+  }
+
   body.public-surface #events .home-event-strip {
     grid-template-columns: 1fr;
-    max-width: 920px;
+    width: 100%;
+    max-width: none;
+    justify-self: stretch;
   }
 
   body.public-surface #events .home-event-strip .event-card {
-    grid-template-columns: 188px minmax(0, 1fr);
+    grid-template-columns: 176px minmax(0, 1fr);
     gap: 0;
-    min-height: 164px;
-  }
-
-  body.public-surface #events .home-event-strip .event-card:nth-child(n + 3) {
-    display: none;
+    min-height: 154px;
+    width: 100%;
   }
 
   body.public-surface #events .home-event-strip .event-cover {
-    min-height: 164px;
+    min-height: 154px;
     aspect-ratio: auto;
   }
 
   body.public-surface #events .home-event-strip .event-body {
-    display: grid;
-    align-content: center;
-    padding: 20px 22px;
+    padding: 20px 20px 20px 0;
   }
 }
 
 @media (max-width: 640px) {
-  body.product-surface .event-row .row-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
-    gap: 10px;
-    justify-content: stretch;
+  body:has(main[data-admin-activities-page]) .event-row,
+  body:has(main[data-my-activities-page]) .event-row {
+    grid-template-columns: minmax(0, 1fr) 96px;
+    gap: 12px;
+    align-items: start;
   }
 
-  body.product-surface .event-row .row-actions .button {
+  body:has(main[data-admin-activities-page]) .event-row .row-actions,
+  body:has(main[data-my-activities-page]) .event-row .row-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    width: 96px;
+    gap: 8px;
+  }
+
+  body:has(main[data-admin-activities-page]) .event-row .row-actions .button,
+  body:has(main[data-my-activities-page]) .event-row .row-actions .button {
     width: 100%;
-    min-height: 40px;
-    padding: 9px 10px;
+    min-height: 38px;
+    padding: 8px 6px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex: initial;
-    white-space: normal;
+    flex: 0 0 auto;
+    white-space: nowrap;
     text-align: center;
-    line-height: 1.18;
+    line-height: 1.15;
     font-size: 13px;
   }
 }

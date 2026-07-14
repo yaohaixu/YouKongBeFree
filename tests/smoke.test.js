@@ -97,21 +97,25 @@ async function assertNoHorizontalOverflow(page, url) {
   assert.equal(result.scrollWidth, result.clientWidth, `${url} should not overflow horizontally`);
 }
 
-async function assertMobileActionGrid(page, url, minimumButtons = 2) {
+async function assertMobileActionStack(page, url, minimumButtons = 2) {
   await page.goto(url);
   await page.waitForLoadState("networkidle");
   await page.waitForFunction((count) =>
     Array.from(document.querySelectorAll(".event-row .row-actions"))
       .some((row) => row.querySelectorAll(".button").length >= count), minimumButtons);
   const layout = await page.evaluate((count) => {
-    const row = Array.from(document.querySelectorAll(".event-row .row-actions"))
+    const actions = Array.from(document.querySelectorAll(".event-row .row-actions"))
       .find((item) => item.querySelectorAll(".button").length >= count);
-    if (!row) return null;
-    const style = getComputedStyle(row);
-    const buttons = Array.from(row.querySelectorAll(".button")).slice(0, count);
+    if (!actions) return null;
+    const row = actions.closest(".event-row");
+    const rowStyle = getComputedStyle(row);
+    const actionsStyle = getComputedStyle(actions);
+    const buttons = Array.from(actions.querySelectorAll(".button")).slice(0, count);
     const rects = buttons.map((button) => {
       const rect = button.getBoundingClientRect();
       return {
+        left: Math.round(rect.left),
+        top: Math.round(rect.top),
         width: Math.round(rect.width),
         height: Math.round(rect.height),
         text: button.textContent.trim(),
@@ -119,18 +123,26 @@ async function assertMobileActionGrid(page, url, minimumButtons = 2) {
       };
     });
     return {
-      display: style.display,
-      columns: style.gridTemplateColumns.split(" ").filter(Boolean).length,
+      rowDisplay: rowStyle.display,
+      rowColumns: rowStyle.gridTemplateColumns.split(" ").filter(Boolean).length,
+      actionsDisplay: actionsStyle.display,
+      direction: actionsStyle.flexDirection,
       rects,
     };
   }, minimumButtons);
   assert.ok(layout, `${url} should render row action buttons`);
-  assert.equal(layout.display, "grid");
-  assert.equal(layout.columns, 2);
-  assert.ok(layout.rects.every((rect) => rect.height >= 40), `${url} buttons should keep tappable height`);
-  assert.ok(layout.rects.every((rect) => rect.whiteSpace === "normal"), `${url} buttons should allow stable text wrapping`);
+  assert.equal(layout.rowDisplay, "grid");
+  assert.equal(layout.rowColumns, 2);
+  assert.equal(layout.actionsDisplay, "flex");
+  assert.equal(layout.direction, "column");
+  assert.ok(layout.rects.every((rect) => rect.height >= 38), `${url} buttons should keep tappable height`);
+  assert.ok(layout.rects.every((rect) => rect.whiteSpace === "nowrap"), `${url} buttons should keep readable horizontal text`);
   const widths = layout.rects.map((rect) => rect.width);
   assert.ok(Math.max(...widths) - Math.min(...widths) <= 2, `${url} buttons should have equal width`);
+  const lefts = layout.rects.map((rect) => rect.left);
+  assert.ok(Math.max(...lefts) - Math.min(...lefts) <= 2, `${url} buttons should align in one vertical column`);
+  const tops = layout.rects.map((rect) => rect.top);
+  assert.ok(tops.every((top, index) => index === 0 || top > tops[index - 1]), `${url} buttons should be stacked vertically`);
 }
 
 test.before(async () => {
@@ -471,7 +483,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/activities.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/activities.html?view=history`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-activities.html`);
-    await assertMobileActionGrid(page, `${baseUrl}/admin-activities.html`, 3);
+    await assertMobileActionStack(page, `${baseUrl}/admin-activities.html`, 3);
     const memberActionContext = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
     const memberActionPage = await memberActionContext.newPage();
     await memberActionPage.goto(`${baseUrl}/index.html`);
@@ -479,7 +491,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       localStorage.setItem("yk_session_token", token);
       localStorage.setItem("yk_user", JSON.stringify(user));
     }, { token: member.token, user: member.user });
-    await assertMobileActionGrid(memberActionPage, `${baseUrl}/my-activities.html`, 2);
+    await assertMobileActionStack(memberActionPage, `${baseUrl}/my-activities.html`, 2);
     await memberActionContext.close();
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-members.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-templates.html`);
