@@ -552,6 +552,30 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       poster: true,
       activityShareLoaded: true,
     });
+    const posterTextPreview = await page.evaluate(() => window.youkongActivityShare.posterTextPreview({
+      title: "鹳鸟踟蹰",
+      moduleName: "有空放映",
+      initiator: "发起人甲",
+      location: "有空客厅",
+      startsAt: "2026-07-12T20:00",
+      endsAt: "2026-07-12T23:00",
+    }, {
+      registration: {
+        nickname: "报名者",
+        phone: "18800001111",
+      },
+    }));
+    assert.deepEqual(posterTextPreview, {
+      title: "有空放映丨鹳鸟踟蹰",
+      initiator: "发起人甲",
+      invitee: "报名者",
+      phone: "18800001111",
+      address: "有空客厅",
+      date: "2026年7月12日20:00-2026年7月12日23:00",
+      qrLabel: "活动二维码",
+      showUrlText: false,
+    });
+    assert.doesNotMatch(JSON.stringify(posterTextPreview), /【|】/);
     const posterDownload = page.waitForEvent("download");
     await page.getByRole("button", { name: "下载分享海报" }).click();
     const posterFile = await posterDownload;

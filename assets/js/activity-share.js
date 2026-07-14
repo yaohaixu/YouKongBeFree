@@ -135,8 +135,8 @@
   function posterTitle(activity) {
     const title = String(activity.title || "有空活动").trim();
     const moduleName = String(activity.moduleName || "有空活动").trim();
-    if (title.includes("丨") || title.includes("|")) return `【${title}】`;
-    return `【${moduleName}丨${title}】`;
+    if (title.includes("丨") || title.includes("|")) return title.replaceAll("|", "丨");
+    return `${moduleName}丨${title}`;
   }
 
   function pad(value) {
@@ -148,14 +148,13 @@
     const end = activity.endsAt
       ? new Date(activity.endsAt)
       : new Date(start.getTime() + 2 * 60 * 60 * 1000);
-    const format = (date) => `${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-    return `${format(start)} - ${format(end)}`;
+    const format = (date) => `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    return `${format(start)}-${format(end)}`;
   }
 
   function posterAddress(activity) {
     const location = String(activity.location || "").trim();
-    if (!location || location === "有空客厅") return "有空客厅|江北劳动一村";
-    return location;
+    return location || "有空客厅";
   }
 
   function inviteeDetails(options = {}) {
@@ -175,16 +174,39 @@
     const offset = ctx.measureText(labelText).width + 8;
     ctx.fillStyle = "#17231f";
     ctx.font = "500 34px -apple-system, BlinkMacSystemFont, sans-serif";
-    return wrapText(ctx, `【${value || "待定"}】`, x + offset, y, maxWidth - offset, 48, 2);
+    return wrapText(ctx, value || "待定", x + offset, y, maxWidth - offset, 48, 2);
   }
 
-  function drawStackedValue(ctx, label, value, x, y, maxWidth) {
+  function drawInlineValue(ctx, label, value, x, y, maxWidth) {
     ctx.fillStyle = "#7e3b2c";
     ctx.font = "700 34px -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.fillText(`${label}：`, x, y);
+    const labelText = `${label}：`;
+    ctx.fillText(labelText, x, y);
+    const offset = ctx.measureText(labelText).width + 8;
+    const text = String(value || "待定");
     ctx.fillStyle = "#17231f";
-    ctx.font = "500 36px -apple-system, BlinkMacSystemFont, sans-serif";
-    return wrapText(ctx, `【${value || "待定"}】`, x, y + 52, maxWidth, 52, 3);
+    let fontSize = 34;
+    ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+    while (fontSize > 25 && ctx.measureText(text).width > maxWidth - offset) {
+      fontSize -= 1;
+      ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+    }
+    ctx.fillText(text, x + offset, y);
+    return y + 48;
+  }
+
+  function posterTextPreview(activity, options = {}) {
+    const invitee = inviteeDetails(options);
+    return {
+      title: posterTitle(activity),
+      initiator: activity.initiator || "有空伙伴",
+      invitee: invitee.nickname,
+      phone: invitee.phone,
+      address: posterAddress(activity),
+      date: posterDateRange(activity),
+      qrLabel: "活动二维码",
+      showUrlText: false,
+    };
   }
 
   function drawFullCover(ctx, image, x, y, width, height) {
@@ -242,15 +264,20 @@
     y = drawKeyValue(ctx, "发起人", activity.initiator || "有空伙伴", 96, y, 760);
     y = drawKeyValue(ctx, "诚邀", invitee.nickname, 96, y + 12, 760);
     y = drawKeyValue(ctx, "报名手机号", invitee.phone, 96, y + 12, 760);
-    y = drawStackedValue(ctx, "地址", posterAddress(activity), 96, y + 28, 620);
-    y = drawStackedValue(ctx, "日期", posterDateRange(activity) || formatActivityTime(activity), 96, y + 18, 620);
+    y = drawInlineValue(ctx, "地址", posterAddress(activity), 96, y + 28, 860);
+    y = drawInlineValue(ctx, "日期", posterDateRange(activity) || formatActivityTime(activity), 96, y + 18, 860);
 
     const qrSize = 218;
     const qrX = 1080 - 96 - qrSize;
     const qrY = canvasHeight - 96 - qrSize;
     ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-    drawRoundRect(ctx, qrX - 18, qrY - 18, qrSize + 36, qrSize + 60, 28);
+    drawRoundRect(ctx, qrX - 18, qrY - 74, qrSize + 36, qrSize + 92, 28);
     ctx.fill();
+    ctx.fillStyle = "#4f665f";
+    ctx.font = "700 26px -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("活动二维码", qrX + qrSize / 2, qrY - 32);
+    ctx.textAlign = "start";
     let qrResource = null;
     try {
       qrResource = await loadQrImage(url);
@@ -264,11 +291,6 @@
     } finally {
       qrResource?.revoke();
     }
-    ctx.fillStyle = "#4f665f";
-    ctx.font = "700 26px -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("活动二维码", qrX + qrSize / 2, qrY + qrSize + 34);
-    ctx.textAlign = "start";
 
     const footerY = Math.max(y + 48, canvasHeight - 180);
     ctx.fillStyle = "#b84b38";
@@ -277,9 +299,6 @@
     ctx.fillStyle = "#304540";
     ctx.font = "400 30px -apple-system, BlinkMacSystemFont, sans-serif";
     wrapText(ctx, "来客厅坐坐，也可以把这个活动分享给朋友。", 96, footerY + 54, 620, 44, 2);
-    ctx.fillStyle = "#4f665f";
-    ctx.font = "400 24px -apple-system, BlinkMacSystemFont, sans-serif";
-    wrapText(ctx, url, 96, footerY + 128, 620, 34, 2);
 
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png", 0.94));
     if (blob) triggerDownload(blob, `${safeFileName(activity.title)}-分享海报.png`);
@@ -315,5 +334,6 @@
 
   window.youkongActivityShare = {
     mount,
+    posterTextPreview,
   };
 })();
