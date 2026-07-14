@@ -378,6 +378,30 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   try {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await page.goto(`${baseUrl}/login.html`);
+    await page.waitForSelector("[data-theme-switch]");
+    const themeSwitchState = await page.evaluate(() => {
+      const switcher = document.querySelector("[data-theme-switch]");
+      return {
+        hasSwitch: Boolean(switcher),
+        mode: switcher?.dataset.themeMode,
+        svgCount: document.querySelectorAll("[data-theme-switch] svg").length,
+        label: switcher?.getAttribute("aria-label") || "",
+      };
+    });
+    assert.equal(themeSwitchState.hasSwitch, true);
+    assert.equal(themeSwitchState.mode, "system");
+    assert.equal(themeSwitchState.svgCount, 3);
+    assert.match(themeSwitchState.label, /跟随系统/);
+    await page.locator("[data-theme-switch]").click();
+    const themeSwitchAfterClick = await page.evaluate(() => {
+      const switcher = document.querySelector("[data-theme-switch]");
+      return {
+        mode: switcher?.dataset.themeMode,
+        label: switcher?.getAttribute("aria-label") || "",
+      };
+    });
+    assert.equal(themeSwitchAfterClick.mode, "dark");
+    assert.match(themeSwitchAfterClick.label, /黑夜模式/);
     await page.getByLabel("手机号").fill("13377779999");
     await page.getByRole("button", { name: "进入有空" }).click();
     await page.waitForURL("**/admin.html");
