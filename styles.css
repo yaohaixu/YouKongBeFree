@@ -7207,3 +7207,56 @@ html[data-theme="light"] body.product-surface .form-note p {
     padding-right: 12px;
   }
 }
+
+/* 0.16.4 home activity rows and compact mobile action buttons */
+@media (min-width: 981px) {
+  body.public-surface #events .home-event-strip {
+    grid-template-columns: 1fr;
+    max-width: 920px;
+  }
+
+  body.public-surface #events .home-event-strip .event-card {
+    grid-template-columns: 188px minmax(0, 1fr);
+    gap: 0;
+    min-height: 164px;
+  }
+
+  body.public-surface #events .home-event-strip .event-card:nth-child(n + 3) {
+    display: none;
+  }
+
+  body.public-surface #events .home-event-strip .event-cover {
+    min-height: 164px;
+    aspect-ratio: auto;
+  }
+
+  body.public-surface #events .home-event-strip .event-body {
+    display: grid;
+    align-content: center;
+    padding: 20px 22px;
+  }
+}
+
+@media (max-width: 640px) {
+  body.product-surface .event-row .row-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 10px;
+    justify-content: stretch;
+  }
+
+  body.product-surface .event-row .row-actions .button {
+    width: 100%;
+    min-height: 40px;
+    padding: 9px 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: initial;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.18;
+    font-size: 13px;
+  }
+}

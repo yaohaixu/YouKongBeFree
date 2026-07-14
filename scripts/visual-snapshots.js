@@ -17,6 +17,11 @@ const outputDir = path.join(__dirname, "..", "test-results", "visual");
 
 async function seedReviewTask() {
   const now = new Date().toISOString();
+  const futureDate = (days, hour) => {
+    const date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    date.setHours(hour, 0, 0, 0);
+    return date.toISOString();
+  };
   await store.insert("users", {
     id: "visual_member",
     nickname: "视觉成员",
@@ -35,6 +40,31 @@ async function seedReviewTask() {
     createdAt: now,
     updatedAt: now,
   });
+  for (const [index, title] of ["江边放映和聊天", "周末一起做饭", "山城公共议题小会"].entries()) {
+    await store.insert("activities", {
+      id: `visual_home_activity_${index + 1}`,
+      title,
+      moduleId: index === 1 ? "canteen" : "screening",
+      collaboratorId: "visual_collaborator",
+      initiator: "视觉成员",
+      showInitiatorContact: false,
+      initiatorContact: "",
+      startsAt: futureDate(7 + index, 19 + index),
+      endsAt: "",
+      location: "有空客厅",
+      capacity: 36,
+      description: "<p>这条临时数据用于截图检查首页近期活动布局。</p>",
+      coverUrl: "",
+      coverFileId: "",
+      registrationCount: index,
+      status: "published",
+      reviewStep: "",
+      reviewLogs: [],
+      createdBy: "visual_member",
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
   await store.insert("activities", {
     id: "visual_review_activity",
     title: "视觉检查用审核活动",
@@ -107,6 +137,7 @@ async function main() {
     await screenshot(mobile, baseUrl, "/about.html", "mobile-about.png");
     await loginAsAdmin(mobile, baseUrl);
     await screenshot(mobile, baseUrl, "/me.html", "mobile-me.png");
+    await screenshot(mobile, baseUrl, "/admin-activities.html", "mobile-admin-activities.png");
     await screenshot(mobile, baseUrl, "/review-tasks.html", "mobile-review-tasks.png");
     await screenshot(mobile, baseUrl, "/activity-editor.html", "mobile-activity-editor.png");
     await screenshot(mobile, baseUrl, "/admin-templates.html", "mobile-admin-templates.png");

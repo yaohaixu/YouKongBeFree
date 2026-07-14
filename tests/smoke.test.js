@@ -97,6 +97,42 @@ async function assertNoHorizontalOverflow(page, url) {
   assert.equal(result.scrollWidth, result.clientWidth, `${url} should not overflow horizontally`);
 }
 
+async function assertMobileActionGrid(page, url, minimumButtons = 2) {
+  await page.goto(url);
+  await page.waitForLoadState("networkidle");
+  await page.waitForFunction((count) =>
+    Array.from(document.querySelectorAll(".event-row .row-actions"))
+      .some((row) => row.querySelectorAll(".button").length >= count), minimumButtons);
+  const layout = await page.evaluate((count) => {
+    const row = Array.from(document.querySelectorAll(".event-row .row-actions"))
+      .find((item) => item.querySelectorAll(".button").length >= count);
+    if (!row) return null;
+    const style = getComputedStyle(row);
+    const buttons = Array.from(row.querySelectorAll(".button")).slice(0, count);
+    const rects = buttons.map((button) => {
+      const rect = button.getBoundingClientRect();
+      return {
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+        text: button.textContent.trim(),
+        whiteSpace: getComputedStyle(button).whiteSpace,
+      };
+    });
+    return {
+      display: style.display,
+      columns: style.gridTemplateColumns.split(" ").filter(Boolean).length,
+      rects,
+    };
+  }, minimumButtons);
+  assert.ok(layout, `${url} should render row action buttons`);
+  assert.equal(layout.display, "grid");
+  assert.equal(layout.columns, 2);
+  assert.ok(layout.rects.every((rect) => rect.height >= 40), `${url} buttons should keep tappable height`);
+  assert.ok(layout.rects.every((rect) => rect.whiteSpace === "normal"), `${url} buttons should allow stable text wrapping`);
+  const widths = layout.rects.map((rect) => rect.width);
+  assert.ok(Math.max(...widths) - Math.min(...widths) <= 2, `${url} buttons should have equal width`);
+}
+
 test.before(async () => {
   await store.ensureSeed();
   server = createApp().listen(0, "127.0.0.1");
@@ -435,6 +471,16 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/activities.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/activities.html?view=history`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-activities.html`);
+    await assertMobileActionGrid(page, `${baseUrl}/admin-activities.html`, 3);
+    const memberActionContext = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
+    const memberActionPage = await memberActionContext.newPage();
+    await memberActionPage.goto(`${baseUrl}/index.html`);
+    await memberActionPage.evaluate(({ token, user }) => {
+      localStorage.setItem("yk_session_token", token);
+      localStorage.setItem("yk_user", JSON.stringify(user));
+    }, { token: member.token, user: member.user });
+    await assertMobileActionGrid(memberActionPage, `${baseUrl}/my-activities.html`, 2);
+    await memberActionContext.close();
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-members.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-templates.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-template-editor.html`);
