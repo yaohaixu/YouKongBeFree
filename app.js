@@ -116,10 +116,12 @@ const logActionOptions = [
 const statusOptions = [
   ["", "全部状态"],
   ["draft", "草稿"],
+  ["reviewing", "审核中"],
   ["admin_review", "管理员审核"],
   ["collaborator_review", "协作员审核"],
   ["returned", "退回"],
   ["rejected", "拒绝"],
+  ["published_group", "已发布"],
   ["published", "活动发布"],
   ["full", "活动人满"],
   ["cancelled", "活动取消"],
@@ -533,10 +535,10 @@ function renderDashboardSummary(container, summary) {
   const reviewing = Number(summary?.reviewing ?? ((counts.admin_review || 0) + (counts.collaborator_review || 0)));
   const published = Number(summary?.published ?? ((counts.published || 0) + (counts.full || 0)));
   container.innerHTML = `
-    <div class="stat"><strong>${total}</strong><span>我发起的活动</span></div>
-    <div class="stat"><strong>${counts.draft || 0}</strong><span>草稿</span></div>
-    <div class="stat"><strong>${reviewing}</strong><span>审核中</span></div>
-    <div class="stat"><strong>${published}</strong><span>已发布</span></div>
+    <a class="stat stat-link" href="my-activities.html"><strong>${total}</strong><span>我发起的活动</span></a>
+    <a class="stat stat-link" href="my-activities.html?status=draft"><strong>${counts.draft || 0}</strong><span>草稿</span></a>
+    <a class="stat stat-link" href="my-activities.html?status=reviewing"><strong>${reviewing}</strong><span>审核中</span></a>
+    <a class="stat stat-link" href="my-activities.html?status=published_group"><strong>${published}</strong><span>已发布</span></a>
   `;
   revealDynamicContent(container);
 }
@@ -811,6 +813,7 @@ async function initMyActivitiesPage() {
   mePageState.user = user;
   const filters = qs("[data-my-activity-filters]", root);
   fillStatusSelect(filters?.status);
+  applyQueryToForm(filters, ["q", "status", "from", "to", "sort"]);
   filters?.addEventListener("submit", (event) => {
     event.preventDefault();
     resetPagedState("myActivities");
@@ -895,6 +898,15 @@ function queryFromForm(form, extra = {}) {
   });
   const query = params.toString();
   return query ? `?${query}` : "";
+}
+
+function applyQueryToForm(form, fields = []) {
+  if (!form) return;
+  const params = new URLSearchParams(location.search);
+  fields.forEach((field) => {
+    if (!params.has(field) || !form.elements[field]) return;
+    form.elements[field].value = params.get(field) || "";
+  });
 }
 
 function updatePagedCount(element, visible, pageInfo) {
@@ -1599,18 +1611,20 @@ function renderReviewTask(activity) {
           <div class="article-content compact">${descriptionToHtml(activity.description || "暂无活动描述")}</div>
           ${renderReviewHistory(activity)}
         </details>
-      </div>
-      <div class="review-actions">
-        <label>审核意见
-          <select data-review-action>
-            <option value="" selected disabled>请选择</option>
-            <option value="approve">通过</option>
-            <option value="return">退回</option>
-            <option value="reject">拒绝</option>
-          </select>
-        </label>
-        <textarea data-review-comment placeholder="填写审核说明，可留空"></textarea>
-        <button class="button primary" type="button" data-review-submit>提交审核</button>
+        <div class="review-actions">
+          <label>审核意见
+            <select data-review-action>
+              <option value="" selected disabled>请选择</option>
+              <option value="approve">通过</option>
+              <option value="return">退回</option>
+              <option value="reject">拒绝</option>
+            </select>
+          </label>
+          <label>备注
+            <textarea data-review-comment placeholder="填写审核说明，可留空"></textarea>
+          </label>
+          <button class="button primary" type="button" data-review-submit>提交审核</button>
+        </div>
       </div>
     </article>
   `;

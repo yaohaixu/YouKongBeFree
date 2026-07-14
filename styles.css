@@ -6642,3 +6642,482 @@ html[data-theme="dark"] .theme-switch[data-theme-mode="system"] .theme-switch-ri
     transition: none;
   }
 }
+
+/* 0.16.0 dashboard links, page hero media, review flow and editor hardening */
+.stat-link {
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 200ms ease,
+    background 200ms ease;
+}
+
+.stat-link:hover,
+.stat-link:focus-visible {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  outline: none;
+}
+
+.activity-preview {
+  display: grid;
+  gap: clamp(22px, 3.2vw, 38px);
+}
+
+.activity-preview .intro-text {
+  max-width: 720px;
+}
+
+.home-event-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: clamp(18px, 2.4vw, 28px) 0 0;
+}
+
+.home-event-strip .event-card {
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 0;
+  min-height: 100%;
+}
+
+.home-event-strip .event-cover {
+  min-height: 0;
+  aspect-ratio: 16 / 10;
+}
+
+.home-event-strip .event-body {
+  padding: 18px;
+}
+
+.home-event-strip .event-body h3 {
+  font-size: clamp(18px, 1.7vw, 22px);
+}
+
+.home-event-strip + .button-row {
+  margin-top: clamp(20px, 2.4vw, 30px);
+}
+
+body.public-surface .page-hero,
+html[data-theme="light"] body.public-surface .page-hero,
+html[data-theme="light"] body.public-surface .page-hero.brick,
+html[data-theme="light"] body.public-surface .page-hero.river {
+  min-height: clamp(270px, 42vw, 460px);
+  display: grid;
+  align-items: end;
+  background:
+    linear-gradient(115deg, rgba(17, 23, 22, 0.88), rgba(17, 23, 22, 0.56) 54%, rgba(17, 23, 22, 0.8)),
+    #111716;
+  color: #fff1df;
+}
+
+body.public-surface .page-hero::before,
+html[data-theme="light"] body.public-surface .page-hero::before {
+  display: block;
+  background:
+    linear-gradient(90deg, rgba(17, 23, 22, 0.84), rgba(17, 23, 22, 0.22) 52%, rgba(17, 23, 22, 0.7)),
+    url("assets/youkong-hero-illustration.png") center / cover no-repeat;
+  opacity: 0.86;
+  transform: scale(1.01);
+}
+
+body.public-surface .page-hero .wrap {
+  max-width: min(var(--max), 920px);
+}
+
+html[data-theme="light"] body.public-surface .page-hero,
+html[data-theme="light"] body.public-surface .page-hero.brick,
+html[data-theme="light"] body.public-surface .page-hero.river {
+  background:
+    linear-gradient(110deg, rgba(255, 248, 236, 0.92), rgba(255, 248, 236, 0.54) 56%, rgba(237, 243, 239, 0.72)),
+    #efe6d9;
+  color: #20251f;
+}
+
+html[data-theme="light"] body.public-surface .page-hero::before {
+  background:
+    linear-gradient(90deg, rgba(255, 248, 236, 0.92), rgba(255, 248, 236, 0.36) 52%, rgba(237, 243, 239, 0.62)),
+    url("assets/youkong-hero-illustration.png") center / cover no-repeat;
+  opacity: 0.88;
+}
+
+body.public-surface .page-hero h1,
+body.public-surface .page-hero p:not(.eyebrow) {
+  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+}
+
+html[data-theme="light"] body.public-surface .page-hero h1,
+html[data-theme="light"] body.public-surface .page-hero p:not(.eyebrow) {
+  text-shadow: none;
+}
+
+.review-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.review-actions {
+  width: 100%;
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: minmax(160px, 0.32fr) minmax(260px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  justify-self: stretch;
+}
+
+.review-actions label {
+  display: grid;
+  gap: 8px;
+}
+
+.review-actions select,
+.review-actions textarea {
+  margin-top: 0;
+}
+
+.review-actions textarea {
+  min-height: 44px;
+}
+
+.review-actions .button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.rich-editor {
+  border-radius: 14px;
+}
+
+.rich-toolbar {
+  gap: 6px;
+  align-items: center;
+  padding: 8px;
+}
+
+.rich-tool {
+  min-width: 36px;
+  height: 32px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 760;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.rich-tool.is-active,
+.rich-tool[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--line));
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel));
+  color: var(--ink);
+}
+
+.rich-canvas {
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.rich-canvas:focus {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.contact-panel h2 + .contact-list {
+  margin-top: 24px;
+}
+
+html[data-theme="light"] body.public-surface .form-note,
+html[data-theme="light"] body.public-surface .form-note h3,
+html[data-theme="light"] body.public-surface .form-note label,
+html[data-theme="light"] body.public-surface .form-note .photo-caption {
+  color: #20251f;
+}
+
+html[data-theme="light"] body.public-surface .form-note input,
+html[data-theme="light"] body.public-surface .form-note textarea,
+html[data-theme="light"] body.public-surface .form-note select,
+html[data-theme="light"] body.public-surface .rich-canvas {
+  background: #fffefa;
+  color: #20251f;
+}
+
+html[data-theme="light"] body.public-surface .form-note input::placeholder,
+html[data-theme="light"] body.public-surface .form-note textarea::placeholder,
+html[data-theme="light"] body.public-surface .rich-canvas:empty::before {
+  color: #667064;
+}
+
+html[data-theme="light"] body.public-surface .rich-toolbar,
+html[data-theme="light"] body.product-surface .rich-toolbar {
+  background: rgba(246, 242, 234, 0.9);
+}
+
+html[data-theme="light"] body.public-surface .rich-tool.is-active,
+html[data-theme="light"] body.public-surface .rich-tool[aria-pressed="true"],
+html[data-theme="light"] body.product-surface .rich-tool.is-active,
+html[data-theme="light"] body.product-surface .rich-tool[aria-pressed="true"] {
+  border-color: rgba(169, 72, 53, 0.34);
+  background: rgba(201, 85, 59, 0.12);
+  color: #823324;
+}
+
+html[data-theme="light"] body.public-surface .rich-hint,
+html[data-theme="light"] body.product-surface .rich-hint {
+  color: #4f5a51;
+}
+
+@media (max-width: 980px) {
+  .home-event-strip {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(260px, 82vw);
+    grid-template-columns: none;
+    margin-inline: calc(var(--page-gutter) * -0.2);
+    padding: 0 0 12px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x mandatory;
+  }
+
+  .home-event-strip .event-card {
+    scroll-snap-align: start;
+  }
+
+  body.public-surface .page-hero,
+  html[data-theme="light"] body.public-surface .page-hero {
+    min-height: clamp(240px, 74vw, 390px);
+  }
+
+  body.public-surface .page-hero::before,
+  html[data-theme="light"] body.public-surface .page-hero::before {
+    background-position: center;
+  }
+
+  .review-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-event-strip {
+    grid-auto-columns: minmax(244px, 88vw);
+  }
+
+  .rich-toolbar {
+    gap: 5px;
+    padding: 7px;
+  }
+
+  .rich-tool {
+    min-width: 34px;
+    height: 32px;
+  }
+}
+
+/* 0.16.0 layout compatibility and editor polish */
+.activity-preview > div,
+.home-event-strip,
+.home-event-strip .event-card,
+.page-hero .wrap,
+.rich-editor,
+.rich-canvas,
+.review-row > div {
+  min-width: 0;
+}
+
+.home-event-strip {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.home-event-strip .event-card {
+  scroll-snap-align: start;
+}
+
+body.product-surface .page-hero,
+body.public-surface .page-hero,
+html[data-theme="light"] body.product-surface .page-hero,
+html[data-theme="light"] body.public-surface .page-hero,
+html[data-theme="dark"] body.product-surface .page-hero {
+  min-height: clamp(260px, 37vw, 430px);
+  display: grid;
+  align-items: end;
+  isolation: isolate;
+}
+
+body.product-surface .page-hero::before,
+body.public-surface .page-hero::before,
+html[data-theme="light"] body.product-surface .page-hero::before,
+html[data-theme="light"] body.public-surface .page-hero::before,
+html[data-theme="dark"] body.product-surface .page-hero::before {
+  display: block;
+  z-index: 0;
+  background:
+    linear-gradient(90deg, rgba(17, 23, 22, 0.82), rgba(17, 23, 22, 0.24) 52%, rgba(17, 23, 22, 0.72)),
+    url("assets/youkong-hero-illustration.png") center / cover no-repeat;
+  opacity: 0.9;
+}
+
+body.product-surface .page-hero .wrap,
+body.public-surface .page-hero .wrap {
+  z-index: 1;
+  max-width: min(var(--max), 960px);
+}
+
+html[data-theme="light"] body.product-surface .page-hero,
+html[data-theme="light"] body.public-surface .page-hero {
+  background:
+    linear-gradient(115deg, rgba(255, 254, 250, 0.93), rgba(255, 254, 250, 0.62) 55%, rgba(237, 243, 239, 0.74)),
+    #f3f5f1;
+}
+
+html[data-theme="light"] body.product-surface .page-hero::before,
+html[data-theme="light"] body.public-surface .page-hero::before {
+  background:
+    linear-gradient(90deg, rgba(255, 254, 250, 0.95), rgba(255, 254, 250, 0.42) 54%, rgba(237, 243, 239, 0.72)),
+    url("assets/youkong-hero-illustration.png") center / cover no-repeat;
+  opacity: 0.92;
+}
+
+html[data-theme="dark"] body.product-surface .page-hero {
+  background:
+    linear-gradient(135deg, rgba(17, 23, 22, 0.96), rgba(32, 43, 37, 0.94)),
+    var(--bg);
+}
+
+html[data-theme="dark"] body.product-surface .page-hero::before {
+  background:
+    linear-gradient(90deg, rgba(17, 23, 22, 0.9), rgba(17, 23, 22, 0.42) 52%, rgba(17, 23, 22, 0.78)),
+    url("assets/youkong-hero-illustration.png") center / cover no-repeat;
+  opacity: 0.84;
+}
+
+body.product-surface .page-hero h1,
+body.product-surface .page-hero p:not(.eyebrow),
+body.public-surface .page-hero h1,
+body.public-surface .page-hero p:not(.eyebrow) {
+  max-width: 840px;
+}
+
+html[data-theme="light"] body.product-surface .page-hero h1,
+html[data-theme="light"] body.public-surface .page-hero h1 {
+  color: #20251f;
+  text-shadow: none;
+}
+
+html[data-theme="light"] body.product-surface .page-hero p:not(.eyebrow),
+html[data-theme="light"] body.public-surface .page-hero p:not(.eyebrow) {
+  color: #435044;
+  text-shadow: none;
+}
+
+html[data-theme="dark"] body.product-surface .page-hero h1,
+html[data-theme="dark"] body.product-surface .page-hero p:not(.eyebrow),
+body.public-surface .page-hero h1,
+body.public-surface .page-hero p:not(.eyebrow) {
+  text-shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
+}
+
+.review-actions {
+  padding-top: 4px;
+}
+
+.rich-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rich-toolbar::after {
+  content: "";
+  flex: 0 0 2px;
+}
+
+.rich-tool {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.rich-canvas {
+  max-width: 100%;
+}
+
+.rich-canvas p,
+.article-content p {
+  overflow-wrap: anywhere;
+}
+
+html[data-theme="light"] body.public-surface .form-note,
+html[data-theme="light"] body.public-surface .form-note .photo-caption,
+html[data-theme="light"] body.public-surface .form-note p,
+html[data-theme="light"] body.product-surface .form-note,
+html[data-theme="light"] body.product-surface .form-note .photo-caption,
+html[data-theme="light"] body.product-surface .form-note p {
+  color: #3f493f;
+}
+
+@media (max-width: 980px) {
+  .activity-preview {
+    max-width: 100%;
+  }
+
+  .home-event-strip {
+    display: flex;
+    gap: 14px;
+    grid-auto-flow: unset;
+    grid-auto-columns: unset;
+    grid-template-columns: none;
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0;
+    padding: 2px 0 14px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .home-event-strip .event-card {
+    flex: 0 0 min(304px, 82vw);
+    width: min(304px, 82vw);
+  }
+
+  .home-event-strip + .button-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  body.product-surface .page-hero,
+  body.public-surface .page-hero,
+  html[data-theme="light"] body.product-surface .page-hero,
+  html[data-theme="light"] body.public-surface .page-hero {
+    min-height: clamp(250px, 70vw, 390px);
+  }
+
+  body.product-surface .page-hero::before,
+  body.public-surface .page-hero::before,
+  html[data-theme="light"] body.product-surface .page-hero::before,
+  html[data-theme="light"] body.public-surface .page-hero::before {
+    background-position: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-event-strip .event-card {
+    flex-basis: min(292px, 84vw);
+    width: min(292px, 84vw);
+  }
+
+  .rich-toolbar {
+    padding-right: 12px;
+  }
+}

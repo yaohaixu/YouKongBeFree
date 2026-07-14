@@ -45,18 +45,143 @@
     return `<button class="rich-tool" type="button" data-rich-command="${command}" title="${title}" aria-label="${title}">${label}</button>`;
   }
 
+  function activeBlockTag(editor) {
+    const block = activeBlockElement(editor);
+    return block ? block.tagName.toLowerCase() : "p";
+  }
+
+  function activeBlockElement(editor) {
+    const selection = window.getSelection();
+    let node = selection && selection.rangeCount ? selection.anchorNode : null;
+    if (!node || !editor.contains(node)) return null;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    const block = node && node.closest ? node.closest("h1,h2,h3,blockquote,p,li") : null;
+    if (!block || !editor.contains(block)) return null;
+    return block;
+  }
+
+  function saveSelection(editor) {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return null;
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+      ? range.commonAncestorContainer
+      : range.commonAncestorContainer.parentElement;
+    if (!container || !editor.contains(container)) return null;
+    return range.cloneRange();
+  }
+
+  function restoreSelection(range) {
+    if (!range) return false;
+    const selection = window.getSelection();
+    if (!selection) return false;
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return true;
+  }
+
+  function insertHtmlAtSelection(html) {
+    if (document.queryCommandSupported && document.queryCommandSupported("insertHTML")) {
+      document.execCommand("insertHTML", false, html);
+      return;
+    }
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return;
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    range.insertNode(template.content);
+    selection.collapseToEnd();
+  }
+
+  function insertBlockHtmlAtSelection(editor, html) {
+    const selection = window.getSelection();
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    const fragment = template.content;
+    const lastNode = fragment.lastElementChild;
+    if (!selection || !selection.rangeCount) {
+      editor.append(fragment);
+      return;
+    }
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    let node = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+      ? range.commonAncestorContainer
+      : range.commonAncestorContainer.parentElement;
+    const block = node && node.closest ? node.closest("p,h1,h2,h3,blockquote,li") : null;
+    if (block && editor.contains(block)) {
+      if (!block.textContent.trim() && !block.querySelector("img")) {
+        block.replaceWith(fragment);
+      } else {
+        block.after(fragment);
+      }
+    } else {
+      range.insertNode(fragment);
+    }
+    if (lastNode) {
+      const nextRange = document.createRange();
+      nextRange.selectNodeContents(lastNode);
+      nextRange.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(nextRange);
+    }
+  }
+
+  function formatBlock(editor, tagName) {
+    const current = activeBlockTag(editor);
+    const next = current === tagName ? "p" : tagName;
+    document.execCommand("formatBlock", false, next);
+    if (activeBlockTag(editor) === next) return;
+    const block = activeBlockElement(editor);
+    if (!block || block.tagName.toLowerCase() === "li") return;
+    const replacement = document.createElement(next);
+    while (block.firstChild) replacement.appendChild(block.firstChild);
+    block.replaceWith(replacement);
+    const range = document.createRange();
+    range.selectNodeContents(replacement);
+    range.collapse(false);
+    const selection = window.getSelection();
+    if (!selection) return;
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function updateToolbarState(form) {
+    const editor = qs("[data-rich-editor]", form);
+    const canvas = qs("[data-rich-canvas]", form);
+    if (!editor || !canvas) return;
+    const block = activeBlockTag(canvas);
+    const states = {
+      p: block === "p" || block === "li",
+      h1: block === "h1",
+      h2: block === "h2",
+      h3: block === "h3",
+      blockquote: block === "blockquote",
+      bold: document.queryCommandState("bold"),
+      ul: document.queryCommandState("insertUnorderedList"),
+      ol: document.queryCommandState("insertOrderedList"),
+    };
+    qsa("[data-rich-command]", editor).forEach((button) => {
+      const active = Boolean(states[button.dataset.richCommand]);
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
   function execEditorCommand(command, editor, imageInput) {
     editor.focus();
     if (command === "p") {
       document.execCommand("formatBlock", false, "p");
     } else if (command === "h1" || command === "h2" || command === "h3" || command === "blockquote") {
-      document.execCommand("formatBlock", false, command);
+      formatBlock(editor, command);
     } else if (command === "ul") {
       document.execCommand("insertUnorderedList", false);
     } else if (command === "ol") {
       document.execCommand("insertOrderedList", false);
     } else if (command === "hr") {
-      document.execCommand("insertHTML", false, "<hr>");
+      insertHtmlAtSelection("<hr><p><br></p>");
     } else if (command === "image") {
       imageInput.click();
     } else {
@@ -167,6 +292,10 @@
     setHtml(form, "");
   }
 
+  function qsa(selector, root = document) {
+    return Array.from(root.querySelectorAll(selector));
+  }
+
   function mount(form) {
     const source = qs("[data-rich-textarea], textarea[name=\"description\"], textarea[name=\"content\"]", form);
     if (!source || qs("[data-rich-editor]", form)) return null;
@@ -188,7 +317,7 @@
         ${makeButton("“”", "blockquote", "引用")}
         ${makeButton("•", "ul", "项目列表")}
         ${makeButton("1.", "ol", "编号列表")}
-        ${makeButton("—", "hr", "分隔线")}
+        ${makeButton("线", "hr", "分隔线")}
         ${makeButton("图", "image", "插入正文图片")}
       </div>
       <div class="rich-canvas" data-rich-canvas contenteditable="true" role="textbox" aria-multiline="true"></div>
@@ -199,22 +328,72 @@
 
     const canvas = qs("[data-rich-canvas]", editor);
     const imageInput = qs("[data-rich-image-input]", editor);
+    let savedRange = null;
+    let lastPointerCommandAt = 0;
     canvas.dataset.placeholder = source.placeholder || "写下活动介绍。";
     setHtml(form, source.value || "");
 
     document.execCommand("defaultParagraphSeparator", false, "p");
+    const runCommand = (button) => {
+      restoreSelection(savedRange);
+      execEditorCommand(button.dataset.richCommand, canvas, imageInput);
+      sync(form);
+      savedRange = saveSelection(canvas);
+      updateToolbarState(form);
+    };
+    editor.addEventListener("pointerdown", (event) => {
+      if (event.target.closest("[data-rich-command]")) {
+        event.preventDefault();
+        savedRange = saveSelection(canvas) || savedRange;
+      }
+    });
+    editor.addEventListener("pointerup", (event) => {
+      const button = event.target.closest("[data-rich-command]");
+      if (!button) return;
+      event.preventDefault();
+      lastPointerCommandAt = Date.now();
+      runCommand(button);
+    });
     editor.addEventListener("click", (event) => {
       const button = event.target.closest("[data-rich-command]");
       if (!button) return;
-      execEditorCommand(button.dataset.richCommand, canvas, imageInput);
-      sync(form);
+      if (Date.now() - lastPointerCommandAt < 450) return;
+      runCommand(button);
     });
-    canvas.addEventListener("input", () => sync(form));
+    canvas.addEventListener("keyup", () => {
+      savedRange = saveSelection(canvas);
+      updateToolbarState(form);
+    });
+    canvas.addEventListener("mouseup", () => {
+      savedRange = saveSelection(canvas);
+      updateToolbarState(form);
+    });
+    canvas.addEventListener("focus", () => {
+      savedRange = saveSelection(canvas);
+      updateToolbarState(form);
+    });
+    canvas.addEventListener("input", () => {
+      savedRange = saveSelection(canvas);
+      sync(form);
+      updateToolbarState(form);
+    });
     canvas.addEventListener("paste", (event) => {
       event.preventDefault();
       const text = event.clipboardData?.getData("text/plain") || "";
-      document.execCommand("insertText", false, text);
+      if (/\n/.test(text)) {
+        insertBlockHtmlAtSelection(canvas, textToParagraphs(text));
+      } else {
+        document.execCommand("insertText", false, text);
+      }
       sync(form);
+      savedRange = saveSelection(canvas);
+      updateToolbarState(form);
+    });
+    document.addEventListener("selectionchange", () => {
+      if (document.activeElement === canvas) {
+        savedRange = saveSelection(canvas);
+        updateToolbarState(form);
+      }
     });
     imageInput.addEventListener("change", async () => {
       const file = imageInput.files && imageInput.files[0];
@@ -229,15 +408,30 @@
         const compressed = await compressImage(file);
         const url = await uploadRichImage(compressed, file.name || "rich-image.jpg");
         canvas.focus();
-        document.execCommand("insertHTML", false, `<p><img src="${url}" alt=""></p>`);
+        restoreSelection(savedRange);
+        insertHtmlAtSelection(`<p><img src="${url}" alt=""></p><p><br></p>`);
         sync(form);
+        savedRange = saveSelection(canvas);
+        updateToolbarState(form);
         window.dispatchEvent(new CustomEvent("youkong-toast", { detail: "图片已插入" }));
       } catch (error) {
         window.dispatchEvent(new CustomEvent("youkong-toast", { detail: error.message || "图片处理失败" }));
       }
     });
 
-    return { sync: () => sync(form), setHtml: (value) => setHtml(form, value), reset: () => reset(form) };
+    updateToolbarState(form);
+
+    return {
+      sync: () => sync(form),
+      setHtml: (value) => {
+        setHtml(form, value);
+        updateToolbarState(form);
+      },
+      reset: () => {
+        reset(form);
+        updateToolbarState(form);
+      },
+    };
   }
 
   window.youkongRichEditor = {

@@ -41,9 +41,14 @@ async function main() {
   try {
     const desktop = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
     await screenshot(desktop, baseUrl, "/index.html", "desktop-home.png");
+    await screenshot(desktop, baseUrl, "/whitepaper.html", "desktop-whitepaper.png");
+    await screenshot(desktop, baseUrl, "/activities.html", "desktop-activities.png");
+    await screenshot(desktop, baseUrl, "/about.html", "desktop-about.png");
     await screenshot(desktop, baseUrl, "/login.html", "desktop-login.png");
     await loginAsAdmin(desktop, baseUrl);
+    await screenshot(desktop, baseUrl, "/me.html", "desktop-me.png");
     await screenshot(desktop, baseUrl, "/admin.html", "desktop-admin.png");
+    await screenshot(desktop, baseUrl, "/review-tasks.html", "desktop-review-tasks.png");
     await screenshot(desktop, baseUrl, "/activity-editor.html", "desktop-activity-editor.png");
     await screenshot(desktop, baseUrl, "/admin-templates.html", "desktop-admin-templates.png");
     await screenshot(desktop, baseUrl, "/admin-template-editor.html", "desktop-admin-template-editor.png");
@@ -51,7 +56,12 @@ async function main() {
 
     const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
     await screenshot(mobile, baseUrl, "/index.html", "mobile-home.png");
+    await screenshot(mobile, baseUrl, "/whitepaper.html", "mobile-whitepaper.png");
+    await screenshot(mobile, baseUrl, "/activities.html", "mobile-activities.png");
+    await screenshot(mobile, baseUrl, "/about.html", "mobile-about.png");
     await loginAsAdmin(mobile, baseUrl);
+    await screenshot(mobile, baseUrl, "/me.html", "mobile-me.png");
+    await screenshot(mobile, baseUrl, "/review-tasks.html", "mobile-review-tasks.png");
     await screenshot(mobile, baseUrl, "/activity-editor.html", "mobile-activity-editor.png");
     await screenshot(mobile, baseUrl, "/admin-templates.html", "mobile-admin-templates.png");
     await screenshot(mobile, baseUrl, "/admin-template-editor.html", "mobile-admin-template-editor.png");

@@ -184,6 +184,9 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const owned = await request("/api/activities?owner=me&page=1&pageSize=1", {}, member.token);
   assert.equal(owned.activities.length, 1);
   assert.equal(owned.pageInfo.pageSize, 1);
+  const reviewingMine = await request("/api/activities?owner=me&status=reviewing&page=1&pageSize=10", {}, member.token);
+  assert.ok(reviewingMine.activities.some((activity) => activity.id === created.activity.id));
+  assert.ok(reviewingMine.activities.every((activity) => ["admin_review", "collaborator_review"].includes(activity.status)));
 
   const memberDashboard = await request("/api/dashboard/me", {}, member.token);
   assert.equal(memberDashboard.summary.total, 1);
@@ -207,6 +210,9 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     method: "POST",
     body: { action: "approve", comment: "协作员通过" },
   }, collaborator.token);
+  const publishedMine = await request("/api/activities?owner=me&status=published_group&page=1&pageSize=10", {}, member.token);
+  assert.ok(publishedMine.activities.some((activity) => activity.id === created.activity.id));
+  assert.ok(publishedMine.activities.every((activity) => ["published", "full"].includes(activity.status)));
 
   const registration = await request(`/api/activities/${created.activity.id}/register`, {
     method: "POST",
@@ -405,6 +411,13 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await page.getByLabel("手机号").fill("13377779999");
     await page.getByRole("button", { name: "进入有空" }).click();
     await page.waitForURL("**/admin.html");
+    await assertNoHorizontalOverflow(page, `${baseUrl}/index.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/whitepaper.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/about.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/me.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/my-activities.html?status=draft`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/my-activities.html?status=reviewing`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/my-activities.html?status=published_group`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/activity-editor.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/activities.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/activities.html?view=history`);
@@ -414,6 +427,19 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-template-editor.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-logs.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/registrations.html?id=${created.activity.id}`);
+
+    await page.goto(`${baseUrl}/me.html`);
+    await page.waitForLoadState("networkidle");
+    const dashboardLinks = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("[data-workspace-summary] a.stat-link")).map((link) => ({
+        text: link.textContent.trim(),
+        href: link.getAttribute("href"),
+      }))
+    );
+    assert.deepEqual(
+      dashboardLinks.map((link) => link.href),
+      ["my-activities.html", "my-activities.html?status=draft", "my-activities.html?status=reviewing", "my-activities.html?status=published_group"]
+    );
 
     await page.goto(`${baseUrl}/activity-editor.html`);
     await page.waitForLoadState("networkidle");
@@ -427,6 +453,36 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.ok(editorState.toolCount >= 8);
     assert.equal(editorState.hasH1Tool, true);
     assert.equal(editorState.hasTemplateSelect, true);
+    const richEditorCommandState = await page.evaluate(() => {
+      const canvas = document.querySelector("[data-rich-canvas]");
+      canvas.innerHTML = "<p>移动端标题</p>";
+      canvas.focus();
+      const range = document.createRange();
+      range.selectNodeContents(canvas.firstElementChild);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+      document.querySelector('[data-rich-command="h1"]').click();
+      const afterH1 = canvas.firstElementChild?.tagName;
+      const h1Active = document.querySelector('[data-rich-command="h1"]').classList.contains("is-active");
+      document.querySelector('[data-rich-command="h1"]').click();
+      const afterToggle = canvas.firstElementChild?.tagName;
+      const data = new DataTransfer();
+      data.setData("text/plain", "第一段\n\n第二段");
+      canvas.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+      return {
+        afterH1,
+        h1Active,
+        afterToggle,
+        html: canvas.innerHTML,
+      };
+    });
+    assert.equal(richEditorCommandState.afterH1, "H1");
+    assert.equal(richEditorCommandState.h1Active, true);
+    assert.equal(richEditorCommandState.afterToggle, "P");
+    assert.match(richEditorCommandState.html, /<p>第一段<\/p><p>第二段<\/p>/);
+    assert.doesNotMatch(richEditorCommandState.html, /style=|class=/i);
 
     await page.goto(`${baseUrl}/admin-templates.html`);
     await page.waitForLoadState("networkidle");

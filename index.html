@@ -8,8 +8,8 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <script src="theme.js?v=0.15.2"></script>
-    <link rel="stylesheet" href="styles.css?v=0.15.2" />
+    <script src="theme.js?v=0.16.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.16.0" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -63,25 +63,23 @@
       </section>
 
       <section class="section" id="events">
-        <div class="wrap split activity-preview">
+        <div class="wrap activity-preview">
           <div>
             <p class="section-kicker">近期活动</p>
             <h2>先看公告栏，再决定今天有没有空。</h2>
             <p class="intro-text">首页只贴最近三张活动纸条。想看完整列表，可以进入活动页慢慢挑。</p>
-            <div class="button-row">
-              <a class="button primary" href="activities.html">查看所有近期活动</a>
-              <a class="button outline" href="activities.html?view=history">查看历史活动</a>
-            </div>
-          </div>
-          <div>
             <div
-              class="event-list compact"
+              class="event-list compact home-event-strip"
               data-activity-list
               data-limit="3"
               data-activity-view="upcoming"
               data-empty-title="近期公告栏暂时空着"
               data-empty-text="等活动发布后，这里会第一时间出现。"
             ></div>
+            <div class="button-row">
+              <a class="button primary" href="activities.html">查看所有近期活动</a>
+              <a class="button outline" href="activities.html?view=history">查看历史活动</a>
+            </div>
           </div>
         </div>
       </section>
@@ -294,7 +292,7 @@
         </nav>
       </div>
     </footer>
-    <script src="script.js?v=0.15.2"></script>
-    <script src="app.js?v=0.15.2"></script>
+    <script src="script.js?v=0.16.0"></script>
+    <script src="app.js?v=0.16.0"></script>
   </body>
 </html>
