@@ -5351,6 +5351,12 @@ html[data-theme="light"] body.public-surface .data-table td {
   color: var(--muted);
 }
 
+html[data-theme="light"] body.public-surface .activity-hero > div:first-child > p {
+  color: #2b302b;
+  font-weight: 650;
+  text-shadow: 0 1px 0 rgba(255, 253, 248, 0.72);
+}
+
 html[data-theme="light"] body.public-surface .eyebrow,
 html[data-theme="light"] body.public-surface .page-hero .eyebrow,
 html[data-theme="light"] body.public-surface .section-kicker,

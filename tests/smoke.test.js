@@ -626,6 +626,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 
     await page.goto(`${baseUrl}/activity.html?id=${created.activity.id}`);
     await page.waitForLoadState("networkidle");
+    await page.evaluate(() => window.youkongTheme?.setMode("light"));
     const shareState = await page.evaluate(() => ({
       poster: Boolean(document.querySelector("[data-download-poster]")),
       copy: Boolean(document.querySelector("[data-copy-registration-link]")),
@@ -634,6 +635,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       richImage: Boolean(document.querySelector(".article-content img")),
       contact: document.querySelector(".initiator-contact")?.textContent || "",
       contactMarginTop: parseFloat(getComputedStyle(document.querySelector(".activity-hero .initiator-contact")).marginTop || "0"),
+      detailLineColor: getComputedStyle(document.querySelector(".activity-hero > div:first-child > p")).color,
+      detailLineWeight: Number(getComputedStyle(document.querySelector(".activity-hero > div:first-child > p")).fontWeight),
     }));
     assert.equal(shareState.poster, true);
     assert.equal(shareState.copy, true);
@@ -642,6 +645,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.equal(shareState.richImage, true);
     assert.match(shareState.contact, /13300002222/);
     assert.ok(shareState.contactMarginTop >= 24);
+    assert.equal(shareState.detailLineColor, "rgb(43, 48, 43)");
+    assert.ok(shareState.detailLineWeight >= 650);
 
     await page.goto(`${baseUrl}/success.html?activity=${created.activity.id}&registration=${registration.registration.id}&token=${encodeURIComponent(duplicate.accessToken)}`);
     await page.waitForLoadState("networkidle");
