@@ -7227,7 +7227,7 @@ html[data-theme="light"] body.product-surface .form-note p {
 
   body.public-surface #events .home-event-strip .event-card {
     grid-template-columns: 176px minmax(0, 1fr);
-    gap: 0;
+    column-gap: clamp(24px, 2.6vw, 36px);
     min-height: 154px;
     width: 100%;
   }
