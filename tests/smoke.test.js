@@ -11,7 +11,7 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "youkong-test-"));
 process.env.STORE_DRIVER = "json";
 process.env.YK_DB_FILE = path.join(tmpDir, "youkong-db.json");
 process.env.YKADMIN_NICKNAME = "有空管理员";
-process.env.YKADMIN_PHONE = "13377779999";
+process.env.YKADMIN_PHONE = "18800000000";
 
 const { createApp, store } = require("../lib/app");
 
@@ -66,7 +66,7 @@ function localDateInput(days = 0) {
 
 async function createActivity(token, overrides = {}) {
   const modules = await request("/api/modules");
-  const admin = await login("13377779999");
+  const admin = await login("18800000000");
   const { collaborators } = await request("/api/collaborators", {}, admin.token);
   const form = new FormData();
   form.set("title", overrides.title || "自动化测试活动");
@@ -164,11 +164,11 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const unsafeLogin = await fetch(`${baseUrl}/api/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ phone: "13377779999" }),
+    body: JSON.stringify({ phone: "18800000000" }),
   });
   assert.equal(unsafeLogin.status, 403, "non-GET API without intent header should be blocked");
 
-  const admin = await login("13377779999");
+  const admin = await login("18800000000");
   await request("/api/users", {
     method: "POST",
     body: { nickname: "协作员A", phone: "13300001111", role: "collaborator" },
@@ -198,6 +198,17 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   richImageForm.set("image", new Blob([richImageBuffer], { type: "image/png" }), "rich-body.png");
   const richImage = await request("/api/uploads/rich-image", { method: "POST", body: richImageForm }, member.token);
   assert.match(richImage.url, /\/uploads\/.+\.png$/);
+  const fakeImageForm = new FormData();
+  fakeImageForm.set("image", new Blob(["<script>alert(1)</script>"], { type: "image/png" }), "fake.png");
+  const fakeImageUpload = await fetch(`${baseUrl}/api/uploads/rich-image`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${member.token}`,
+      "X-Requested-With": "XMLHttpRequest",
+    },
+    body: fakeImageForm,
+  });
+  assert.equal(fakeImageUpload.status, 400);
 
   const template = await request("/api/templates", {
     method: "POST",
@@ -284,9 +295,37 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(duplicate.existing, true);
   assert.equal(duplicate.registration.id, registration.registration.id);
   assert.ok(registration.registration.id.startsWith("reg_"));
+  assert.ok(registration.accessToken);
+  assert.equal(registration.registration.accessToken, registration.accessToken);
+  assert.equal(registration.registration.phoneHash, undefined);
+  assert.ok(duplicate.accessToken);
+  assert.notEqual(duplicate.accessToken, registration.accessToken);
+  const noTokenConfirm = await fetch(`${baseUrl}/api/activities/${created.activity.id}/registrations/${registration.registration.id}`);
+  assert.equal(noTokenConfirm.status, 403);
+  const staleTokenConfirm = await fetch(`${baseUrl}/api/activities/${created.activity.id}/registrations/${registration.registration.id}?token=${encodeURIComponent(registration.accessToken)}`);
+  assert.equal(staleTokenConfirm.status, 403);
+  const publicConfirm = await request(`/api/activities/${created.activity.id}/registrations/${registration.registration.id}?token=${encodeURIComponent(duplicate.accessToken)}`);
+  assert.equal(publicConfirm.registration.nickname, "报名者");
+  assert.equal(publicConfirm.registration.phone, "18800001111");
+  assert.equal(publicConfirm.registration.phoneHash, undefined);
+  const noTokenCancel = await fetch(`${baseUrl}/api/activities/${created.activity.id}/registrations/${registration.registration.id}/cancel`, {
+    method: "POST",
+    headers: { "X-Requested-With": "XMLHttpRequest" },
+    body: "{}",
+  });
+  assert.equal(noTokenCancel.status, 403);
+  const cancellableRegistration = await request(`/api/activities/${created.activity.id}/register`, {
+    method: "POST",
+    body: { nickname: "临时取消", phone: "18800004444" },
+  });
+  await request(`/api/activities/${created.activity.id}/registrations/${cancellableRegistration.registration.id}/cancel`, {
+    method: "POST",
+    body: { token: cancellableRegistration.accessToken },
+  });
 
   const registrations = await request(`/api/activities/${created.activity.id}/registrations`, {}, member.token);
   assert.equal(registrations.registrations.length, 1);
+  assert.equal(registrations.registrations[0].phoneHash, undefined);
 
   const byRegistrations = await request("/api/activities?all=true&sort=registrations-desc&page=1&pageSize=1", {}, admin.token);
   assert.equal(byRegistrations.activities[0].id, created.activity.id);
@@ -469,7 +508,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     });
     assert.equal(themeSwitchAfterClick.mode, "dark");
     assert.match(themeSwitchAfterClick.label, /黑夜模式/);
-    await page.getByLabel("手机号").fill("13377779999");
+    await page.getByLabel("手机号").fill("18800000000");
     await page.getByRole("button", { name: "进入有空" }).click();
     await page.waitForURL("**/admin.html");
     await assertNoHorizontalOverflow(page, `${baseUrl}/index.html`);
@@ -600,7 +639,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.equal(shareState.richImage, true);
     assert.match(shareState.contact, /13300002222/);
 
-    await page.goto(`${baseUrl}/success.html?activity=${created.activity.id}&registration=${registration.registration.id}`);
+    await page.goto(`${baseUrl}/success.html?activity=${created.activity.id}&registration=${registration.registration.id}&token=${encodeURIComponent(duplicate.accessToken)}`);
     await page.waitForLoadState("networkidle");
     const successPosterState = await page.evaluate(() => ({
       poster: Boolean(document.querySelector("[data-download-poster]")),
@@ -610,6 +649,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       poster: true,
       activityShareLoaded: true,
     });
+    const csvEscaped = await page.evaluate(() => window.escapeCsv("=HYPERLINK(\"https://example.com\")"));
+    assert.equal(csvEscaped, "\"'=HYPERLINK(\"\"https://example.com\"\")\"");
     const posterTextPreview = await page.evaluate(() => window.youkongActivityShare.posterTextPreview({
       title: "鹳鸟踟蹰",
       moduleName: "有空放映",

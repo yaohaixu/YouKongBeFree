@@ -27,8 +27,6 @@ const packageJson = {
 
 const indexJs = `process.env.STORE_DRIVER = process.env.STORE_DRIVER || "cloudbase";
 process.env.YKADMIN_NICKNAME = process.env.YKADMIN_NICKNAME || "有空管理员";
-process.env.YKADMIN_PHONE = process.env.YKADMIN_PHONE || "13377779999";
-
 const serverless = require("serverless-http");
 const { createApp, store, sweepExpiredActivities } = require("./lib/app");
 

@@ -124,8 +124,16 @@
     const svg = await response.text();
     const blobUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
     const image = new Image();
+    const loaded = new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = reject;
+    });
     image.src = blobUrl;
-    await image.decode();
+    if (typeof image.decode === "function") {
+      await image.decode().catch(() => loaded);
+    } else {
+      await loaded;
+    }
     return {
       image,
       revoke: () => URL.revokeObjectURL(blobUrl),

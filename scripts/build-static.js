@@ -4,27 +4,9 @@ const path = require("path");
 const root = path.join(__dirname, "..");
 const output = path.join(root, "dist");
 const files = [
-  "index.html",
-  "whitepaper.html",
-  "activities.html",
-  "participate.html",
-  "donate.html",
-  "about.html",
-  "login.html",
-  "me.html",
-  "activity-editor.html",
-  "my-activities.html",
-  "registrations.html",
-  "review-tasks.html",
-  "admin.html",
-  "admin-activities.html",
-  "admin-members.html",
-  "admin-modules.html",
-  "admin-templates.html",
-  "admin-template-editor.html",
-  "admin-logs.html",
-  "activity.html",
-  "success.html",
+  ...fs.readdirSync(root)
+    .filter((file) => file.endsWith(".html"))
+    .sort(),
   "styles.css",
   "theme.js",
   "script.js",

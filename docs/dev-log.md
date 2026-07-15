@@ -174,7 +174,7 @@
 - 新增 `scripts/build-static.js`，生成 CloudBase Hosting 静态产物 `dist/`。
 - 新增 `scripts/build-function.js`，生成云函数临时部署包 `tmp/cloudfunctions/youkongApi`。
 - 修改 `app.js`，CloudBase 静态域名下自动调用 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
-- 修改 `.env.example`，默认管理员改为 `有空管理员 / 13377779999`，补充 CloudBase 配置项。
+- 修改 `.env.example`，默认管理员改为 `有空管理员 / 已隐藏`，补充 CloudBase 配置项。
 - 修改 `.gitignore`，忽略 `dist/` 和 `tmp/` 构建产物。
 - 更新 README 和 CHANGELOG。
 
@@ -228,7 +228,7 @@
 - `node --check` 通过：`app.js`、`script.js`、`server.js`、`lib/app.js`、`lib/store.js`、构建脚本。
 - 本地 JSON 模式 API 冒烟通过。
 - CloudBase 线上 API 冒烟通过：模块读取、管理员登录、成员新增、成员登录、活动发布、访客报名、报名表查看。
-- Playwright 浏览器验证通过：CloudBase 静态登录页输入 `13377779999` 后跳转后台，后台内容可见。
+- Playwright 浏览器验证通过：CloudBase 静态登录页输入 `已隐藏` 后跳转后台，后台内容可见。
 - 线上冒烟产生的测试成员、活动和报名记录已通过 CloudBase NoSQL 命令清理。
 - 临时探针函数 `ping` 已删除。
 
@@ -1054,7 +1054,7 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 - `npm run build:cloudbase` 已通过。
 - `git diff --check` 已通过。
 - 本地 Playwright 视觉检查通过：`index.html`、`login.html`、`activities.html`、`admin.html` 在 1440px 和 390px 关键视口下无横向溢出。
-- 本地验证中，`13377779999` 不存在于当前 JSON 种子数据；使用本地种子管理员 `18800000000` 登录验证后台跳转和管理员工作台。
+- 本地验证中，`已隐藏` 不存在于当前 JSON 种子数据；使用本地种子管理员 `18800000000` 登录验证后台跳转和管理员工作台。
 
 ### 遗留问题
 
@@ -1320,7 +1320,7 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 - CloudBase 静态托管已部署成功：上传 28 个文件，访问地址为 `https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com`。
 - CloudBase 云函数 `youkongApi` 已部署成功，HTTP API 地址为 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
 - 线上冒烟通过：`index.html` 已引用 `v=0.13.4`，线上 `app.js` 已包含 `/api/dashboard/me` 调用。
-- 线上 API 冒烟通过：管理员手机号 `13377779999` 可登录，`/api/dashboard/admin` 返回活动、成员、模块和待办计数；本次实测 dashboard 响应约 662ms。
+- 线上 API 冒烟通过：管理员手机号 `已隐藏` 可登录，`/api/dashboard/admin` 返回活动、成员、模块和待办计数；本次实测 dashboard 响应约 662ms。
 - GitHub Actions 初次触发后发现 `npm ci` 失败：`package-lock.json` 中的 `registry.npmmirror.com/retry-0.13.3.tgz` 在 GitHub runner 上返回 404。
 - 已将 `package-lock.json` 的依赖 tarball 地址统一替换为官方 npm registry，并把错误锁定的 `retry@0.13.3` 修正为官方存在的 `retry@0.13.1`。
 - `npm ci --registry=https://registry.npmjs.org` 已本地验证通过。
@@ -1384,7 +1384,7 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 - Git 已提交本次运维增强变更。
 - CloudBase 静态托管已部署成功：上传 28 个文件。
 - CloudBase 云函数 `youkongApi` 已部署成功，HTTP API 地址为 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
-- 线上冒烟通过：`/api/session` 返回 200，管理员手机号 `13377779999` 可登录，`/api/dashboard/admin` 返回活动、成员、模块和待办计数；本次实测 dashboard 响应约 452ms。
+- 线上冒烟通过：`/api/session` 返回 200，管理员手机号 `已隐藏` 可登录，`/api/dashboard/admin` 返回活动、成员、模块和待办计数；本次实测 dashboard 响应约 452ms。
 - GitHub `dev` / `main` 已推送到 `403daaf feat(ops): add backup and api timing logs`；`dev` CI、`main` CI 和 GitHub Pages 部署任务均已通过。
 
 ### 遗留问题
@@ -1464,7 +1464,7 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 - Git 已提交 `3d6d53d feat(activity): add rich editor sharing and log filters`。
 - CloudBase 静态托管已部署成功：上传 30 个文件。
 - CloudBase 云函数 `youkongApi` 已部署成功，HTTP API 地址为 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
-- 线上冒烟通过：`activity-editor.html` 已引用 `rich-editor.js?v=0.14.0`，`activity.html` 已引用 `activity-share.js?v=0.14.0`，`/api/session` 返回 200，管理员手机号 `13377779999` 可登录，`/api/dashboard/admin` 和 `/api/logs?action=login` 返回 200。
+- 线上冒烟通过：`activity-editor.html` 已引用 `rich-editor.js?v=0.14.0`，`activity.html` 已引用 `activity-share.js?v=0.14.0`，`/api/session` 返回 200，管理员手机号 `已隐藏` 可登录，`/api/dashboard/admin` 和 `/api/logs?action=login` 返回 200。
 - GitHub `dev` / `main` 已推送到 `3d6d53d feat(activity): add rich editor sharing and log filters`；`dev` CI、`main` CI 和 GitHub Pages 部署任务均已通过。CI 已执行 `npm test`、CloudBase dry-run 和视觉截图 artifact 上传。
 
 ### 遗留问题
@@ -1550,7 +1550,7 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 - Git 已提交 `f78e299 feat(templates): add activity description templates`，并推送到 `dev` 与 `main`。
 - CloudBase 静态托管已部署成功：上传 31 个文件，新增 `admin-templates.html` 已进入线上站点。
 - CloudBase 云函数 `youkongApi` 已部署成功，HTTP API 地址为 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
-- 线上冒烟通过：`activity-editor.html` 已引用 `rich-editor.js?v=0.15.0` 并包含活动描述模板下拉；`admin-templates.html` 已引用 `v=0.15.0` 并包含模板管理表单；`/api/session` 返回 200，管理员手机号 `13377779999` 可登录，`/api/dashboard/admin` 返回 `templates` 计数，`/api/templates?page=1&pageSize=1` 返回分页信息。
+- 线上冒烟通过：`activity-editor.html` 已引用 `rich-editor.js?v=0.15.0` 并包含活动描述模板下拉；`admin-templates.html` 已引用 `v=0.15.0` 并包含模板管理表单；`/api/session` 返回 200，管理员手机号 `已隐藏` 可登录，`/api/dashboard/admin` 返回 `templates` 计数，`/api/templates?page=1&pageSize=1` 返回分页信息。
 
 ### 遗留问题
 
@@ -1619,7 +1619,7 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 - Git 已提交 `8140a6e fix(activity): keep rich text images visible`，并推送到 `dev` 与 `main`。
 - CloudBase 静态托管已部署成功：上传 32 个文件，新增 `admin-template-editor.html` 已进入线上站点。
 - CloudBase 云函数 `youkongApi` 已部署成功，HTTP API 地址为 `https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api`。
-- 线上冒烟通过：`admin-templates.html` 已引用 `v=0.15.1` 并只保留列表和新增入口；`admin-template-editor.html` 已引用 `v=0.15.1` 并包含模板详情表单；管理员手机号 `13377779999` 可登录；`/api/uploads/rich-image` 返回 `/api/files?fileId=...` 稳定代理链接，代理链接返回 302 到 CloudBase 临时图片地址；线上测试模板已创建后删除。
+- 线上冒烟通过：`admin-templates.html` 已引用 `v=0.15.1` 并只保留列表和新增入口；`admin-template-editor.html` 已引用 `v=0.15.1` 并包含模板详情表单；管理员手机号 `已隐藏` 可登录；`/api/uploads/rich-image` 返回 `/api/files?fileId=...` 稳定代理链接，代理链接返回 302 到 CloudBase 临时图片地址；线上测试模板已创建后删除。
 
 ### 遗留问题
 
@@ -2017,3 +2017,70 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 
 1. 可把活动操作按钮文案进一步标准化为两个到三个汉字，如「报名」「撤回」「结束」，提升移动端密度。
 2. 后续可抽出活动列表组件，避免首页、公开活动页、我的活动页和后台活动页样式重复覆盖。
+
+## 2026-07-15 - 0.17.0 安全与一致性加固
+
+### 任务目标
+
+根据端到端 bug 复盘结果修复高风险问题；登录方案暂不重做，仅先从公开页面和当前文档中隐藏真实管理员手机号。其余按复盘建议推进：报名确认访问保护、上传图片内容校验、CSV 导出保护、CloudBase 查询和构建可靠性、文档版本更新。
+
+### 具体修改内容
+
+- `lib/app.js` 新增报名确认 token：报名 / 重复报名返回 `accessToken`，公开查看报名确认页和公开取消报名都必须携带 token；服务端仅保存 token 哈希，不在公开响应中返回 `phoneHash` 或 token 哈希。
+- `lib/app.js` 新增上传图片魔数校验，封面和正文图片都会校验实际内容是否为 JPG、PNG、WebP 或 GIF；`/api/files` 只代理 `activity-covers` 和 `rich-images` 路径下的文件标识。
+- `lib/app.js` 将活动详情 / 列表模块和成员读取改为按当前活动需要的 ID 查询，减少 CloudBase 全量读取超过 1000 条后的截断风险。
+- `lib/app.js` 将审核、撤回、取消、结束和报名相关路径放到活动 / 报名维度锁内重新读取当前状态，降低并发旧状态覆盖风险。
+- `app.js` 报名成功跳转带上 token，成功页读取和取消报名均携带 token；CSV 导出对 `= + - @` 开头单元格加前缀；动态模块读取失败时展示刷新重试提示。
+- `assets/js/activity-share.js` 为二维码图片加载增加 `image.decode()` 兼容兜底，改善 Safari / 微信内置浏览器表现。
+- `scripts/build-static.js` 自动发现根目录全部 HTML；`scripts/verify-cloudbase-package.js` 校验所有 HTML 都进入 `dist/`。
+- `login.html`、`.env.example`、`cloudbaserc.json`、`README.md` 移除公开真实管理员手机号；测试和视觉脚本改用本地假号码。
+- `tests/smoke.test.js` 增加伪图片拒绝、报名 token、无 token 访问 / 取消拦截、重复报名刷新 token、CSV 防公式注入和成功页 token 访问覆盖。
+- `package.json` / `package-lock.json` 版本升级到 `0.17.0`，全部 HTML 静态资源参数升级到 `v=0.17.0`。
+- README、CHANGELOG、docs/security.md 同步更新。
+
+### 涉及文件
+
+- `.env.example`
+- `*.html`
+- `app.js`
+- `assets/js/activity-share.js`
+- `cloudbaserc.json`
+- `lib/app.js`
+- `lib/store.js`
+- `scripts/build-function.js`
+- `scripts/build-static.js`
+- `scripts/verify-cloudbase-package.js`
+- `scripts/visual-snapshots.js`
+- `tests/smoke.test.js`
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/security.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 报名确认采用随机 token + 服务端哈希保存，而不是继续只依赖可预测的报名 ID；重复报名刷新 token，使旧确认链接失效。
+- 伪图片防护放在 Multer 文件接收后、保存前做内容魔数校验；保留前端压缩体验，但不信任前端 MIME 和文件名。
+- CloudBase 静态构建改为自动发现 HTML，避免新增页面时忘记更新构建清单。
+- 没有强制 override CloudBase SDK 的 axios / lodash 传递依赖，因为当前 latest / release / next 版本仍带同类依赖，贸然 override 可能破坏云函数 SDK。
+
+### 当前完成情况
+
+- 已完成代码开发和文档更新。
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
+- `npm run deploy:dry-run` 已通过：CloudBase 静态站点和云函数包均可构建，自动 HTML 校验通过。
+- 已执行 `npm audit --omit=dev`：仍有 5 个生产依赖风险，均来自 `@cloudbase/node-sdk` 传递依赖，已记录到 `docs/security.md`。
+
+### 遗留问题
+
+- 登录仍是手机号白名单免密登录，后续需要单独设计短信验证码、微信登录或密码 + 二次验证方案。
+- 活动报名锁仍是进程内锁，CloudBase 多实例下不是全局事务；报名规模增长后应引入数据库唯一约束、事务、队列或网关级限流。
+- CloudBase SDK 传递依赖审计风险仍需等待官方修复或在独立分支验证替代方案。
+
+### 下一步建议
+
+1. 先做登录专项设计：验证码 / 微信登录 / 管理员二次验证三选一或组合，并补权限矩阵。
+2. 给 CloudBase 数据库补充报名唯一索引或事务型写入策略，彻底解决多实例并发报名。
+3. 将 `lib/app.js` 继续拆分为 auth、activities、registrations、uploads、users、modules 路由文件，降低后续改动风险。

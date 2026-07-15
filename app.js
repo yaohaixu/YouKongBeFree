@@ -1049,7 +1049,11 @@ function renderRegistrationTable(container, activityId, registrations) {
 }
 
 function escapeCsv(value = "") {
-  return `"${String(value).replaceAll('"', '""')}"`;
+  let text = String(value);
+  if (/^[=+\-@]/.test(text)) {
+    text = `'${text}`;
+  }
+  return `"${text.replaceAll('"', '""')}"`;
 }
 
 function downloadRegistrationsCsv(activity, registrations) {
@@ -1154,11 +1158,13 @@ async function initActivityPage() {
     event.preventDefault();
     setMessage(message, "正在报名...");
     try {
-      const { registration } = await api.post(`/api/activities/${id}/register`, {
+      const { registration, accessToken } = await api.post(`/api/activities/${id}/register`, {
         nickname: form.nickname.value,
         phone: form.phone.value,
       });
-      location.href = `success.html?activity=${encodeURIComponent(id)}&registration=${encodeURIComponent(registration.id)}`;
+      const token = accessToken || registration.accessToken || "";
+      const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : "";
+      location.href = `success.html?activity=${encodeURIComponent(id)}&registration=${encodeURIComponent(registration.id)}${tokenQuery}`;
     } catch (error) {
       setMessage(message, error.message, "error");
     }
@@ -1171,13 +1177,14 @@ async function initSuccessPage() {
   const params = new URLSearchParams(location.search);
   const activityId = params.get("activity");
   const registrationId = params.get("registration");
-  if (!activityId || !registrationId) {
+  const registrationToken = params.get("token") || "";
+  if (!activityId || !registrationId || !registrationToken) {
     root.innerHTML = `<div class="empty-state"><strong>缺少报名信息</strong><p>请从活动详情页重新报名。</p></div>`;
     return;
   }
 
   try {
-    const { activity, registration } = await api.get(`/api/activities/${activityId}/registrations/${registrationId}`);
+    const { activity, registration } = await api.get(`/api/activities/${activityId}/registrations/${registrationId}?token=${encodeURIComponent(registrationToken)}`);
     root.innerHTML = `
       <section class="success-hero">
         <div class="wrap success-card">
@@ -1213,7 +1220,7 @@ async function initSuccessPage() {
     });
     qs("[data-cancel-registration]", root)?.addEventListener("click", async () => {
       if (!confirm("确定取消这次报名吗？取消后如需参加，需要重新报名。")) return;
-      await api.post(`/api/activities/${activityId}/registrations/${registrationId}/cancel`, {});
+      await api.post(`/api/activities/${activityId}/registrations/${registrationId}/cancel`, { token: registrationToken });
       showToast("取消成功");
       root.innerHTML = `
         <section class="success-hero">
@@ -1943,6 +1950,12 @@ async function safeInit(task) {
     await task();
   } catch (error) {
     console.error(error);
+    showToast("页面数据读取失败，请刷新后重试");
+    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-activity-detail], [data-success-detail]")
+      .filter((element) => /正在|读取|加载/.test(element.textContent || ""))
+      .forEach((element) => {
+        element.innerHTML = `<div class="empty-state"><strong>暂时没读到数据</strong><p>请刷新页面重试，或稍后再来。</p></div>`;
+      });
   }
 }
 

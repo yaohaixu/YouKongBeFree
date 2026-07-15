@@ -9,7 +9,7 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "youkong-visual-"));
 process.env.STORE_DRIVER = "json";
 process.env.YK_DB_FILE = path.join(tmpDir, "youkong-db.json");
 process.env.YKADMIN_NICKNAME = "有空管理员";
-process.env.YKADMIN_PHONE = "13377779999";
+process.env.YKADMIN_PHONE = "18800000000";
 
 const { createApp, store } = require("../lib/app");
 
@@ -92,7 +92,7 @@ async function seedReviewTask() {
 
 async function loginAsAdmin(page, baseUrl) {
   await page.goto(`${baseUrl}/login.html`, { waitUntil: "networkidle" });
-  await page.getByLabel("手机号").fill("13377779999");
+  await page.getByLabel("手机号").fill("18800000000");
   await page.getByRole("button", { name: "进入有空" }).click();
   await page.waitForURL("**/admin.html");
   await page.waitForLoadState("networkidle");
