@@ -1456,6 +1456,10 @@ select:disabled {
   font-size: 14px;
 }
 
+.activity-hero .event-meta + .initiator-contact {
+  margin-top: clamp(24px, 3vw, 34px);
+}
+
 .initiator-contact strong {
   color: var(--muted);
   font-size: 13px;
@@ -1557,6 +1561,10 @@ select:disabled {
 }
 
 .article-content {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: clamp(24px, 4vw, 42px);
@@ -1571,6 +1579,17 @@ select:disabled {
 
 .article-content p:last-child {
   margin-bottom: 0;
+}
+
+.article-content :where(p, li, blockquote, h1, h2, h3, strong, em, b, i, u),
+.article-content a {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.article-content a {
+  word-break: break-all;
 }
 
 .manage-list {

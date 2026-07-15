@@ -232,13 +232,14 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const memberTemplates = await request("/api/templates?page=1&pageSize=10&q=放映", {}, member.token);
   assert.ok(memberTemplates.templates.some((item) => item.id === template.template.id));
 
-  const longDescriptionWithImage = `<h1>活动段落标题</h1><p>${"有".repeat(49880)}</p><img src="${richImage.url}" alt="正文图">`;
+  const longMeetingUrl = `https://meeting.tencent.com/dm/${"YK".repeat(120)}?meeting_code=${"1234567890".repeat(12)}`;
+  const longDescriptionWithImage = `<h1>活动段落标题</h1><p>${"有".repeat(48500)}</p><img src="${richImage.url}" alt="正文图">`;
   const created = await createActivity(member.token, {
     title: "分页和日志测试活动",
     endsAt: localDateTimeFromNow(30, 22, 0),
     showInitiatorContact: true,
     initiatorContact: "13300002222",
-    description: `${longDescriptionWithImage}<p>正文<strong>重点</strong><script>alert("x")</script></p>`,
+    description: `${longDescriptionWithImage}<p>腾讯会议链接：<a href="${longMeetingUrl}">${longMeetingUrl}</a></p><p>正文<strong>重点</strong><script>alert("x")</script></p>`,
   });
   assert.equal(created.activity.capacity, 99);
   assert.equal(created.activity.registrationCount, 0);
@@ -521,6 +522,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/activity-editor.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/activities.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/activities.html?view=history`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/activity.html?id=${created.activity.id}`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-activities.html`);
     await assertMobileActionStack(page, `${baseUrl}/admin-activities.html`, 3);
     const memberActionContext = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
@@ -631,6 +633,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       richHeading: Boolean(document.querySelector(".article-content h1")),
       richImage: Boolean(document.querySelector(".article-content img")),
       contact: document.querySelector(".initiator-contact")?.textContent || "",
+      contactMarginTop: parseFloat(getComputedStyle(document.querySelector(".activity-hero .initiator-contact")).marginTop || "0"),
     }));
     assert.equal(shareState.poster, true);
     assert.equal(shareState.copy, true);
@@ -638,6 +641,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.equal(shareState.richHeading, true);
     assert.equal(shareState.richImage, true);
     assert.match(shareState.contact, /13300002222/);
+    assert.ok(shareState.contactMarginTop >= 24);
 
     await page.goto(`${baseUrl}/success.html?activity=${created.activity.id}&registration=${registration.registration.id}&token=${encodeURIComponent(duplicate.accessToken)}`);
     await page.waitForLoadState("networkidle");
