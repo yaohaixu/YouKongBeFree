@@ -650,13 +650,20 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 
     await page.goto(`${baseUrl}/success.html?activity=${created.activity.id}&registration=${registration.registration.id}&token=${encodeURIComponent(duplicate.accessToken)}`);
     await page.waitForLoadState("networkidle");
+    await page.evaluate(() => window.youkongTheme?.setMode("light"));
     const successPosterState = await page.evaluate(() => ({
       poster: Boolean(document.querySelector("[data-download-poster]")),
       activityShareLoaded: Boolean(window.youkongActivityShare),
+      summaryColor: getComputedStyle(document.querySelector(".success-card > p:not(.eyebrow)")).color,
+      summaryWeight: Number(getComputedStyle(document.querySelector(".success-card > p:not(.eyebrow)")).fontWeight),
+      labelColor: getComputedStyle(document.querySelector(".success-grid span")).color,
     }));
     assert.deepEqual(successPosterState, {
       poster: true,
       activityShareLoaded: true,
+      summaryColor: "rgb(43, 48, 43)",
+      summaryWeight: 620,
+      labelColor: "rgb(63, 73, 63)",
     });
     const csvEscaped = await page.evaluate(() => window.escapeCsv("=HYPERLINK(\"https://example.com\")"));
     assert.equal(csvEscaped, "\"'=HYPERLINK(\"\"https://example.com\"\")\"");

@@ -2235,3 +2235,55 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 
 1. 后续可以在视觉截图脚本里增加白天 / 黑夜模式活动详情页截图，减少主题切换后的人工抽检成本。
 2. 建议继续沉淀主题颜色 token，例如 `--hero-text`、`--hero-muted`，让带图 Hero 的文字层级和普通卡片文字层级分开维护。
+
+## 2026-07-15 - 0.17.4 白天模式白底文字对比度修复
+
+### 任务目标
+
+修复白天模式下报名成功页「你的报名已经记录下来，可以把这个页面留作确认信息。」这一段文字在白色卡片上过浅、看不清的问题，并检查公开白底 / 近白底页面是否还有同类浅色文字。
+
+### 具体修改内容
+
+- `styles.css`：新增白天模式规则 `html[data-theme="light"] body.public-surface .success-card > p`，将报名成功页主说明改为 `#2b302b`，字重提升到 `620`。
+- `styles.css`：新增白天模式规则 `html[data-theme="light"] body.public-surface .success-grid span`，将成功页信息标签改为 `#3f493f`。
+- `tests/smoke.test.js`：报名成功页浏览器冒烟中强制切换白天模式，断言主说明颜色、字重和信息标签颜色。
+- `package.json` / `package-lock.json`：项目版本升级到 `0.17.4`。
+- `*.html`：静态资源参数升级到 `v=0.17.4`。
+- `README.md` / `CHANGELOG.md`：同步更新版本状态、功能说明和变更记录。
+
+### 涉及文件
+
+- `styles.css`
+- `tests/smoke.test.js`
+- `*.html`
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+
+### 技术方案选择
+
+- 没有全局加深所有 `--muted`，而是针对白天模式下成功页白底卡片中实际低对比的选择器做覆盖。这样可以保留其他页面柔和但仍可读的辅助层级。
+- 使用白底扫描脚本检查 `index.html`、`whitepaper.html`、`participate.html`、`donate.html`、`about.html`、`activities.html`、`activity.html` 和注入成功卡片样本的 `success.html`，按可见文字和近白背景计算对比度。
+
+### 设计决策原因
+
+- 报名成功页主说明是用户完成报名后的确认信息，不应像装饰性说明一样被弱化。
+- 成功页小标签虽然是辅助信息，但字号较小，白底上也需要达到更稳定的深色层级。
+- 保持 `#2b302b` / `#3f493f` 这组已在系统中使用的墨绿灰色，和当前苹果风格 + 社区温暖感保持一致。
+
+### 当前完成情况
+
+- 代码修改、版本更新和文档更新已完成。
+- 白天模式公开页白底 / 近白底文字对比度扫描结果为 0 个低对比项。
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
+
+### 遗留问题
+
+- 本次扫描覆盖公开页和成功页样本；后台 / 工作台白底区域后续如果继续出现浅字，可以把同一套扫描扩展到登录态页面。
+
+### 下一步建议
+
+1. 将白天 / 黑夜主题对比度扫描沉淀为可复用测试脚本，纳入 `npm test` 或独立 `npm run test:contrast`。
+2. 后续抽象主题文字 token，例如 `--text-primary`、`--text-secondary`、`--text-tertiary`，减少深色主题层和白天主题层互相覆盖造成的回归。
