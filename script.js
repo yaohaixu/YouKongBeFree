@@ -10,6 +10,11 @@ const productSurfaceSelectors = [
   "[data-admin-templates-page]",
   "[data-admin-template-editor-page]",
   "[data-admin-logs-page]",
+  "[data-admin-safety-page]",
+  "[data-admin-ai-page]",
+  "[data-admin-trust-page]",
+  "[data-admin-trust-detail-page]",
+  "[data-admin-activity-confidence-page]",
   "[data-me-dashboard]",
   "[data-my-activities-page]",
   "[data-review-tasks-root]",
@@ -109,6 +114,18 @@ mountThemeSwitch();
 setTimeout(mountThemeSwitch, 0);
 setTimeout(mountThemeSwitch, 160);
 mountQuickHome();
+
+function mountAdminLoginFooterLink() {
+  document.querySelectorAll(".site-footer .footer-links").forEach((links) => {
+    if (links.querySelector('[href="login.html"]')) return;
+    const link = document.createElement("a");
+    link.href = "login.html";
+    link.textContent = "管理员登录";
+    links.append(link);
+  });
+}
+
+mountAdminLoginFooterLink();
 
 if (menuToggle && navLinks) {
   menuToggle.addEventListener("click", () => {

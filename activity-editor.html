@@ -4,12 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>发起活动｜有空客厅</title>
-    <meta name="description" content="有空成员发起或编辑活动。" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com; form-action 'self'" />
+    <meta name="description" content="无需登录即可在有空客厅发起或编辑自己的活动。" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <script src="theme.js?v=0.17.4"></script>
-    <link rel="stylesheet" href="styles.css?v=0.17.4" />
+    <script src="theme.js?v=0.18.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.18.0" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -23,7 +23,7 @@
           <a href="participate.html">活动与参与</a>
           <a href="donate.html">捐赠支持</a>
           <a href="about.html">关于与联系</a>
-          <span class="session-nav" data-session-nav><a href="login.html">我的</a></span>
+          <span class="session-nav" data-session-nav><a href="me.html">我的</a></span>
         </nav>
       </div>
     </header>
@@ -32,8 +32,8 @@
       <section class="page-hero river">
         <div class="wrap">
           <p class="eyebrow">发起活动</p>
-          <h1><span data-user-name>有空成员</span>，把一个想法写清楚。</h1>
-          <p>可以先存草稿，也可以提交审核。管理员通过后，再交给你选择的协作员继续审核。</p>
+          <h1><span data-user-name>朋友</span>，把一个想法写清楚。</h1>
+          <p>无需注册登录。活动会先经过轻量规则判断；大多数真实活动可以直接发布，风险较高的内容会进入社区复核。</p>
         </div>
       </section>
 
@@ -43,7 +43,7 @@
             <h3 data-activity-form-title>添加活动</h3>
             <div class="form-grid">
               <label>对应模块<select name="moduleId" required></select></label>
-              <label>选择协作员<select name="collaboratorId"></select></label>
+              <label>选择协作员（可选）<select name="collaboratorId"></select></label>
               <label>标题<input name="title" required placeholder="比如：有空放映｜重庆森林" /></label>
               <label>发起人<input name="initiator" required /></label>
               <label>是否展示活动发起人联系方式
@@ -64,7 +64,7 @@
             <textarea name="description" class="rich-textarea" required placeholder="像写一篇公众号短文一样介绍活动：为什么想发起、会发生什么、适合谁来、需要注意什么。可以分段书写。"></textarea>
             <div class="form-actions">
               <button class="button ghost" type="submit" data-submit-intent="draft">存草稿</button>
-              <button class="button primary" type="submit" data-activity-submit data-submit-intent="submit">提交审核</button>
+              <button class="button primary" type="submit" data-activity-submit data-submit-intent="submit">发布活动</button>
               <button class="button outline" type="button" data-cancel-edit hidden>取消</button>
             </div>
             <p class="form-message" data-activity-message></p>
@@ -73,7 +73,7 @@
           <aside class="panel-block sticky-panel">
             <p class="section-kicker">处理建议</p>
             <h3>先写到能被别人接住。</h3>
-            <p class="muted-text">标题、时间、地点、活动描述和协作员会影响审核效率。存草稿不会公开，提交审核后可以在「我的活动」查看状态。</p>
+            <p class="muted-text">标题、时间、地点和活动描述越清楚，活动置信度越高。存草稿不会公开，发布后可以在「我的活动」查看状态。</p>
             <div class="button-row">
               <a class="button ghost" href="my-activities.html">我的活动</a>
               <a class="button outline" href="me.html">回工作台</a>
@@ -89,8 +89,8 @@
         <nav class="footer-links"><a href="me.html">工作台</a><a href="my-activities.html">我的活动</a><a href="participate.html">活动与参与</a></nav>
       </div>
     </footer>
-    <script src="script.js?v=0.17.4"></script>
-    <script src="assets/js/rich-editor.js?v=0.17.4"></script>
-    <script src="app.js?v=0.17.4"></script>
+    <script src="script.js?v=0.18.0"></script>
+    <script src="assets/js/rich-editor.js?v=0.18.0"></script>
+    <script src="app.js?v=0.18.0"></script>
   </body>
 </html>

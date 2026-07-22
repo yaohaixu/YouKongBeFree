@@ -1,19 +1,19 @@
 # YouKongBeFree
 
-有空客厅中文官网与活动管理系统。项目服务于重庆「有空客厅」这个弱中心化社区与共有空间，既承载公开官网内容，也提供成员登录、活动发布、访客报名和 YKadmin 后台管理能力。
+有空客厅中文官网与 Community OS 活动系统。项目服务于重庆「有空客厅」这个弱中心化社区与共有空间，既承载公开官网内容，也提供无需登录的开放活动发布、访客报名、社区反馈、Community Trust、规则引擎、AI Analysis Engine 和管理员 / 协作员兜底治理能力。
 
 ## 当前开发状态
 
-当前版本：`0.17.4`
+当前版本：`0.18.0`
 
-状态：`0.17.4` 完成白天模式白底文字可读性修复：报名成功页主说明和信息标签统一改为深色系统文字，并完成公开白底/近白底页面对比度扫描，避免浅色文字落在白色卡片上看不清。
+状态：`0.18.0` 完成活动发布系统安全架构重构：发起活动取消登录门槛，浏览器匿名身份 + 管理 token 支持用户管理自己的活动；新增 Rule Engine、Community Trust、Community Report、Risk Notice、Cloudflare Turnstile 配置入口和可插拔 AI Analysis Engine，保留管理员 / 协作员作为兜底复核而非日常中心化审核。
 
 ## 访问地址
 
 CloudBase 动态线上站点：
 
 - 官网首页：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/
-- 登录页：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/login.html
+- 管理员 / 协作员登录页：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/login.html
 - 后台：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin.html
 - 我的：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/me.html
 - 近期活动：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/activities.html
@@ -22,12 +22,15 @@ CloudBase 动态线上站点：
 - 我的活动：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/my-activities.html
 - 审核待办：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/review-tasks.html
 - 全部活动管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-activities.html
-- 成员管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-members.html
+- 协作员管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-members.html
 - 模块管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-modules.html
 - 活动模板：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-templates.html
 - 新增活动模板：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-template-editor.html
 - 报名表：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/registrations.html
 - 操作日志：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-logs.html
+- 规则引擎：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-safety.html
+- AI 分析：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-ai.html
+- 社区信用度：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-trust.html
 - API 服务：https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api
 
 GitHub Pages 静态展示：
@@ -39,18 +42,25 @@ GitHub Pages 静态展示：
 ## 核心功能
 
 - 中文响应式官网：首页、社区共识、活动与参与、捐赠支持、关于与联系。
-- 手机号白名单登录：YKadmin 先在后台录入成员昵称和手机号，成员再用手机号登录。
-- YKadmin 后台：入口型工作台；全部活动、成员管理、模块管理、审核待办拆分为独立子页面。
-- YKadmin 子页面：成员新增、编辑、删除；成员/协作员角色单选；活动模块新增、编辑、删除；活动描述模板新增、编辑、删除；管理员待办审核；按关键词、模块、状态、时间、报名数筛选全部活动。
+- 开放活动发布：任何人无需注册、无需登录即可发起活动；同一浏览器使用本地匿名 UUID 和活动管理 token 继续编辑、撤回、查看报名表。
+- 管理员 / 协作员登录：手机号白名单只用于后台治理权限；管理员录入协作员昵称和手机号后，对方可登录处理兜底复核。
+- Community OS 安全架构：Rule Engine、Community Trust、AI Analysis Engine、Community Report、Risk Notice、Rate Limit、Turnstile 彼此解耦，所有阈值和策略配置化。
+- Rule Engine：支持敏感词、URL、HTML 标签、Script 注入、Markdown 危险语法、Unicode 混淆、Emoji 比例、重复字符、超长文本、重复内容、异常格式和活动完整度等规则，输出风险分和规则明细，不单条直接拒绝。
+- Community Trust：匿名身份初始 50 分，基于活动发起、低/中/高风险、活动发布、社区举报成立等事件逐步变化；信用度和活动置信度分开管理。
+- AI Analysis Engine：AI 是社区观察员，不是审核员；支持开关、Provider、Base URL、Model、加密 API Key、Prompt 版本、调用策略、能力开关、缓存、重试、用量日志和测试连接；关闭 AI 时系统继续可用。
+- Community Report：活动详情页支持社区反馈；举报达到阈值后触发再次分析和风险提示，默认不删除内容。
+- Risk Notice：低风险活动默认不展示“可信”标签；存在营销或较高风险时显示中立提示，帮助参与者自行判断。
+- YKadmin 后台：入口型工作台；全部活动、协作员管理、模块管理、活动模板、操作日志、规则引擎、AI 分析、社区信用度拆分为独立子页面。
+- YKadmin 子页面：协作员新增、编辑、删除；活动模块新增、编辑、删除；活动描述模板新增、编辑、删除；管理员待办审核；按关键词、模块、状态、时间、报名数筛选全部活动。
 - YKadmin 活动管理：可查看全部状态活动，可取消或结束活动，可进入独立报名表页面。
 - YKadmin 操作日志：记录登录、退出、新增、保存、删除、提交、审核、退回、拒绝、撤回、报名、取消报名、删除报名、取消活动、结束活动和自动归档等关键动作，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载；日志手机号脱敏保存，仅保留最近 30 天。
-- 成员「我的」工作台：待办任务置顶，入口卡片作为主操作区，工作台概览放在底部；概览卡片可点击进入我发起的活动、草稿、审核中和已发布筛选页；发起活动、我的活动、审核待办进入独立页面处理。
-- 成员活动管理：保存活动草稿、选择协作员、提交活动审核、查看自己活动状态、撤回活动、查看独立报名表。
+- 「我的」开放工作台：无需登录即可进入发起活动和我的活动入口；协作员 / 管理员登录后额外看到审核待办和后台入口。
+- 活动发起管理：保存活动草稿、可选选择协作员、发布活动、查看自己活动状态、撤回活动、查看独立报名表。
 - 活动发起人联系方式：发起活动页可选择是否展示发起人联系方式；选择展示时默认带出登录手机号，也可改成其他联系方式；公开活动详情页仅在选择展示时显示，并与活动状态 / 报名信息保持清晰间距。
 - 活动富文本编辑：发起活动页提供轻量富文本工具栏，支持正文段落、一级/二级/三级标题、加粗、引用、列表、分隔线和正文图片插入；正文图片可选择 10MB 以内原图，浏览器会压缩到约 1MB 后上传，图片保存为稳定代理链接，图片标签不计入 50000 字描述上限；服务端会对白名单标签做二次清洗；活动正文中的超长链接会在移动端自动换行，不会撑出页面。
-- 活动描述模板：YKadmin 可维护常用活动描述模板；模板列表页负责搜索、编辑入口和删除，新增 / 编辑进入独立详情页；成员发起活动时默认「无，自己写」，选择模板只覆盖活动描述，若已有正文会先确认是否覆盖。
-- 普通成员只看到发起活动和自己活动管理；协作员才会看到自己的审核待办。
-- 活动双岗审核：管理员通过后进入协作员审核，协作员通过后公开发布；任一岗位可退回，拒绝后不可编辑。
+- 活动描述模板：YKadmin 可维护常用活动描述模板；模板列表页负责搜索、编辑入口和删除，新增 / 编辑进入独立详情页；发起活动时默认「无，自己写」，选择模板只覆盖活动描述，若已有正文会先确认是否覆盖。
+- 普通访客只看到发起活动和同一浏览器自己的活动管理；协作员才会看到自己的审核待办。
+- 兜底双岗复核：低风险活动直接发布，中风险活动发布并提示，高风险活动按策略进入管理员 / 协作员复核；任一岗位可退回，拒绝后不可编辑。
 - 审核待办详情支持查看活动描述、正文图片、审核记录和上传封面图；审核意见默认「请选择」，审核意见与备注区放在活动详情之后，桌面端统一为对齐审批面板，移动端保持单列排列。
 - 活动人数限制：发起活动时人数限额留空默认 99 人，最大 99 人。
 - 活动详情页：公开发布活动支持未登录访客填写昵称和手机号报名；重复报名会刷新并返回报名确认 token；草稿和审核中活动不开放报名；同一活动报名写入按活动维度串行化，降低并发超员风险；白天模式下地点与时间信息保持高对比度；活动详情支持生成分享海报、复制报名链接和下载 `.ics` 日历文件。
@@ -62,9 +72,9 @@ GitHub Pages 静态展示：
 - 报名成功页：展示活动和报名人信息；公开访问必须带本次报名返回的确认 token，并支持访客用该 token 取消报名；白天模式下主说明和信息标签使用深色系统文字，保证白底卡片可读。
 - 报名表查看：活动发起人和管理员可在独立页面查看报名者列表、删除报名记录，并导出带公式注入保护的 CSV。
 - 动态活动列表：首页读取最多 3 条近期活动，独立活动页支持近期 / 历史视图。
-- 筛选与分页：活动、成员、模块、日志列表只在点击「筛选」后查询，API 按页返回数据，加载更多请求下一页。
+- 筛选与分页：活动、协作员、模块、日志列表只在点击「筛选」后查询，API 按页返回数据，加载更多请求下一页。
 - 全站管理操作提供轻提示反馈，删除类操作需要确认弹窗。
-- 视觉体验：公开页支持白天 / 黑夜 / 跟随系统主题切换；黑夜模式保留艺术网站式深色展场、真实照片主视觉、图片拼贴、公告栏式活动模块、砖红主按钮、指针聚光、图片浮动和滚动入场动效；后台和成员工作台同样支持主题切换，工作台与中间页 Hero 使用统一背景图遮罩，并保持清晰表单和稳定移动端单列布局。
+- 视觉体验：公开页支持白天 / 黑夜 / 跟随系统主题切换；黑夜模式保留艺术网站式深色展场、真实照片主视觉、图片拼贴、公告栏式活动模块、砖红主按钮、指针聚光、图片浮动和滚动入场动效；后台和开放工作台同样支持主题切换，工作台与中间页 Hero 使用统一背景图遮罩，并保持清晰表单和稳定移动端单列布局。
 - 全站辅助入口：顶部导航栏固定展示，品牌右侧提供单图标三态主题切换键；主题按钮采用 SVG 图标、圆形高质感表面和轻量状态动效；深度滚动后显示浮动「首页」按钮，方便快速回到官网首页且避免遮挡首屏表单。
 - 首页主视觉：首页 Hero 背景使用用户提供的新图 `assets/youkong-hero-illustration.png`，右侧内容图继续使用不含旧标识信息的饭桌现场图。
 - 内容清理：公开站点已移除旧标识相关文案与图片素材，公开视觉统一使用不含旧标识信息的饭桌现场图。
@@ -81,6 +91,9 @@ GitHub Pages 静态展示：
 - 查询分页：本地 JSON 模拟查询；CloudBase 使用 `where`、`orderBy`、`skip`、`limit` 和 `count`
 - 活动归档：Express 启动定时轮询 + 公开活动列表请求前兜底 sweep；CloudBase 云函数入口按节流策略执行 sweep
 - 操作日志：写入和查询时自动清理 30 天前日志，管理员日志页只查询保留期内记录
+- Community OS：匿名身份、管理 token、Rule Engine、Community Trust、Community Report、Risk Notice 和策略引擎模块化实现
+- AI Analysis Engine：Provider Adapter、Prompt、Schema、Parser、Cache、Logger、Retry、Config、Service 分层；业务只调用统一分析服务
+- Turnstile：Cloudflare Turnstile 配置化接入，默认关闭，本地可绕过
 - API 诊断：慢请求 / 5xx 响应写入服务端日志，默认阈值 1200ms
 - 数据备份：`scripts/backup-data.js` 导出 JSON 备份，默认不导出 sessions
 - 报名一致性：活动维度写入锁 + 幂等报名 ID + 报名数统一同步函数
@@ -101,19 +114,24 @@ GitHub Pages 静态展示：
 ├── participate.html        # 活动与参与页面
 ├── donate.html             # 捐赠支持页面
 ├── about.html              # 关于与联系页面
-├── login.html              # 成员登录页面
-├── me.html                 # 成员工作台：概览和入口卡片
+├── login.html              # 管理员 / 协作员登录页面
+├── me.html                 # 开放工作台：概览和入口卡片
 ├── activity-editor.html    # 发起 / 编辑活动页面
 ├── my-activities.html      # 我发起的活动：筛选、撤回、报名表
 ├── registrations.html      # 活动报名表详情与 CSV 导出
 ├── review-tasks.html       # 管理员 / 协作员审核待办
 ├── admin.html              # YKadmin 工作台：管理入口
 ├── admin-activities.html   # 全部活动管理与筛选
-├── admin-members.html      # 成员管理
+├── admin-members.html      # 协作员管理
 ├── admin-modules.html      # 活动模块管理
 ├── admin-templates.html    # 活动描述模板管理
 ├── admin-template-editor.html # 新增 / 编辑活动描述模板
 ├── admin-logs.html         # 管理员操作日志
+├── admin-safety.html       # 规则引擎和策略配置
+├── admin-ai.html           # AI Analysis Engine 设置和 Prompt
+├── admin-trust.html        # Community Trust 列表
+├── admin-trust-detail.html # Community Trust 详情
+├── admin-activity-confidence.html # 活动置信度详情
 ├── activity.html           # 活动详情与报名页面
 ├── success.html            # 报名成功 / 确认页面
 ├── styles.css              # 全站样式
@@ -123,6 +141,8 @@ GitHub Pages 静态展示：
 ├── lib/
 │   ├── app.js              # Express 应用与 API 路由
 │   ├── rich-text.js        # 活动富文本服务端白名单清洗
+│   ├── community-safety/   # 身份、限流、规则、信任、举报、策略和 Turnstile
+│   ├── ai-analysis/        # 可插拔 AI Analysis Engine
 │   ├── routes/
 │   │   └── logs.js         # 操作日志 API 路由
 │   └── store.js            # JSON / CloudBase 双存储实现
@@ -188,6 +208,12 @@ ACTIVITY_AUTO_END_MIN_SWEEP_MS=60000
 DISABLE_ACTIVITY_AUTO_END=false
 API_TIMING_LOGS=true
 API_SLOW_LOG_MS=1200
+IDENTITY_HASH_SALT=请替换为长随机字符串
+TURNSTILE_ENABLED=false
+TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
+TURNSTILE_BYPASS_LOCAL=true
+AI_CONFIG_ENCRYPTION_KEY=请替换为长随机字符串
 YK_DB_FILE=
 ```
 
@@ -195,10 +221,13 @@ YK_DB_FILE=
 
 - `.env` 不允许提交到 Git。
 - 本地默认使用 `STORE_DRIVER=json`，数据写入 `data/youkong-db.json`。
-- 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_templates`、`yk_activities`、`yk_registrations`、`yk_sessions`、`yk_logs`。
+- 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_templates`、`yk_activities`、`yk_registrations`、`yk_sessions`、`yk_logs`、`yk_safetyRules`、`yk_systemConfigs`、`yk_trustProfiles`、`yk_trustEvents`、`yk_rateEvents`、`yk_analysisReports`、`yk_communityReports`、`yk_aiPrompts`、`yk_aiCache`、`yk_aiUsageLogs`。
 - `CORS_ORIGINS` 用英文逗号分隔允许跨域访问 API 的前端域名；`SESSION_MAX_AGE_DAYS` 会被限制在 1 到 30 天之间。
 - `ACTIVITY_AUTO_END_INTERVAL_MS` 控制本地 / 常驻服务的自动结束轮询间隔，默认 15 分钟；`ACTIVITY_AUTO_END_MIN_SWEEP_MS` 控制请求兜底 sweep 的最小间隔；`DISABLE_ACTIVITY_AUTO_END=true` 可关闭后台轮询。
 - `API_TIMING_LOGS=false` 可关闭 API 耗时日志；`API_SLOW_LOG_MS` 控制慢请求阈值，默认 1200ms。
+- `IDENTITY_HASH_SALT` 用于匿名身份、指纹和管理 token 哈希；生产环境必须保持稳定且不提交 Git。
+- `TURNSTILE_*` 控制 Cloudflare Turnstile；默认关闭，本地开发可通过 `TURNSTILE_BYPASS_LOCAL=true` 绕过。
+- `AI_CONFIG_ENCRYPTION_KEY` 用于加密 AI API Key；生产环境必须配置稳定长随机值，避免重启或部署后无法解密旧配置。
 - 如果数据不存在，服务会初始化默认管理员和默认活动模块。
 
 ## 运行方式
@@ -230,7 +259,7 @@ npm test
 测试内容包括：
 
 - 语法检查：核心前后端脚本和构建脚本。
-- API 冒烟：登录安全头、成员/协作员新增、活动模板增删改、正文图片上传和伪图片拒绝、活动提审、双岗审核、富文本清洗、正文图片不计入描述长度校验、报名确认 token、无 token 访问 / 取消拦截、重复报名刷新 token、一人名额并发保护、报名表、删除报名日志、删除成员日志、取消活动日志、模板日志、日志脱敏、日志字段筛选、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
+- API 冒烟：登录安全头、协作员新增、匿名/登录发起活动、规则引擎、活动置信度、AI 设置脱敏、社区反馈、Community Trust、活动模板增删改、正文图片上传和伪图片拒绝、兜底双岗复核、富文本清洗、正文图片不计入描述长度校验、报名确认 token、无 token 访问 / 取消拦截、重复报名刷新 token、一人名额并发保护、报名表、删除报名日志、删除协作员日志、取消活动日志、模板日志、日志脱敏、日志字段筛选、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
 - Playwright 浏览器冒烟：管理员登录跳转、工作台概览卡片跳转、移动端关键页面无横向溢出、近期 / 历史活动页、活动编辑页模板下拉和 H1 工具、富文本 H1 重复点击恢复正文、粘贴文本清洗、活动模板管理页富文本编辑器、活动分享按钮、报名成功页 token 访问、CSV 防公式注入、审核默认「请选择」和审核封面图 / 正文图片展示。
 
 CloudBase 部署 dry-run：
@@ -301,27 +330,30 @@ npm run deploy:cloudbase
 
 - 官网五个公开页面及艺术化社区公共客厅风格响应式视觉设计。
 - 登录入口：右上角「有空」和左上角圆形「有空」均可进入登录/我的入口。
-- 管理员登录后自动进入后台。
-- 成员登录后自动进入「我的」。
+- 管理员登录后自动进入后台，协作员登录后进入「我的」。
 - YKadmin 工作台入口卡片。
-- YKadmin / 成员工作台性能优化：入口卡片使用轻量 dashboard API 返回计数和待办预览，避免工作台首屏拉取完整列表。
+- YKadmin / 开放工作台性能优化：入口卡片使用轻量 dashboard API 返回计数和待办预览，避免工作台首屏拉取完整列表。
 - YKadmin 全部活动独立管理页，支持关键词、模块、状态、时间和排序筛选。
-- YKadmin 成员管理独立页。
+- YKadmin 协作员管理独立页。
 - YKadmin 活动模块管理独立页。
 - YKadmin 活动描述模板管理独立页，支持模板搜索、新增、编辑、删除和富文本正文维护。
 - YKadmin 操作日志独立页，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载，并仅保留最近 30 天日志。
+- YKadmin 规则引擎页面，支持查看、新增、保存、删除风险规则，并通过 JSON 调整限流、Turnstile、举报阈值、风险分流策略和 Community Trust 权重。
+- YKadmin AI 分析页面，支持配置 AI 总开关、Provider、Base URL、Model、加密 API Key、超时、温度、Token、重试、缓存、调用策略、能力开关、Prompt 版本和连接测试。
+- YKadmin 社区信用度页面，支持查看匿名身份 Community Trust 列表、脱敏 IP / UA、最近活动、信用度详情、信用变化事件和关联活动。
+- YKadmin 活动置信度详情页，支持查看活动风险分、置信分、规则引擎明细、AI Analysis Report、社区反馈和重新分析。
 - YKadmin 可取消或结束活动。
-- 成员工作台入口卡片，工作台概览位于所有入口模块之后。
+- 开放工作台入口卡片，工作台概览位于所有入口模块之后。
 - 发起活动独立编辑页。
 - 我发起的活动独立管理页，支持筛选、撤回和报名表查看。
-- 活动、成员、模块和日志列表使用 API 分页；搜索条件只在点击「筛选」时生效。
+- 活动、协作员、模块和日志列表使用 API 分页；搜索条件只在点击「筛选」时生效。
 - CloudBase 模式下列表查询通过存储层 `where/orderBy/skip/limit/count` 执行，避免云函数读取集合全量后再分页。
 - CloudBase 模式下登录态、手机号登录和工作台概览使用字段级查询与计数，降低已登录页面首屏等待时间。
-- 数据备份脚本支持本地 JSON 和 CloudBase NoSQL，默认导出成员、模块、活动模板、活动、报名和操作日志。
+- 数据备份脚本支持本地 JSON 和 CloudBase NoSQL，默认导出协作员、模块、活动模板、活动、报名、操作日志和 Community OS 相关集合。
 - API 慢请求日志支持通过 `API_SLOW_LOG_MS` 调节阈值，便于定位缺索引和慢接口。
 - `npm test` 自动化冒烟流程，覆盖 API 主链路和关键移动端浏览器布局。
 - 审核待办独立页，管理员和协作员按自己的待办进入。
-- 成员活动草稿、提审、编辑退回活动。
+- 活动草稿、直接发布、风险分流复核、编辑退回活动。
 - 活动富文本编辑器：支持一级/二级/三级标题、加粗、引用、列表、分隔线和正文图片；正文图片 10MB 内可选，浏览器压缩后上传，服务端白名单清洗后保存。
 - 发起活动页支持选择活动描述模板，默认不套用；已有正文时选择模板会弹窗确认是否覆盖当前描述。
 - 双岗审核流：管理员审核、协作员审核、通过/退回/拒绝。
@@ -354,6 +386,9 @@ npm run deploy:cloudbase
 
 ## 已验证
 
+- `0.18.0` 本地验证通过：`npm run test:syntax`、`npm run test:smoke`、`npm test` 和 `npm run deploy:dry-run` 均通过。
+- `0.18.0` API 冒烟新增覆盖：匿名发起活动、匿名管理 token、低风险直接发布、高风险进入兜底双岗复核、规则引擎配置、活动置信度详情、AI 设置脱敏与测试连接、社区反馈、Community Trust 列表 / 详情和活动重新分析。
+- `0.18.0` Playwright 冒烟新增覆盖：开放工作台未登录可进入、发起活动页无需登录、活动详情风险提示与举报入口、新增规则引擎 / AI 分析 / 社区信用度 / 置信度页面移动端无横向溢出。
 - `0.17.4` 本地验证通过：`npm test` 通过；白天模式公开页白底 / 近白底文字对比度扫描结果为 0 个低对比项，报名成功页主说明和信息标签已纳入冒烟断言。
 - `0.17.3` 本地验证通过：`npm test` 通过；冒烟测试强制切换到白天模式，确认活动详情页地点 / 时间文字颜色为更深墨色且字重提升。
 - `0.17.2` 本地验证通过：`npm test` 通过；新增移动端活动详情长腾讯会议链接不横向溢出断言，并检查发起人联系方式与上方活动元信息之间的计算间距。
@@ -429,11 +464,13 @@ npm run deploy:cloudbase
 ## 正在开发 / 待完善
 
 - 生产级身份验证：短信验证码、密码或微信登录，替代当前手机号白名单免密登录。
-- 管理员仪表盘统计。
+- 生产启用 Turnstile：在 Cloudflare 获取 Site Key / Secret Key 后写入 CloudBase 环境变量，并在规则引擎页开启策略。
+- 生产启用 AI Analysis Engine：先配置 Provider、Base URL、Model、API Key、Prompt 和调用策略，再用后台「测试连接」灰度验证。
+- CloudBase 控制台建议补齐 `docs/cloudbase-indexes.md` 中 `0.18.0` 新增的 Community OS 集合索引，尤其是 `yk_activities.anonymousIdentityId + createdAt`、`yk_trustEvents.identityId + createdAt`、`yk_analysisReports.activityId + createdAt`、`yk_communityReports.activityId + createdAt` 和 `yk_rateEvents.resetAt`。
+- 管理员仪表盘统计：增加风险分布、举报趋势、AI 调用量、信用度变化和活动发布转化概览。
 - CloudBase 恢复演练和权限策略文档。
-- CloudBase 控制台建议补充 `yk_sessions.tokenHash`、`yk_users.phone`、`yk_templates.updatedAt + createdAt`、`yk_logs.action + createdAt`、`yk_logs.actorId + createdAt` 等字段索引，保证登录态、工作台、模板管理和日志筛选随数据量增长仍保持稳定。
 - 自定义域名和同源 API 路由，减少跨域 Cookie 运维复杂度。
-- 继续拆分后端路由：优先迁移 auth、activities、users、modules，并逐步补 JSDoc / TypeScript 类型边界。
+- 继续拆分前后端大文件：优先迁移 auth、activities、safety、ai、trust、reports 路由，以及前端活动 / 后台 / 主题页面控制器，并逐步补 JSDoc / TypeScript 类型边界。
 - 如报名量继续增大，需要把当前进程内活动报名锁升级为数据库事务、唯一索引或队列型全局锁。
 
 ## 未来规划
@@ -441,6 +478,7 @@ npm run deploy:cloudbase
 - 支持审核通知、审核超时提醒和更细权限模型。
 - 支持 Notion / 飞书表格同步活动日历。
 - 增加财务公示模块和捐赠记录管理。
+- 基于 Community Trust 扩展徽章、志愿者体系、活动推荐权重和社区自治提案能力。
 - 为 CloudBase NoSQL 增加受控恢复脚本和定期备份自动化。
 
 ## Git 分支规范

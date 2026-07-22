@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>社区信用度｜有空客厅</title>
+    <meta name="description" content="YKadmin 查看匿名身份的 Community Trust 列表。" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <script src="theme.js?v=0.18.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.18.0" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html"><span class="brand-mark">有空</span><span class="brand-text">有空客厅</span></a>
+        <button class="menu-toggle" type="button" aria-label="打开导航" aria-expanded="false"><span></span><span></span><span></span></button>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="whitepaper.html">社区共识</a>
+          <a href="participate.html">活动与参与</a>
+          <a href="donate.html">捐赠支持</a>
+          <a href="about.html">关于与联系</a>
+          <span class="session-nav" data-session-nav><a href="me.html">我的</a></span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" data-admin-trust-page>
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">Community Trust</p>
+          <h1>人的社区信用度，和活动置信度分开看。</h1>
+          <p>这里不是黑名单。信用度会随着真实活动、社区反馈和风险触发逐步变化。</p>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap">
+          <form class="filter-panel" data-trust-filters>
+            <label>搜索<input name="q" placeholder="匿名 ID / 脱敏 IP / UA" /></label>
+            <button class="button ghost" type="submit">筛选</button>
+          </form>
+          <div class="list-toolbar">
+            <span data-trust-count>正在读取社区信用度...</span>
+            <a class="button ghost" href="admin.html">回后台</a>
+          </div>
+          <div class="event-list rows" data-trust-list></div>
+          <button class="button ghost load-more" type="button" data-load-more-trust hidden>加载更多</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><div class="footer-brand">有空客厅</div><div>长期真实参与的人，应该获得更少限制和更多信任。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-safety.html">规则引擎</a><a href="admin-ai.html">AI 分析</a><a href="admin-logs.html">操作日志</a></nav>
+      </div>
+    </footer>
+    <script src="script.js?v=0.18.0"></script>
+    <script src="app.js?v=0.18.0"></script>
+  </body>
+</html>

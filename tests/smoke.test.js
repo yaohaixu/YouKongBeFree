@@ -17,10 +17,20 @@ const { createApp, store } = require("../lib/app");
 
 let server;
 let baseUrl;
+const activityManageTokens = new Map();
+const testClientId = `client_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
 async function request(pathname, options = {}, token = "") {
   const method = String(options.method || "GET").toUpperCase();
-  const headers = { ...(options.headers || {}) };
+  const headers = {
+    "X-YK-Client-Id": testClientId,
+    "X-YK-Fingerprint": "fp_smoke_test",
+    ...(options.headers || {}),
+  };
+  const activityId = String(pathname).match(/\/api\/activities\/([^/?]+)/)?.[1];
+  if (activityId && activityManageTokens.has(activityId)) {
+    headers["X-YK-Manage-Token"] = activityManageTokens.get(activityId);
+  }
   if (token) headers.Authorization = `Bearer ${token}`;
   if (!["GET", "HEAD"].includes(method)) headers["X-Requested-With"] = "XMLHttpRequest";
   if (options.body && !(options.body instanceof FormData)) headers["Content-Type"] = "application/json";
@@ -32,6 +42,9 @@ async function request(pathname, options = {}, token = "") {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(`${method} ${pathname} -> ${response.status} ${data.error || ""}`);
+  }
+  if (data.manageToken && data.activity?.id) {
+    activityManageTokens.set(data.activity.id, data.manageToken);
   }
   return data;
 }
@@ -66,8 +79,7 @@ function localDateInput(days = 0) {
 
 async function createActivity(token, overrides = {}) {
   const modules = await request("/api/modules");
-  const admin = await login("18800000000");
-  const { collaborators } = await request("/api/collaborators", {}, admin.token);
+  const { collaborators } = await request("/api/collaborators");
   const form = new FormData();
   form.set("title", overrides.title || "自动化测试活动");
   form.set("moduleId", modules.modules[0].id);
@@ -79,7 +91,9 @@ async function createActivity(token, overrides = {}) {
   form.set("capacity", overrides.capacity || "");
   form.set("showInitiatorContact", overrides.showInitiatorContact ? "yes" : "no");
   form.set("initiatorContact", overrides.initiatorContact || "");
-  form.set("description", overrides.description || "用于自动化测试审核、报名、日志和报名表。");
+  const highRiskText = "诈骗 洗钱 博彩 办证 www.example.com https://spam.example.com https://spam2.example.com !!!!!!!!!! 加我加我加我加我";
+  const baseDescription = overrides.description || "用于自动化测试发布、报名、日志和报名表。";
+  form.set("description", overrides.forceReview ? `${baseDescription}<p>${highRiskText}</p>` : baseDescription);
   form.set("intent", overrides.intent || "submit");
   if (overrides.cover) {
     form.set("cover", overrides.cover.blob, overrides.cover.name);
@@ -147,6 +161,19 @@ async function assertMobileActionStack(page, url, minimumButtons = 2) {
 
 test.before(async () => {
   await store.ensureSeed();
+  const safetyConfig = await store.findById("systemConfigs", "safety_config");
+  await store.update("systemConfigs", "safety_config", {
+    value: {
+      ...safetyConfig.value,
+      rateLimit: {
+        ...safetyConfig.value.rateLimit,
+        publishMinuteMax: 100,
+        publishDayMax: 100,
+        draftMinuteMax: 100,
+        uploadMinuteMax: 100,
+      },
+    },
+  });
   server = createApp().listen(0, "127.0.0.1");
   await once(server, "listening");
   const address = server.address();
@@ -243,7 +270,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   });
   assert.equal(created.activity.capacity, 99);
   assert.equal(created.activity.registrationCount, 0);
-  assert.equal(created.activity.status, "admin_review");
+  assert.equal(created.activity.status, "published");
+  assert.ok(created.activity.confidenceScore <= 100);
   assert.equal(created.activity.endsAt, localDateTimeFromNow(30, 22, 0));
   assert.equal(created.activity.showInitiatorContact, true);
   assert.equal(created.activity.initiatorContact, "13300002222");
@@ -256,28 +284,51 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(owned.activities.length, 1);
   assert.equal(owned.pageInfo.pageSize, 1);
   const reviewingMine = await request("/api/activities?owner=me&status=reviewing&page=1&pageSize=10", {}, member.token);
-  assert.ok(reviewingMine.activities.some((activity) => activity.id === created.activity.id));
   assert.ok(reviewingMine.activities.every((activity) => ["admin_review", "collaborator_review"].includes(activity.status)));
 
   const memberDashboard = await request("/api/dashboard/me", {}, member.token);
   assert.equal(memberDashboard.summary.total, 1);
-  assert.equal(memberDashboard.summary.byStatus.admin_review, 1);
+  assert.equal(memberDashboard.summary.byStatus.published, 1);
   assert.equal(memberDashboard.pending.total, 0);
 
+  const reviewCandidate = await createActivity(member.token, {
+    title: "社区复核测试活动",
+    forceReview: true,
+  });
+  assert.equal(reviewCandidate.activity.status, "admin_review");
+
   const adminDashboard = await request("/api/dashboard/admin", {}, admin.token);
-  assert.ok(adminDashboard.activities.total >= 1);
+  assert.ok(adminDashboard.activities.total >= 2);
   assert.ok(adminDashboard.users.total >= 3);
   assert.ok(adminDashboard.modules.total >= 1);
   assert.ok(adminDashboard.templates.total >= 1);
   assert.ok(adminDashboard.pending.total >= 1);
   assert.equal(adminDashboard.pending.activities[0].status, "admin_review");
 
-  await request(`/api/activities/${created.activity.id}/review`, {
+  const safetyRules = await request("/api/safety/rules", {}, admin.token);
+  assert.ok(safetyRules.rules.some((rule) => rule.type === "sensitive_terms"));
+  const safetyConfigPublic = await request("/api/safety/client-config");
+  assert.equal(safetyConfigPublic.turnstile.enabled, false);
+  const aiSettings = await request("/api/ai/settings", {}, admin.token);
+  assert.equal(aiSettings.settings.enabled, false);
+  assert.equal(aiSettings.settings.apiKeyStatus, "未配置");
+  const confidenceDetail = await request(`/api/activities/${created.activity.id}/confidence`, {}, admin.token);
+  assert.equal(confidenceDetail.activity.id, created.activity.id);
+  assert.ok(confidenceDetail.latestAnalysis.ruleReport);
+  const communityReport = await request(`/api/activities/${created.activity.id}/reports`, {
+    method: "POST",
+    body: { reason: "广告营销", detail: "测试社区反馈入口" },
+  });
+  assert.equal(communityReport.ok, true);
+  const trustProfiles = await request("/api/trust-profiles?page=1&pageSize=10", {}, admin.token);
+  assert.ok(trustProfiles.profiles.some((profile) => profile.id));
+
+  await request(`/api/activities/${reviewCandidate.activity.id}/review`, {
     method: "POST",
     body: { action: "approve", comment: "管理员通过" },
   }, admin.token);
   const collaborator = await login("13300001111");
-  await request(`/api/activities/${created.activity.id}/review`, {
+  await request(`/api/activities/${reviewCandidate.activity.id}/review`, {
     method: "POST",
     body: { action: "approve", comment: "协作员通过" },
   }, collaborator.token);
@@ -364,14 +415,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     title: "一人名额保护测试活动",
     capacity: "1",
   });
-  await request(`/api/activities/${limited.activity.id}/review`, {
-    method: "POST",
-    body: { action: "approve", comment: "管理员通过" },
-  }, admin.token);
-  await request(`/api/activities/${limited.activity.id}/review`, {
-    method: "POST",
-    body: { action: "approve", comment: "协作员通过" },
-  }, collaborator.token);
+  assert.equal(limited.activity.status, "published");
   const limitedAttempts = await Promise.allSettled([
     request(`/api/activities/${limited.activity.id}/register`, {
       method: "POST",
@@ -410,14 +454,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const cancellable = await createActivity(member.token, {
     title: "管理员取消日志测试活动",
   });
-  await request(`/api/activities/${cancellable.activity.id}/review`, {
-    method: "POST",
-    body: { action: "approve", comment: "管理员通过" },
-  }, admin.token);
-  await request(`/api/activities/${cancellable.activity.id}/review`, {
-    method: "POST",
-    body: { action: "approve", comment: "协作员通过" },
-  }, collaborator.token);
+  assert.equal(cancellable.activity.status, "published");
   await request(`/api/activities/${cancellable.activity.id}/cancel`, { method: "POST", body: {} }, admin.token);
   const cancelLogs = await request(`/api/logs?page=1&pageSize=10&action=activity.cancel&q=${encodeURIComponent("管理员取消日志测试活动")}`, {}, admin.token);
   assert.ok(cancelLogs.logs.some((log) => log.action === "activity.cancel"));
@@ -431,14 +468,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     title: "应自动结束的历史活动",
     startsAt: localDateTimeFromNow(-30, 18, 0),
   });
-  await request(`/api/activities/${expired.activity.id}/review`, {
-    method: "POST",
-    body: { action: "approve", comment: "管理员通过" },
-  }, admin.token);
-  await request(`/api/activities/${expired.activity.id}/review`, {
-    method: "POST",
-    body: { action: "approve", comment: "协作员通过" },
-  }, collaborator.token);
+  assert.equal(expired.activity.status, "published");
   const upcoming = await request("/api/activities?view=upcoming&page=1&pageSize=20");
   assert.ok(!upcoming.activities.some((activity) => activity.id === expired.activity.id));
   const history = await request("/api/activities?view=history&page=1&pageSize=20");
@@ -455,14 +485,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     startsAt: localDateTimeFromNow(-1, 20, 0),
     endsAt: localDateTimeFromNow(1, 10, 0),
   });
-  await request(`/api/activities/${crossDay.activity.id}/review`, {
-    method: "POST",
-    body: { action: "approve", comment: "管理员通过" },
-  }, admin.token);
-  await request(`/api/activities/${crossDay.activity.id}/review`, {
-    method: "POST",
-    body: { action: "approve", comment: "协作员通过" },
-  }, collaborator.token);
+  assert.equal(crossDay.activity.status, "published");
   const upcomingAfterCrossDay = await request("/api/activities?view=upcoming&page=1&pageSize=20");
   const ongoing = upcomingAfterCrossDay.activities.find((activity) => activity.id === crossDay.activity.id);
   assert.equal(ongoing?.status, "published");
@@ -472,6 +495,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const pending = await createActivity(member.token, {
     title: "带封面审核测试活动",
     description: `<h1>待办详情正文图</h1><p>审核时也应该能看到正文图片。</p><img src="${richImage.url}" alt="审核正文图">`,
+    forceReview: true,
     cover: {
       blob: new Blob([coverBuffer], { type: "image/png" }),
       name: "youkong-gathering.png",
@@ -538,6 +562,10 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-templates.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-template-editor.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-logs.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-safety.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-ai.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-trust.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-activity-confidence.html?id=${created.activity.id}`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/registrations.html?id=${created.activity.id}`);
 
     await page.goto(`${baseUrl}/me.html`);

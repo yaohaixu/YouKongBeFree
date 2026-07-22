@@ -7309,3 +7309,175 @@ html[data-theme="light"] body.product-surface .form-note p {
     font-size: 13px;
   }
 }
+
+/* 0.18.0 Community OS safety, trust, AI analysis */
+.risk-notice {
+  margin: 18px 0;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, var(--accent) 30%);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--panel) 86%, var(--accent-soft) 14%);
+  color: var(--ink);
+}
+
+.risk-notice strong,
+.report-box summary,
+.confidence-score span,
+.detail-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+}
+
+.risk-notice p {
+  margin: 6px 0 0;
+  color: var(--ink);
+}
+
+.risk-notice.high {
+  border-color: color-mix(in srgb, #c4513d 54%, var(--line) 46%);
+  background: color-mix(in srgb, var(--panel) 82%, #c4513d 18%);
+}
+
+.report-box {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.report-box summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.report-box form {
+  margin-top: 14px;
+  display: grid;
+  gap: 14px;
+}
+
+.config-editor textarea,
+.safety-rule-row textarea,
+.ai-report pre,
+.review-detail pre {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.safety-rule-list {
+  gap: 14px;
+}
+
+.safety-rule-row {
+  grid-template-columns: minmax(140px, 1fr) minmax(120px, 0.8fr) 92px 104px;
+  align-items: stretch;
+}
+
+.safety-rule-row textarea {
+  min-height: 68px;
+  grid-column: span 2;
+}
+
+.confidence-panel {
+  display: grid;
+  gap: 22px;
+  padding: clamp(22px, 3vw, 34px);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+}
+
+.confidence-score strong {
+  display: block;
+  margin-top: 4px;
+  font-size: clamp(3rem, 8vw, 5.8rem);
+  line-height: 0.92;
+  color: var(--ink);
+}
+
+.confidence-score p {
+  margin: 10px 0 0;
+  color: var(--muted);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.detail-grid > div,
+.finding-item {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--bg) 12%);
+}
+
+.detail-grid strong,
+.finding-item strong {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.finding-list {
+  display: grid;
+  gap: 12px;
+}
+
+.finding-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 14px;
+}
+
+.finding-item span {
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.finding-item p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+}
+
+.ai-report {
+  display: grid;
+  gap: 10px;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.turnstile-box {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0.01;
+  pointer-events: none;
+}
+
+@media (max-width: 820px) {
+  .detail-grid,
+  .safety-rule-row {
+    grid-template-columns: 1fr;
+  }
+
+  .safety-rule-row textarea {
+    grid-column: auto;
+  }
+}

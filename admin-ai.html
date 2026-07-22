@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI 分析引擎｜有空客厅</title>
+    <meta name="description" content="YKadmin 管理可插拔 AI Analysis Engine、Provider、Prompt 和调用策略。" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <script src="theme.js?v=0.18.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.18.0" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html"><span class="brand-mark">有空</span><span class="brand-text">有空客厅</span></a>
+        <button class="menu-toggle" type="button" aria-label="打开导航" aria-expanded="false"><span></span><span></span><span></span></button>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="whitepaper.html">社区共识</a>
+          <a href="participate.html">活动与参与</a>
+          <a href="donate.html">捐赠支持</a>
+          <a href="about.html">关于与联系</a>
+          <span class="session-nav" data-session-nav><a href="me.html">我的</a></span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" data-admin-ai-page>
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">AI Analysis Engine</p>
+          <h1>AI 是社区观察员，不是审核员。</h1>
+          <p>AI 只负责理解内容、提取结构化信息和生成分析报告。它不能直接删除内容，也不能直接改变社区信用度。</p>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap editor-layout">
+          <form class="form-note config-editor" data-ai-settings-form>
+            <h3>AI 设置</h3>
+            <div class="form-grid">
+              <label>总开关<select name="enabled"><option value="false">关闭</option><option value="true">开启</option></select></label>
+              <label>Provider<select name="provider"><option value="openai-compatible">OpenAI Compatible</option><option value="openai">OpenAI</option><option value="deepseek">DeepSeek</option><option value="qwen">Qwen</option><option value="openrouter">OpenRouter</option><option value="ollama">Ollama / Local</option><option value="claude">Claude Adapter</option><option value="gemini">Gemini Adapter</option></select></label>
+              <label>Base URL<input name="baseUrl" placeholder="https://api.example.com/v1" /></label>
+              <label>Model Name<input name="model" placeholder="模型名称" /></label>
+              <label>API Key<input name="apiKey" type="password" autocomplete="new-password" placeholder="已保存则留空即可" /></label>
+              <label>Timeout(ms)<input name="requestTimeoutMs" type="number" min="1000" /></label>
+              <label>Temperature<input name="temperature" type="number" min="0" max="2" step="0.1" /></label>
+              <label>Max Tokens<input name="maxTokens" type="number" min="100" /></label>
+              <label>Retry<input name="retryCount" type="number" min="0" max="5" /></label>
+              <label>Cache TTL(s)<input name="cacheTtlSeconds" type="number" min="0" /></label>
+              <label>Prompt Version<input name="promptVersion" /></label>
+            </div>
+            <label>调用策略 JSON<textarea name="callStrategy" rows="8" spellcheck="false"></textarea></label>
+            <label>能力开关 JSON<textarea name="capabilities" rows="8" spellcheck="false"></textarea></label>
+            <div class="form-actions">
+              <button class="button primary" type="submit">保存 AI 设置</button>
+              <button class="button outline" type="button" data-ai-test>测试连接</button>
+              <a class="button ghost" href="admin.html">回后台</a>
+            </div>
+            <p class="form-message" data-ai-message></p>
+          </form>
+
+          <aside class="form-note sticky-panel">
+            <h3>新增 Prompt 版本</h3>
+            <form data-ai-prompt-form>
+              <label>类型<input name="type" value="activity" required /></label>
+              <label>版本<input name="version" placeholder="activity-v2" required /></label>
+              <label>名称<input name="name" required /></label>
+              <label>是否启用<select name="active"><option value="false">保存为历史版本</option><option value="true">启用</option></select></label>
+              <label>System Prompt<textarea name="systemPrompt" rows="6" required></textarea></label>
+              <label>User Prompt<textarea name="userPrompt" rows="6" required></textarea></label>
+              <button class="button primary" type="submit">新增 Prompt</button>
+            </form>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap">
+          <div class="section-head compact-head">
+            <div>
+              <p class="section-kicker">Prompt Versions</p>
+              <h2>分析口径可以回滚，也可以继续演进。</h2>
+            </div>
+          </div>
+          <div class="event-list rows" data-ai-prompts>正在读取 Prompt...</div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><div class="footer-brand">有空客厅</div><div>AI 只提供解释，社区自己决定如何行动。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-safety.html">规则引擎</a><a href="admin-trust.html">社区信用度</a><a href="admin-logs.html">操作日志</a></nav>
+      </div>
+    </footer>
+    <script src="script.js?v=0.18.0"></script>
+    <script src="app.js?v=0.18.0"></script>
+  </body>
+</html>

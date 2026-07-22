@@ -1,3 +1,77 @@
+const CLIENT_ID_KEY = "yk_client_id";
+const ACTIVITY_TOKEN_KEY = "yk_activity_tokens";
+
+function randomToken() {
+  const webCrypto = window.crypto || window.msCrypto;
+  if (webCrypto?.randomUUID) return webCrypto.randomUUID().replaceAll("-", "");
+  const bytes = new Uint8Array(16);
+  if (webCrypto?.getRandomValues) {
+    webCrypto.getRandomValues(bytes);
+  } else {
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Math.floor(Math.random() * 256);
+    }
+  }
+  return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function getClientId() {
+  let value = localStorage.getItem(CLIENT_ID_KEY);
+  if (!value) {
+    value = `client_${randomToken()}`;
+    localStorage.setItem(CLIENT_ID_KEY, value);
+  }
+  return value;
+}
+
+function simpleHash(value = "") {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+function getFingerprint() {
+  const parts = [
+    navigator.userAgent || "",
+    navigator.language || "",
+    `${screen.width || 0}x${screen.height || 0}x${screen.colorDepth || 0}`,
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+  ];
+  return `fp_${simpleHash(parts.join("|"))}`;
+}
+
+function readActivityTokens() {
+  try {
+    return JSON.parse(localStorage.getItem(ACTIVITY_TOKEN_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function writeActivityTokens(tokens = {}) {
+  localStorage.setItem(ACTIVITY_TOKEN_KEY, JSON.stringify(tokens));
+}
+
+function saveActivityManageToken(activityId, token) {
+  if (!activityId || !token) return;
+  const tokens = readActivityTokens();
+  tokens[activityId] = token;
+  writeActivityTokens(tokens);
+}
+
+function activityIdFromApiPath(path = "") {
+  const match = String(path).match(/\/api\/activities\/([^/?]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function manageTokenForPath(path = "") {
+  const activityId = activityIdFromApiPath(path);
+  return activityId ? readActivityTokens()[activityId] || "" : "";
+}
+
 const api = {
   baseUrl: location.hostname.endsWith("tcloudbaseapp.com")
     ? "https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com"
@@ -7,6 +81,9 @@ const api = {
     const method = String(options.method || "GET").toUpperCase();
     const headers = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "X-YK-Client-Id": getClientId(),
+      "X-YK-Fingerprint": getFingerprint(),
+      ...(manageTokenForPath(path) ? { "X-YK-Manage-Token": manageTokenForPath(path) } : {}),
       ...(!["GET", "HEAD", "OPTIONS"].includes(method) ? { "X-Requested-With": "XMLHttpRequest" } : {}),
       ...(options.headers || {}),
     };
@@ -23,6 +100,9 @@ const api = {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(data.error || "操作失败，请稍后再试");
+    }
+    if (data.manageToken && data.activity?.id) {
+      saveActivityManageToken(data.activity.id, data.manageToken);
     }
     return data;
   },
@@ -73,6 +153,9 @@ let mePageState = {
   modulesPageItems: [],
   templates: [],
   logs: [],
+  safetyRules: [],
+  trustProfiles: [],
+  aiPrompts: [],
 };
 
 const actionLabels = {
@@ -88,9 +171,9 @@ const logActionOptions = [
   ["", "全部操作"],
   ["login", "登录"],
   ["logout", "退出"],
-  ["user.create", "新增成员"],
-  ["user.update", "保存成员"],
-  ["user.delete", "删除成员"],
+  ["user.create", "新增协作员"],
+  ["user.update", "保存协作员"],
+  ["user.delete", "删除协作员"],
   ["module.create", "新增模块"],
   ["module.update", "保存模块"],
   ["module.delete", "删除模块"],
@@ -186,7 +269,7 @@ function setMessage(element, text, type = "muted") {
 }
 
 function userHome(user) {
-  if (!user) return "login.html";
+  if (!user) return "me.html";
   return user.roles && user.roles.includes("admin") ? "admin.html" : "me.html";
 }
 
@@ -279,6 +362,43 @@ function renderInitiatorContact(activity) {
   return `<p class="initiator-contact"><strong>发起人联系方式</strong>${contactValue}</p>`;
 }
 
+function renderRiskNotice(activity = {}) {
+  const notice = activity.riskNotice || {};
+  if (!notice.text || notice.level === "none") return "";
+  return `
+    <div class="risk-notice ${escapeHtml(notice.level || "medium")}" role="note">
+      <strong>社区提示</strong>
+      <p>${escapeHtml(notice.text)}</p>
+    </div>
+  `;
+}
+
+function renderCommunityReportBox(activity = {}) {
+  if (!["published", "full", "ended"].includes(activity.status)) return "";
+  return `
+    <details class="report-box">
+      <summary>向社区反馈这条活动</summary>
+      <form data-report-form>
+        <label>反馈原因
+          <select name="reason" required>
+            <option value="">请选择</option>
+            <option value="广告营销">广告营销</option>
+            <option value="虚假活动">虚假活动</option>
+            <option value="违法违规">违法违规</option>
+            <option value="人身攻击">人身攻击</option>
+            <option value="其他">其他</option>
+          </select>
+        </label>
+        <label>补充说明（可选）
+          <textarea name="detail" maxlength="500" placeholder="可以简单说说你看到的问题"></textarea>
+        </label>
+        <button class="button outline" type="submit">提交反馈</button>
+        <p class="form-message" data-report-message></p>
+      </form>
+    </details>
+  `;
+}
+
 function hasMeaningfulRichText(value = "") {
   return String(value || "")
     .replace(/<img\b[^>]*>/gi, "x")
@@ -316,14 +436,14 @@ async function initSessionNav() {
     brandMarks.forEach((mark) => {
       mark.addEventListener("click", (event) => {
         event.preventDefault();
-        location.href = "login.html";
+        location.href = "me.html";
       });
     });
     return null;
   }
 
   brandMarks.forEach((mark) => {
-    mark.setAttribute("title", user ? "进入我的有空" : "登录有空");
+    mark.setAttribute("title", user ? "进入我的有空" : "进入开放工作台");
     mark.addEventListener("click", (event) => {
       event.preventDefault();
       location.href = userHome(user);
@@ -375,11 +495,16 @@ function renderMainNav(navLinks, baseLinks, pageName, user) {
     "admin-templates.html",
     "admin-template-editor.html",
     "admin-logs.html",
+    "admin-safety.html",
+    "admin-ai.html",
+    "admin-trust.html",
+    "admin-trust-detail.html",
+    "admin-activity-confidence.html",
   ];
   const myActive = workspacePages.includes(pageName);
   const userPart = user
     ? `<a class="${myActive ? "active" : ""}" href="me.html">我的</a><button class="nav-button" type="button" data-logout>${escapeHtml(user.nickname)} · 退出</button>`
-    : `<a class="${myActive ? "active" : ""}" href="login.html">我的</a>`;
+    : `<a class="${myActive ? "active" : ""}" href="me.html">我的</a>`;
   navLinks.innerHTML = `${links}<span class="session-nav" data-session-nav>${userPart}</span>`;
 }
 
@@ -414,8 +539,8 @@ async function fillCollaboratorSelect(select) {
   if (!select) return [];
   const { collaborators } = await api.get("/api/collaborators");
   select.innerHTML = collaborators.length
-    ? `<option value="">请选择协作员</option>${collaborators.map((item) => `<option value="${item.id}">${escapeHtml(item.nickname)}</option>`).join("")}`
-    : `<option value="">暂无协作员，请先联系管理员添加</option>`;
+    ? `<option value="">可不选择，必要时由社区接住</option>${collaborators.map((item) => `<option value="${item.id}">${escapeHtml(item.nickname)}</option>`).join("")}`
+    : `<option value="">暂无协作员，可先直接发起</option>`;
   return collaborators;
 }
 
@@ -487,7 +612,7 @@ async function renderActivityLists() {
       list.innerHTML = `
         <div class="empty-state">
           <strong>${escapeHtml(list.dataset.emptyTitle || "公告栏还空着")}</strong>
-          <p>${escapeHtml(list.dataset.emptyText || "等第一位有空成员发布活动，这里就会出现新的接龙。")}</p>
+          <p>${escapeHtml(list.dataset.emptyText || "等第一位朋友发布活动，这里就会出现新的接龙。")}</p>
         </div>
       `;
       revealDynamicContent(list);
@@ -507,13 +632,22 @@ async function requireCurrentUser() {
   return user;
 }
 
+async function getOptionalUser() {
+  try {
+    const { user } = await api.get("/api/session");
+    cacheUser(user);
+    return user || null;
+  } catch {
+    return getCachedUser();
+  }
+}
+
 async function initMeDashboardPage() {
   const root = qs("[data-me-dashboard]");
   if (!root) return;
-  const user = await requireCurrentUser();
-  if (!user) return;
+  const user = await getOptionalUser();
   mePageState.user = user;
-  qs("[data-user-name]", root).textContent = user.nickname;
+  qs("[data-user-name]", root).textContent = user?.nickname || "朋友";
 
   const dashboard = await api.get("/api/dashboard/me");
 
@@ -522,7 +656,7 @@ async function initMeDashboardPage() {
 
   const pendingPreview = qs("[data-my-pending]", root);
   const pendingSection = qs("[data-my-pending-section]", root);
-  if (pendingSection && !hasRole(user, "collaborator")) {
+  if (pendingSection && (!user || !hasRole(user, "collaborator"))) {
     pendingSection.hidden = true;
   } else {
     renderPendingTasks(pendingPreview, (dashboard.pending?.activities || []).slice(0, 3), { compact: true });
@@ -563,15 +697,15 @@ function renderWorkspaceCards(root, user, summary, pendingSummary) {
       href: "activity-editor.html",
       label: "发起活动",
       title: "写下一个新的活动想法",
-      body: "从草稿开始，选择协作员后提交审核。",
-      meta: "草稿 / 提交审核",
+      body: "不需要注册登录。写清楚时间、地点和想做的事，系统会给出轻量风险判断。",
+      meta: "草稿 / 直接发布 / 社区复核",
       count: "+",
     },
     {
       href: "my-activities.html",
       label: "我发起的活动",
       title: "管理自己的活动和报名表",
-      body: "筛选草稿、审核中、退回、已发布等状态。",
+      body: "同一浏览器里可以继续编辑、撤回活动和查看报名表。",
       meta: `${reviewing} 个审核中`,
       count: total,
     },
@@ -615,10 +749,9 @@ function renderWorkspaceCard(card) {
 async function initActivityEditorPage() {
   const form = qs("[data-activity-form]");
   if (!form) return;
-  const user = await requireCurrentUser();
-  if (!user) return;
+  const user = await getOptionalUser();
   mePageState.user = user;
-  qs("[data-user-name]") && (qs("[data-user-name]").textContent = user.nickname);
+  qs("[data-user-name]") && (qs("[data-user-name]").textContent = user?.nickname || "朋友");
   resetActivityForm(form);
   bindInitiatorContactToggle(form);
   mePageState.richEditor = window.youkongRichEditor ? window.youkongRichEditor.mount(form) : null;
@@ -626,6 +759,7 @@ async function initActivityEditorPage() {
   mePageState.collaborators = await fillCollaboratorSelect(form.collaboratorId);
   mePageState.templates = await fillTemplateSelect(qs("[data-template-select]", form));
   bindTemplateSelect(form);
+  await initTurnstileForForm(form);
 
   const editingId = new URLSearchParams(location.search).get("id");
   if (editingId) {
@@ -651,12 +785,21 @@ async function initActivityEditorPage() {
     const editing = mePageState.editingActivity;
     const intent = mePageState.submitIntent || "submit";
     formData.set("intent", intent);
-    setMessage(message, intent === "draft" ? "正在保存草稿..." : "正在提交审核...");
+    setMessage(message, intent === "draft" ? "正在保存草稿..." : "正在发起活动...");
     try {
+      const turnstileToken = await getTurnstileToken(form);
+      if (turnstileToken) formData.set("turnstileToken", turnstileToken);
       const { activity } = editing
         ? await api.put(`/api/activities/${editing.id}`, formData)
         : await api.post("/api/activities", formData);
-      setMessage(message, intent === "draft" ? "草稿已保存。" : "活动已提交管理员审核。", "success");
+      const submitMessage = activity.status === "published"
+        ? "活动已发布。"
+        : activity.status === "admin_review" || activity.status === "collaborator_review"
+          ? "活动已进入社区复核。"
+          : activity.status === "rejected"
+            ? "活动暂未发出，可以查看提示后重新调整。"
+            : "草稿已保存。";
+      setMessage(message, intent === "draft" ? "草稿已保存。" : submitMessage, "success");
       showToast("保存成功");
       resetActivityForm(form);
       setTimeout(() => {
@@ -714,6 +857,60 @@ function bindTemplateSelect(form) {
   });
 }
 
+async function loadTurnstileScript() {
+  if (window.turnstile) return window.turnstile;
+  if (loadTurnstileScript.promise) return loadTurnstileScript.promise;
+  loadTurnstileScript.promise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve(window.turnstile);
+    script.onerror = () => reject(new Error("Turnstile 加载失败，请稍后再试"));
+    document.head.append(script);
+  });
+  return loadTurnstileScript.promise;
+}
+
+async function initTurnstileForForm(form) {
+  try {
+    const { turnstile } = await api.get("/api/safety/client-config");
+    if (!turnstile?.enabled || !turnstile.siteKey) return null;
+    const box = document.createElement("div");
+    box.className = "turnstile-box";
+    box.setAttribute("aria-hidden", "true");
+    form.append(box);
+    await loadTurnstileScript();
+    const state = { token: "", resolver: null, rejecter: null };
+    state.widgetId = window.turnstile.render(box, {
+      sitekey: turnstile.siteKey,
+      size: "invisible",
+      callback: (token) => {
+        state.token = token;
+        state.resolver?.(token);
+      },
+      "error-callback": () => {
+        state.rejecter?.(new Error("人机验证暂时没有通过，请刷新页面后重试。"));
+      },
+    });
+    form.youkongTurnstile = state;
+    return state;
+  } catch {
+    return null;
+  }
+}
+
+async function getTurnstileToken(form) {
+  const state = form.youkongTurnstile;
+  if (!state || !window.turnstile) return "";
+  if (state.token) return state.token;
+  return new Promise((resolve, reject) => {
+    state.resolver = resolve;
+    state.rejecter = reject;
+    window.turnstile.execute(state.widgetId);
+  });
+}
+
 function resetActivityForm(form) {
   mePageState.editingActivity = null;
   form.reset();
@@ -727,7 +924,7 @@ function resetActivityForm(form) {
   if (templateSelect) templateSelect.value = "";
   window.youkongRichEditor?.reset(form);
   qs("[data-activity-form-title]", form)?.replaceChildren(document.createTextNode("添加活动"));
-  qs("[data-activity-submit]", form).textContent = "提交审核";
+  qs("[data-activity-submit]", form).textContent = "发布活动";
   qs("[data-cancel-edit]", form).hidden = true;
 }
 
@@ -748,7 +945,7 @@ function fillActivityForm(form, activity) {
   window.youkongRichEditor?.setHtml(form, activity.description || "");
   form.cover.value = "";
   qs("[data-activity-form-title]", form)?.replaceChildren(document.createTextNode("编辑活动"));
-  qs("[data-activity-submit]", form).textContent = "提交审核";
+  qs("[data-activity-submit]", form).textContent = "发布活动";
   qs("[data-cancel-edit]", form).hidden = false;
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -770,6 +967,8 @@ function resetPagedState(key) {
     templates: "templatePage",
     logs: "logPage",
     publicActivities: "publicActivityPage",
+    trustProfiles: "userPage",
+    aiPrompts: "templatePage",
   };
   const pageKey = pageKeys[key];
   if (Object.prototype.hasOwnProperty.call(mePageState, pageKey)) {
@@ -844,8 +1043,7 @@ function mergePageItems(key, page, items) {
 async function initMyActivitiesPage() {
   const root = qs("[data-my-activities-page]");
   if (!root) return;
-  const user = await requireCurrentUser();
-  if (!user) return;
+  const user = await getOptionalUser();
   mePageState.user = user;
   const filters = qs("[data-my-activity-filters]", root);
   fillStatusSelect(filters?.status);
@@ -983,8 +1181,8 @@ function canRegisterActivity(activity) {
 async function initRegistrationsPage() {
   const root = qs("[data-registrations-page]");
   if (!root) return;
-  const user = await requireCurrentUser();
-  if (!user) return;
+  const user = await getOptionalUser();
+  mePageState.user = user;
   const id = new URLSearchParams(location.search).get("id");
   const title = qs("[data-registration-title]", root);
   const summary = qs("[data-registration-summary]", root);
@@ -1096,6 +1294,7 @@ async function initActivityPage() {
           <span>${activity.capacity ? `限额 ${activity.capacity} 人` : "人数无上限"}</span>
           <span>已报名 ${activity.registrationCount} 人</span>
         </div>
+        ${renderRiskNotice(activity)}
         ${renderInitiatorContact(activity)}
         <div class="activity-share-actions" aria-label="活动分享操作">
           <button class="button ghost" type="button" data-download-poster>分享海报</button>
@@ -1129,10 +1328,12 @@ async function initActivityPage() {
                   <button class="button primary" type="submit">${registrationLookupOnly ? "查找报名" : "提交报名"}</button>
                   <p class="form-message" data-register-message></p>
                 </form>
+                ${renderCommunityReportBox(activity)}
               </aside>`
             : `<aside class="form-note">
                 <h3>暂不开放报名</h3>
                 <p class="muted-text">这个活动当前是「${escapeHtml(activity.statusLabel)}」状态，公开发布后才可以报名。</p>
+                ${renderCommunityReportBox(activity)}
               </aside>`
         }
       </div>
@@ -1167,6 +1368,24 @@ async function initActivityPage() {
       location.href = `success.html?activity=${encodeURIComponent(id)}&registration=${encodeURIComponent(registration.id)}${tokenQuery}`;
     } catch (error) {
       setMessage(message, error.message, "error");
+    }
+  });
+
+  const reportForm = qs("[data-report-form]", root);
+  reportForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const reportMessage = qs("[data-report-message]", reportForm);
+    setMessage(reportMessage, "正在提交社区反馈...");
+    try {
+      await api.post(`/api/activities/${id}/reports`, {
+        reason: reportForm.reason.value,
+        detail: reportForm.detail.value,
+      });
+      reportForm.reset();
+      setMessage(reportMessage, "已经收到。社区会把这些反馈纳入风险提示，不会因为一次反馈就直接删除内容。", "success");
+      showToast("反馈已提交");
+    } catch (error) {
+      setMessage(reportMessage, error.message, "error");
     }
   });
 }
@@ -1299,10 +1518,10 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
     },
     {
       href: "admin-members.html",
-      label: "成员管理",
-      title: "管理成员、协作员和手机号",
-      body: "添加、搜索、修改、删除成员角色。",
-      meta: "成员 / 协作员",
+      label: "协作员管理",
+      title: "管理协作员和手机号",
+      body: "添加、搜索、修改、删除可登录治理后台的人。",
+      meta: "管理员 / 协作员",
       count: userTotal,
     },
     {
@@ -1336,6 +1555,30 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
       body: "新增、保存、删除、提交、审核、撤回都会留下记录。",
       meta: "审计记录",
       count: "Log",
+    },
+    {
+      href: "admin-safety.html",
+      label: "规则引擎",
+      title: "配置开放发布的风险规则",
+      body: "调整敏感词、URL、格式异常等规则分值和策略阈值。",
+      meta: "Rule Engine",
+      count: "OS",
+    },
+    {
+      href: "admin-ai.html",
+      label: "AI 分析",
+      title: "管理可插拔 AI Analysis Engine",
+      body: "开启或关闭 AI，配置 Provider、Prompt、能力和调用策略。",
+      meta: "Observer",
+      count: "AI",
+    },
+    {
+      href: "admin-trust.html",
+      label: "社区信用度",
+      title: "查看匿名身份的社区信任变化",
+      body: "按活动发起、举报成立、低风险发布等事件追溯信用变化。",
+      meta: "Community Trust",
+      count: "Trust",
     },
   ];
   container.innerHTML = cards.map(renderWorkspaceCard).join("");
@@ -1454,6 +1697,412 @@ async function initAdminLogsPage() {
   await renderLogs();
 }
 
+async function initAdminSafetyPage() {
+  const root = qs("[data-admin-safety-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const configForm = qs("[data-safety-config-form]", root);
+  const ruleForm = qs("[data-safety-rule-form]", root);
+  const message = qs("[data-safety-message]", root);
+  try {
+    const [{ config }, { rules }] = await Promise.all([
+      api.get("/api/safety/config"),
+      api.get("/api/safety/rules"),
+    ]);
+    qs('[name="config"]', configForm).value = JSON.stringify(config, null, 2);
+    renderSafetyRules(qs("[data-safety-rules]", root), rules);
+  } catch (error) {
+    setMessage(message, error.message, "error");
+  }
+  configForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      const config = JSON.parse(configForm.config.value || "{}");
+      await api.put("/api/safety/config", { config });
+      setMessage(message, "规则与策略配置已保存。", "success");
+      showToast("保存成功");
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+  ruleForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await api.post("/api/safety/rules", {
+        name: ruleForm.name.value,
+        type: ruleForm.type.value,
+        weight: ruleForm.weight.value,
+        enabled: ruleForm.enabled.value,
+        description: ruleForm.description.value,
+        params: ruleForm.params.value,
+      });
+      ruleForm.reset();
+      await refreshSafetyRules(root);
+      showToast("保存成功");
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+}
+
+async function refreshSafetyRules(root = document) {
+  const { rules } = await api.get("/api/safety/rules");
+  renderSafetyRules(qs("[data-safety-rules]", root), rules);
+}
+
+function renderSafetyRules(container, rules = []) {
+  if (!container) return;
+  if (!rules.length) {
+    container.innerHTML = `<div class="empty-state"><strong>还没有规则</strong><p>默认规则会在系统初始化时自动补齐。</p></div>`;
+    return;
+  }
+  container.innerHTML = rules.map((rule) => `
+    <article class="manage-row safety-rule-row" data-rule-id="${rule.id}">
+      <input name="name" value="${escapeHtml(rule.name)}" aria-label="规则名称" />
+      <input name="type" value="${escapeHtml(rule.type)}" aria-label="规则类型" />
+      <input name="weight" type="number" min="-100" max="100" value="${Number(rule.weight || 0)}" aria-label="风险分值" />
+      <select name="enabled" aria-label="是否启用">
+        <option value="true" ${rule.enabled !== false ? "selected" : ""}>启用</option>
+        <option value="false" ${rule.enabled === false ? "selected" : ""}>关闭</option>
+      </select>
+      <textarea name="description" aria-label="规则说明">${escapeHtml(rule.description || "")}</textarea>
+      <textarea name="params" aria-label="规则参数 JSON">${escapeHtml(JSON.stringify(rule.params || {}, null, 2))}</textarea>
+      <button class="button outline" type="button" data-save-rule>保存</button>
+      <button class="button outline danger-soft" type="button" data-delete-rule>删除</button>
+    </article>
+  `).join("");
+  revealDynamicContent(container);
+  qsa("[data-rule-id]", container).forEach((row) => {
+    qs("[data-save-rule]", row).addEventListener("click", async () => {
+      try {
+        await api.put(`/api/safety/rules/${row.dataset.ruleId}`, {
+          name: qs('[name="name"]', row).value,
+          type: qs('[name="type"]', row).value,
+          weight: qs('[name="weight"]', row).value,
+          enabled: qs('[name="enabled"]', row).value,
+          description: qs('[name="description"]', row).value,
+          params: qs('[name="params"]', row).value,
+        });
+        showToast("保存成功");
+        await refreshSafetyRules();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+    qs("[data-delete-rule]", row).addEventListener("click", async () => {
+      if (!confirm("确定删除这条规则吗？")) return;
+      await api.delete(`/api/safety/rules/${row.dataset.ruleId}`);
+      showToast("删除成功");
+      await refreshSafetyRules();
+    });
+  });
+}
+
+async function initAdminAiPage() {
+  const root = qs("[data-admin-ai-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const settingsForm = qs("[data-ai-settings-form]", root);
+  const promptForm = qs("[data-ai-prompt-form]", root);
+  const message = qs("[data-ai-message]", root);
+  try {
+    const [{ settings }, { prompts }] = await Promise.all([
+      api.get("/api/ai/settings"),
+      api.get("/api/ai/prompts?page=1&pageSize=100"),
+    ]);
+    fillAiSettingsForm(settingsForm, settings);
+    renderAiPrompts(qs("[data-ai-prompts]", root), prompts);
+  } catch (error) {
+    setMessage(message, error.message, "error");
+  }
+  settingsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      const payload = aiSettingsPayload(settingsForm);
+      const { settings } = await api.put("/api/ai/settings", payload);
+      fillAiSettingsForm(settingsForm, settings);
+      setMessage(message, "AI 设置已保存。", "success");
+      showToast("保存成功");
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+  qs("[data-ai-test]", settingsForm)?.addEventListener("click", async () => {
+    setMessage(message, "正在测试 AI 连接...");
+    const result = await api.post("/api/ai/test-connection", aiSettingsPayload(settingsForm));
+    setMessage(message, result.ok ? `连接成功，响应 ${result.durationMs}ms。` : `连接失败：${result.error}`, result.ok ? "success" : "error");
+  });
+  promptForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await api.post("/api/ai/prompts", {
+        type: promptForm.type.value,
+        version: promptForm.version.value,
+        name: promptForm.name.value,
+        active: promptForm.active.value,
+        systemPrompt: promptForm.systemPrompt.value,
+        userPrompt: promptForm.userPrompt.value,
+      });
+      promptForm.reset();
+      await refreshAiPrompts(root);
+      showToast("保存成功");
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+}
+
+function fillAiSettingsForm(form, settings = {}) {
+  if (!form) return;
+  form.enabled.value = settings.enabled ? "true" : "false";
+  form.provider.value = settings.provider || "openai-compatible";
+  form.baseUrl.value = settings.baseUrl || "";
+  form.model.value = settings.model || "";
+  form.apiKey.value = "";
+  form.apiKey.placeholder = settings.apiKeyStatus || "未配置";
+  form.requestTimeoutMs.value = settings.requestTimeoutMs || 15000;
+  form.temperature.value = settings.temperature ?? 0.2;
+  form.maxTokens.value = settings.maxTokens || 1200;
+  form.retryCount.value = settings.retryCount || 1;
+  form.cacheTtlSeconds.value = settings.cacheTtlSeconds || 86400;
+  form.promptVersion.value = settings.promptVersion || "activity-default-v1";
+  form.callStrategy.value = JSON.stringify(settings.callStrategy || {}, null, 2);
+  form.capabilities.value = JSON.stringify(settings.capabilities || {}, null, 2);
+}
+
+function aiSettingsPayload(form) {
+  return {
+    enabled: form.enabled.value,
+    provider: form.provider.value,
+    baseUrl: form.baseUrl.value,
+    model: form.model.value,
+    apiKey: form.apiKey.value,
+    requestTimeoutMs: form.requestTimeoutMs.value,
+    temperature: form.temperature.value,
+    maxTokens: form.maxTokens.value,
+    retryCount: form.retryCount.value,
+    cacheTtlSeconds: form.cacheTtlSeconds.value,
+    promptVersion: form.promptVersion.value,
+    callStrategy: form.callStrategy.value,
+    capabilities: form.capabilities.value,
+  };
+}
+
+async function refreshAiPrompts(root = document) {
+  const { prompts } = await api.get("/api/ai/prompts?page=1&pageSize=100");
+  renderAiPrompts(qs("[data-ai-prompts]", root), prompts);
+}
+
+function renderAiPrompts(container, prompts = []) {
+  if (!container) return;
+  if (!prompts.length) {
+    container.innerHTML = `<div class="empty-state"><strong>还没有 Prompt</strong><p>系统初始化后会自动补一个活动分析默认版本。</p></div>`;
+    return;
+  }
+  container.innerHTML = prompts.map((prompt) => `
+    <article class="event-row" data-prompt-id="${prompt.id}">
+      <div>
+        <span class="tag">${prompt.active ? "启用中" : "历史版本"}</span>
+        <h3>${escapeHtml(prompt.name)}</h3>
+        <p>${escapeHtml(prompt.type)} · ${escapeHtml(prompt.version)} · ${formatDate(prompt.updatedAt || prompt.createdAt)}</p>
+        <details class="review-detail">
+          <summary>查看 Prompt</summary>
+          <pre>${escapeHtml(prompt.systemPrompt || "")}</pre>
+          <pre>${escapeHtml(prompt.userPrompt || "")}</pre>
+        </details>
+      </div>
+      <div class="row-actions">
+        <button class="button outline" type="button" data-activate-prompt ${prompt.active ? "disabled" : ""}>启用</button>
+        <button class="button outline danger-soft" type="button" data-delete-prompt>删除</button>
+      </div>
+    </article>
+  `).join("");
+  revealDynamicContent(container);
+  qsa("[data-prompt-id]", container).forEach((row) => {
+    qs("[data-activate-prompt]", row).addEventListener("click", async () => {
+      await api.post(`/api/ai/prompts/${row.dataset.promptId}/activate`, {});
+      showToast("保存成功");
+      await refreshAiPrompts();
+    });
+    qs("[data-delete-prompt]", row).addEventListener("click", async () => {
+      if (!confirm("确定删除这个 Prompt 版本吗？")) return;
+      await api.delete(`/api/ai/prompts/${row.dataset.promptId}`);
+      showToast("删除成功");
+      await refreshAiPrompts();
+    });
+  });
+}
+
+async function initAdminActivityConfidencePage() {
+  const root = qs("[data-admin-activity-confidence-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const id = new URLSearchParams(location.search).get("id");
+  const container = qs("[data-confidence-detail]", root);
+  if (!id) {
+    container.innerHTML = `<div class="empty-state"><strong>缺少活动 ID</strong><p>请从全部活动进入置信度详情。</p></div>`;
+    return;
+  }
+  await renderActivityConfidence(root, id);
+  qs("[data-reanalyze-activity]", root)?.addEventListener("click", async () => {
+    await api.post(`/api/activities/${id}/reanalyze`, {});
+    showToast("保存成功");
+    await renderActivityConfidence(root, id);
+  });
+}
+
+async function renderActivityConfidence(root, id) {
+  const container = qs("[data-confidence-detail]", root);
+  const { activity, trustProfile, reports, analyses, latestAnalysis } = await api.get(`/api/activities/${id}/confidence`);
+  container.innerHTML = `
+    <article class="confidence-panel">
+      <div class="confidence-score">
+        <span>活动置信度</span>
+        <strong>${Number(activity.confidenceScore ?? 100)}</strong>
+        <p>风险分 ${Number(activity.riskScore || 0)} · ${escapeHtml(activity.riskLevel || "low")} · ${escapeHtml(activity.policyAction || "publish")}</p>
+      </div>
+      ${renderRiskNotice(activity)}
+      <div class="detail-grid">
+        <div><span>活动</span><strong>${escapeHtml(activity.title)}</strong><p>${escapeHtml(activity.moduleName)} · ${formatActivityTime(activity)}</p></div>
+        <div><span>发起人</span><strong>${escapeHtml(activity.initiator)}</strong><p>社区信用度：${trustProfile ? Number(trustProfile.communityTrust || 0) : "无记录"}</p></div>
+        <div><span>社区反馈</span><strong>${reports.length}</strong><p>达到阈值会触发再次分析。</p></div>
+      </div>
+    </article>
+    <section class="panel-block">
+      <h3>规则引擎明细</h3>
+      ${renderRuleFindings(latestAnalysis?.ruleReport?.findings || activity.ruleFindings || [])}
+    </section>
+    <section class="panel-block">
+      <h3>AI Analysis Report</h3>
+      ${latestAnalysis?.aiReport ? renderAiReport(latestAnalysis.aiReport) : `<p class="muted-text">AI 未调用或当前已关闭。</p>`}
+    </section>
+    <section class="panel-block">
+      <h3>分析历史</h3>
+      ${analyses.length ? analyses.map((item) => `<p>${formatDate(item.createdAt)} · 风险分 ${item.policy?.riskScore ?? item.ruleReport?.riskScore ?? 0} · ${escapeHtml(item.aiMeta?.reason || "rule")}</p>`).join("") : `<p class="muted-text">暂无分析历史。</p>`}
+    </section>
+  `;
+  revealDynamicContent(container);
+}
+
+function renderRuleFindings(findings = []) {
+  if (!findings.length) return `<p class="muted-text">没有触发明显风险规则。</p>`;
+  return `
+    <div class="finding-list">
+      ${findings.map((item) => `
+        <div class="finding-item">
+          <strong>${escapeHtml(item.ruleName || item.ruleId)}</strong>
+          <span>${Number(item.scoreDelta || 0) > 0 ? "+" : ""}${Number(item.scoreDelta || 0)} 分</span>
+          <p>${escapeHtml(item.reason || "")}</p>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderAiReport(report = {}) {
+  const flags = [
+    ["真实活动", report.isRealActivity],
+    ["广告倾向", report.isAdvertisement],
+    ["垃圾内容", report.isSpam],
+    ["诈骗风险", report.isScam],
+    ["违法风险", report.containsIllegal],
+  ];
+  return `
+    <div class="ai-report">
+      <p><strong>摘要：</strong>${escapeHtml(report.summary || "暂无摘要")}</p>
+      <p><strong>分类：</strong>${escapeHtml(report.category || "未分类")} · ${escapeHtml((report.tags || []).join(" / "))}</p>
+      <p><strong>风险原因：</strong>${escapeHtml((report.riskReason || []).join("；") || "无")}</p>
+      <p><strong>可信特征：</strong>${escapeHtml((report.positiveSignals || []).join("；") || "无")}</p>
+      <p><strong>风险特征：</strong>${escapeHtml((report.negativeSignals || []).join("；") || "无")}</p>
+      <div class="chip-row">${flags.map(([label, value]) => `<span class="tag">${escapeHtml(label)}：${value ? "是" : "否"}</span>`).join("")}</div>
+    </div>
+  `;
+}
+
+async function initAdminTrustPage() {
+  const root = qs("[data-admin-trust-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const filters = qs("[data-trust-filters]", root);
+  filters?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    resetPagedState("trustProfiles");
+    renderTrustProfiles();
+  });
+  qs("[data-load-more-trust]", root)?.addEventListener("click", () => {
+    mePageState.userPage += 1;
+    renderTrustProfiles();
+  });
+  await renderTrustProfiles();
+}
+
+async function renderTrustProfiles() {
+  const list = qs("[data-trust-list]");
+  if (!list) return;
+  const query = queryFromForm(qs("[data-trust-filters]"), {
+    page: mePageState.userPage,
+    pageSize: mePageState.pageSize,
+  });
+  const { profiles, pageInfo } = await api.get(`/api/trust-profiles${query}`);
+  const loaded = mergePageItems("trustProfiles", mePageState.userPage, profiles);
+  updatePagedCount(qs("[data-trust-count]"), loaded.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-trust]"), loaded.length, pageInfo?.total || loaded.length);
+  if (!loaded.length) {
+    list.innerHTML = `<div class="empty-state"><strong>还没有匿名身份记录</strong><p>有人开放发起活动后，这里会出现社区信用度。</p></div>`;
+    return;
+  }
+  list.innerHTML = loaded.map((profile) => `
+    <article class="event-row">
+      <div>
+        <span class="tag">信用度 ${Number(profile.communityTrust || 0)}</span>
+        <h3>${escapeHtml(profile.latestInitiator || profile.id)}</h3>
+        <p>${escapeHtml(profile.ipMasked || "IP 已脱敏")} · ${escapeHtml(profile.latestActivityTitle || "暂无活动")}</p>
+        <p>${escapeHtml(profile.userAgentSample || "")}</p>
+      </div>
+      <div class="row-actions">
+        <a class="button outline" href="admin-trust-detail.html?id=${encodeURIComponent(profile.id)}">查看</a>
+      </div>
+    </article>
+  `).join("");
+  revealDynamicContent(list);
+}
+
+async function initAdminTrustDetailPage() {
+  const root = qs("[data-admin-trust-detail-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const id = new URLSearchParams(location.search).get("id");
+  const container = qs("[data-trust-detail]", root);
+  if (!id) {
+    container.innerHTML = `<div class="empty-state"><strong>缺少身份 ID</strong><p>请从社区信用度列表进入。</p></div>`;
+    return;
+  }
+  const { profile, events, activities } = await api.get(`/api/trust-profiles/${encodeURIComponent(id)}`);
+  container.innerHTML = `
+    <article class="confidence-panel">
+      <div class="confidence-score">
+        <span>社区信用度</span>
+        <strong>${Number(profile.communityTrust || 0)}</strong>
+        <p>${escapeHtml(profile.ipMasked || "IP 已脱敏")} · ${profile.activityCount || 0} 次活动记录</p>
+      </div>
+    </article>
+    <section class="panel-block">
+      <h3>信用变化</h3>
+      ${events.length ? events.map((event) => `<p><strong>${Number(event.delta || 0) > 0 ? "+" : ""}${Number(event.delta || 0)}</strong> · ${escapeHtml(event.reason || event.type)} · ${formatDate(event.createdAt)}</p>`).join("") : `<p class="muted-text">暂无信用变化事件。</p>`}
+    </section>
+    <section class="panel-block">
+      <h3>关联活动</h3>
+      ${activities.length ? activities.map((activity) => `<p><a href="admin-activity-confidence.html?id=${encodeURIComponent(activity.id)}">${escapeHtml(activity.title)}</a> · 风险分 ${Number(activity.riskScore || 0)} · ${formatDate(activity.createdAt)}</p>`).join("") : `<p class="muted-text">暂无关联活动。</p>`}
+    </section>
+  `;
+  revealDynamicContent(container);
+}
+
 function fillStatusSelect(select) {
   if (!select) return;
   select.innerHTML = statusOptions.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
@@ -1498,7 +2147,7 @@ function bindAdminForms() {
         role: selectedRole(userForm),
       });
       userForm.reset();
-      setMessage(userMessage, "成员已添加。", "success");
+      setMessage(userMessage, "协作员已添加。", "success");
       showToast("保存成功");
       resetPagedState("users");
       await renderUsers();
@@ -1526,7 +2175,7 @@ function bindAdminForms() {
 }
 
 function selectedRole(root) {
-  return qs('[name="role"]', root)?.value || "member";
+  return qs('[name="role"]', root)?.value || "collaborator";
 }
 
 function bindTemplateForm(form = qs("[data-template-form]")) {
@@ -1580,13 +2229,12 @@ function fillTemplateForm(form, template) {
 }
 
 function renderRoleControls(user = {}) {
-  const roles = user.roles || [user.role || "member"];
+  const roles = user.roles || [user.role || "collaborator"];
   if (roles.includes("admin")) {
     return `<span class="tag">有空管理员</span>`;
   }
   return `
     <select name="role" aria-label="角色">
-      <option value="member" ${roles.includes("member") ? "selected" : ""}>成员</option>
       <option value="collaborator" ${roles.includes("collaborator") ? "selected" : ""}>协作员</option>
     </select>
   `;
@@ -1605,7 +2253,7 @@ async function renderUsers() {
   updatePagedCount(qs("[data-member-count]"), loaded.length, pageInfo);
   updateLoadMore(qs("[data-load-more-users]"), loaded.length, pageInfo?.total || loaded.length);
   if (!loaded.length) {
-    list.innerHTML = `<div class="empty-state"><strong>没有找到成员</strong><p>换一个关键词或角色筛选试试。</p></div>`;
+    list.innerHTML = `<div class="empty-state"><strong>没有找到协作员</strong><p>换一个关键词或角色筛选试试。</p></div>`;
     revealDynamicContent(list);
     return;
   }
@@ -1766,6 +2414,7 @@ async function renderAllActivities() {
           </div>
           <div class="row-actions">
             <a class="button outline" href="activity.html?id=${encodeURIComponent(activity.id)}">查看</a>
+            <a class="button outline" href="admin-activity-confidence.html?id=${encodeURIComponent(activity.id)}">置信度</a>
             ${canViewRegistrations(activity) ? `<a class="button outline" href="registrations.html?id=${encodeURIComponent(activity.id)}">报名表</a>` : ""}
             ${canAdminCancel(activity) ? `<button class="button outline danger-soft" type="button" data-admin-cancel-activity-id="${activity.id}">取消</button>` : ""}
             ${canAdminEnd(activity) ? `<button class="button outline" type="button" data-admin-end-activity-id="${activity.id}">结束</button>` : ""}
@@ -1951,7 +2600,7 @@ async function safeInit(task) {
   } catch (error) {
     console.error(error);
     showToast("页面数据读取失败，请刷新后重试");
-    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-activity-detail], [data-success-detail]")
+    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-activity-detail], [data-success-detail], [data-safety-rules], [data-ai-prompts], [data-confidence-detail], [data-trust-list], [data-trust-detail]")
       .filter((element) => /正在|读取|加载/.test(element.textContent || ""))
       .forEach((element) => {
         element.innerHTML = `<div class="empty-state"><strong>暂时没读到数据</strong><p>请刷新页面重试，或稍后再来。</p></div>`;
@@ -1979,5 +2628,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(initAdminTemplatesPage),
     safeInit(initAdminTemplateEditorPage),
     safeInit(initAdminLogsPage),
+    safeInit(initAdminSafetyPage),
+    safeInit(initAdminAiPage),
+    safeInit(initAdminActivityConfidencePage),
+    safeInit(initAdminTrustPage),
+    safeInit(initAdminTrustDetailPage),
   ]);
 });

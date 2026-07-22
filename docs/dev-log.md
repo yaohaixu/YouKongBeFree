@@ -2287,3 +2287,74 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 
 1. 将白天 / 黑夜主题对比度扫描沉淀为可复用测试脚本，纳入 `npm test` 或独立 `npm run test:contrast`。
 2. 后续抽象主题文字 token，例如 `--text-primary`、`--text-secondary`、`--text-tertiary`，减少深色主题层和白天主题层互相覆盖造成的回归。
+
+## 2026-07-21 - 0.18.0 Community OS 活动发布安全架构重构
+
+### 任务目标
+
+按用户新的产品理念重构活动发布系统：取消“成员登录后才能发起活动”的中心化门槛，改为开放优先、自治优先、信任优先、最少中心化干预。真实用户尽量无感发起，机器人、广告和诈骗内容通过 Turnstile、综合身份、限流、规则引擎、社区信用度、社区举报和 AI 分析逐步提高成本。管理员和协作员保留为兜底复核，不作为日常发布前置审核。
+
+### 具体修改内容
+
+- `lib/community-safety/`：新增 Community OS 安全基础模块，包含默认配置、匿名身份、持久化限流、规则引擎、Community Trust、Turnstile、策略引擎和安全服务。
+- `lib/ai-analysis/`：新增可插拔 AI Analysis Engine，包含 Provider Registry、OpenAI Compatible Adapter、Prompt Service、统一 Schema、JSON Parser、缓存、用量日志、重试和 API Key 加密工具。
+- `lib/store.js`：新增 `safetyRules`、`systemConfigs`、`anonymousIdentities`、`trustProfiles`、`trustEvents`、`rateEvents`、`analysisReports`、`communityReports`、`aiPrompts`、`aiCache`、`aiUsageLogs` 集合；初始化默认规则、AI 设置和 Prompt；旧 `member` 角色迁移为 `collaborator`。
+- `lib/app.js`：活动创建 / 编辑取消强制登录，接入匿名身份、管理 token、综合限流、规则引擎、AI 分析、策略分流、风险提示和分析报告；报名表查看 / 删除支持管理 token；新增社区反馈、活动置信度、重新分析、规则配置、AI 设置、Prompt、社区信用度 API；保留管理员 / 协作员复核作为兜底。
+- `app.js`：前端自动生成浏览器本地 UUID 和简易 fingerprint，并随 API 请求发送；保存活动管理 token；开放 `me.html`、`activity-editor.html`、`my-activities.html` 和 `registrations.html` 的未登录访问；活动详情展示风险提示和社区反馈入口；后台新增规则引擎、AI 分析、活动置信度和社区信用度页面逻辑。
+- 新增页面：`admin-safety.html`、`admin-ai.html`、`admin-activity-confidence.html`、`admin-trust.html`、`admin-trust-detail.html`。
+- `script.js`：后台页面分类加入新 Community OS 页面，并统一给 footer 增加“管理员登录”入口。
+- `styles.css`：补充风险提示、反馈表单、规则行、配置编辑器、置信度面板、AI 报告和信用度详情样式。
+- `tests/smoke.test.js`：冒烟改为覆盖低风险活动直接发布、高风险活动进入兜底双岗复核、规则引擎、AI 设置脱敏、活动置信度、社区反馈、Community Trust、匿名管理 token 和新后台页面移动端无横向溢出。
+- `README.md`、`CHANGELOG.md`、`docs/security.md`、`docs/cloudbase-indexes.md`、`.env.example`：同步开放发布、Community OS、Turnstile、AI 加密配置、新页面说明和 CloudBase 索引建议。
+
+### 涉及文件
+
+- `.env.example`
+- `*.html`
+- `app.js`
+- `script.js`
+- `styles.css`
+- `lib/app.js`
+- `lib/store.js`
+- `lib/community-safety/*`
+- `lib/ai-analysis/*`
+- `tests/smoke.test.js`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+- `docs/security.md`
+
+### 技术方案选择
+
+- 匿名身份不只使用 IP，而是由本地 UUID、浏览器 fingerprint、User-Agent 和 IP 摘要组合。对外只展示脱敏 IP / UA 样本，避免把真实网络信息暴露到后台以外。
+- 活动管理使用每个活动独立的管理 token。匿名身份用于“我的活动”归属和限流，管理 token 用于编辑、撤回、报名表等敏感操作，避免只靠可伪造的 client id 管理活动。
+- Rule Engine 不做一票否决，只输出风险分、置信分和可解释的 findings；策略引擎再决定直接发布、带提示发布、进入复核或按配置拒绝。
+- AI Analysis Engine 独立于活动业务。业务层只调用 `analyzeActivity()`，Provider、Prompt、Schema、缓存、重试、日志都在 AI 模块内封装，未来扩展评论 / 帖子 / 举报分析不需要改活动业务层。
+- AI 默认关闭、失败跳过、只输出 Analysis Report，不直接删除内容、不直接处罚、不直接修改 Community Trust。
+- 保留现有管理员 / 协作员双岗审核功能，但只作为高风险或策略配置触发的兜底复核路径。
+
+### 设计决策原因
+
+- 这个社区的目标不是“平台审核”，而是让真实社区活动更容易发生，因此默认路径必须是低摩擦发布。
+- 社区信用度不是黑名单或信誉分，而是一套可演进的自治基础能力。它需要独立集合、事件历史和 API，以后才能自然扩展到徽章、DAO 治理、志愿者体系和推荐权重。
+- 风险提示应保持中立。低风险活动不显示“AI 判断可信”，避免把 AI 变成权威背书；中高风险才展示提示，帮助参与者自行判断。
+- 配置先用 JSON 编辑区承载复杂策略，是为了快速保留完整可调能力；后续可以逐步把常用字段拆成更友好的表单。
+
+### 当前完成情况
+
+- 开放发起、匿名管理 token、规则引擎、Community Trust、社区反馈、Risk Notice、AI Analysis Engine 和新后台页面均已实现。
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟主流程通过。
+- `npm run deploy:dry-run` 已通过：CloudBase 静态站点和云函数包可构建，新增页面和新增后端模块进入部署产物。
+
+### 遗留问题
+
+- Turnstile 默认关闭，生产启用前需要在 Cloudflare 获取 Site Key / Secret Key，并写入 CloudBase 环境变量。
+- AI 默认关闭；启用前需要配置 Provider、Base URL、Model、API Key 和 Prompt，并通过后台“测试连接”确认模型可用。
+- 当前限流和管理 token 校验已持久化到数据层，但报名锁仍是进程内锁；CloudBase 多实例高并发报名仍建议继续升级为数据库事务、唯一索引或队列。
+- 规则和策略配置目前以 JSON 编辑为主，后续可为高频字段做更友好的表单控件和输入校验。
+
+### 下一步建议
+
+1. 在 CloudBase 控制台按 `docs/cloudbase-indexes.md` 补充 Community OS 新集合索引，尤其是 `anonymousIdentityId + createdAt`、`identityId + createdAt`、`activityId + createdAt`、`resetAt`。
+2. 生产启用 Turnstile，并确认 CloudBase Hosting / API 的 CSP、CORS 和自定义请求头都已生效。
+3. 在独立任务里继续拆分 `lib/app.js` 和 `app.js`，把 auth、activities、safety、ai、trust、reports 路由和前端页面控制器逐步拆开。
