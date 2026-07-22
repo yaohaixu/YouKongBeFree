@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Community Badge｜有空客厅</title>
+    <meta name="description" content="YKadmin 配置 Community Badge 的名称、类型、图标和获得规则。" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <script src="theme.js?v=0.19.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.19.0" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html"><span class="brand-mark">有空</span><span class="brand-text">有空客厅</span></a>
+        <button class="menu-toggle" type="button" aria-label="打开导航" aria-expanded="false"><span></span><span></span><span></span></button>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="whitepaper.html">社区共识</a>
+          <a href="participate.html">活动与参与</a>
+          <a href="donate.html">捐赠支持</a>
+          <a href="about.html">关于与联系</a>
+          <span class="session-nav" data-session-nav><a href="me.html">我的</a></span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" data-admin-badges-page>
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">Community Badge</p>
+          <h1>把长期贡献翻译成更容易看见的社区徽章。</h1>
+          <p>徽章不等于信用分本身。它可以依据 Community Trust、发起次数、举报成立次数等条件获得。</p>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap">
+          <form class="filter-panel" data-badge-form>
+            <label>徽章名称<input name="name" placeholder="例如：可信发起人" /></label>
+            <label>类型<select name="type"><option value="identity">身份徽章</option><option value="achievement">成就徽章</option><option value="event">事件徽章</option></select></label>
+            <label>图标<input name="icon" placeholder="spark / check / leaf" /></label>
+            <label>颜色<input name="color" placeholder="#256f5b" /></label>
+            <label>启用<select name="enabled"><option value="true">启用</option><option value="false">停用</option></select></label>
+            <label>排序<input name="order" type="number" value="100" /></label>
+            <label class="wide-field">说明<input name="description" placeholder="徽章对社区意味着什么" /></label>
+            <label class="wide-field">获得规则 JSON<textarea name="rule" rows="5">{"mode":"all","conditions":[]}</textarea></label>
+            <div class="form-actions">
+              <button class="button" type="submit" data-badge-submit>保存徽章</button>
+              <button class="button ghost" type="button" data-badge-reset>清空</button>
+              <a class="button ghost" href="admin-badge-policy.html">展示策略</a>
+            </div>
+            <p class="form-message" data-badge-message></p>
+          </form>
+          <div class="list-toolbar">
+            <span data-badge-count>正在读取社区徽章...</span>
+          </div>
+          <div class="event-list rows" data-badge-list></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><div class="footer-brand">有空客厅</div><div>徽章表达贡献，但不替代人的复杂性。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="admin-governance.html">社区治理</a><a href="admin-trust-policy.html">信用策略</a><a href="admin-badge-policy.html">徽章展示</a></nav>
+      </div>
+    </footer>
+    <script src="script.js?v=0.19.0"></script>
+    <script src="app.js?v=0.19.0"></script>
+  </body>
+</html>

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trust Policy｜有空客厅</title>
+    <meta name="description" content="YKadmin 配置活动置信度和社区行为如何影响 Community Trust。" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <script src="theme.js?v=0.19.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.19.0" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html"><span class="brand-mark">有空</span><span class="brand-text">有空客厅</span></a>
+        <button class="menu-toggle" type="button" aria-label="打开导航" aria-expanded="false"><span></span><span></span><span></span></button>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="whitepaper.html">社区共识</a>
+          <a href="participate.html">活动与参与</a>
+          <a href="donate.html">捐赠支持</a>
+          <a href="about.html">关于与联系</a>
+          <span class="session-nav" data-session-nav><a href="me.html">我的</a></span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" data-admin-trust-policy-page>
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">Trust Policy</p>
+          <h1>配置 Activity Confidence 如何映射到 Community Trust。</h1>
+          <p>策略以事件为入口，不直接写死在活动代码里。每条策略可以启停、排序、配置条件和信任变化值。</p>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap">
+          <form class="filter-panel" data-trust-policy-form>
+            <label>策略名称<input name="name" placeholder="例如：活动置信度 80-89" /></label>
+            <label>事件类型<input name="eventType" placeholder="activity.confidence.evaluated" /></label>
+            <label>启用<select name="enabled"><option value="true">启用</option><option value="false">停用</option></select></label>
+            <label>排序<input name="order" type="number" value="100" /></label>
+            <label>条件模式<select name="conditionMode"><option value="all">全部满足</option><option value="any">任一满足</option></select></label>
+            <label class="wide-field">说明<input name="description" placeholder="这条策略为什么存在" /></label>
+            <label class="wide-field">条件 JSON<textarea name="conditions" rows="4">[]</textarea></label>
+            <label class="wide-field">效果 JSON<textarea name="effect" rows="3">{"trustDelta":0}</textarea></label>
+            <div class="form-actions">
+              <button class="button" type="submit" data-trust-policy-submit>保存策略</button>
+              <button class="button ghost" type="button" data-trust-policy-reset>清空</button>
+              <a class="button ghost" href="admin-governance.html">回治理入口</a>
+            </div>
+            <p class="form-message" data-trust-policy-message></p>
+          </form>
+          <div class="list-toolbar">
+            <span data-trust-policy-count>正在读取信用策略...</span>
+          </div>
+          <div class="event-list rows" data-trust-policy-list></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><div class="footer-brand">有空客厅</div><div>策略是可以讨论和修改的社区约定。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="admin-governance.html">社区治理</a><a href="admin-trust.html">社区信用</a><a href="admin-badges.html">社区徽章</a></nav>
+      </div>
+    </footer>
+    <script src="script.js?v=0.19.0"></script>
+    <script src="app.js?v=0.19.0"></script>
+  </body>
+</html>

@@ -2,6 +2,50 @@
 
 所有重要变更都会记录在此文件中。格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循语义化版本思路。
 
+## [0.19.0] - 2026-07-22
+
+### Added
+
+- 新增 Community Governance 后台总入口，集中进入 Community Trust、Trust Policy、Community Badge、Badge Policy、AI Analysis 和 Rule Engine。
+- 新增统一 `communityEvents` 事件流，活动提交、活动置信度评估、活动发布、社区举报、报名回应和报名里程碑会写入可追溯事件。
+- 新增 Trust Policy 配置模块，支持按事件类型、条件 JSON、条件模式和 `trustDelta` 配置 Community Trust 变化。
+- 新增 Community Badge 和 Badge Policy 配置模块，支持身份徽章、成就徽章、事件徽章，以及公开展示位置 / 图标 / 名称 / 悬停说明策略。
+- 新增 `lib/community-governance/` 模块，包含默认策略、Rule Builder、事件记录、Trust 投影和 Badge 授予服务。
+- 冒烟测试新增 Governance API、策略增删改、徽章增删、展示策略保存和新后台页面移动端布局覆盖。
+
+### Changed
+
+- Community Trust 从轻量直接加减分升级为事件驱动投影：当前值仍缓存到 `trustProfiles`，但来源变为 `communityEvents` + `trustPolicies`。
+- 活动置信度与人的社区信用度进一步解耦：活动置信度只评价单次活动，Community Trust 通过可配置策略吸收长期行为。
+- 社区信用度列表和详情页升级为 Community ID、社区等级、状态、徽章、Community Timeline 和策略命中明细视角。
+- 后台首页将原“社区信用度”入口升级为“社区治理”入口，信用度作为治理子模块保留。
+- 静态资源版本参数升级为 `v=0.19.0`，项目版本升级为 `0.19.0`。
+
+### Fixed
+
+- 修复只有走人工复核后发布的活动才会触发 `activity.published` 信用事件的问题；低风险直接发布也会进入同一事件流。
+- 补齐后台 JSON 配置 textarea 的白天 / 黑夜主题样式，避免新策略页面出现输入框视觉不统一。
+
+## [0.18.1] - 2026-07-22
+
+### Added
+
+- AI 设置页新增两个明确配置项：规则置信度低于 / 等于多少时触发 AI、匿名身份前 N 场活动必须调用 AI。
+- AI 分析历史新增触发原因、匿名身份历史活动数和活动序号记录，便于管理员判断 AI 为什么介入。
+- 冒烟测试新增 AI 调用策略、设置深合并和活动重新分析分数回归覆盖。
+
+### Changed
+
+- 活动发布工作流明确为“规则引擎 -> AI 分析 -> 策略 / 兜底审核”，草稿默认不触发 AI。
+- AI 设置读取改为深合并，线上旧配置也会自动补齐新增的 `callStrategy` 默认字段。
+- AI 与规则分合并时以规则引擎分数为基准；默认 AI 不降低规则风险，只能按配置有限提高风险，避免 AI 把规则命中的活动直接洗成满分。
+- 静态资源版本参数升级为 `v=0.18.1`，项目版本升级为 `0.18.1`。
+
+### Fixed
+
+- 修复活动置信度页点击“重新分析”后，部分活动可能因 AI 跳过或合并逻辑导致置信度异常飙升到 100 的问题。
+- 修复低信任惩罚调整风险分后，`confidenceScore` 可能未同步按新风险分重算的问题。
+
 ## [0.18.0] - 2026-07-21
 
 ### Added

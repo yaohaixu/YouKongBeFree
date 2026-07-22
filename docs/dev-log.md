@@ -2358,3 +2358,143 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 在 CloudBase 控制台按 `docs/cloudbase-indexes.md` 补充 Community OS 新集合索引，尤其是 `anonymousIdentityId + createdAt`、`identityId + createdAt`、`activityId + createdAt`、`resetAt`。
 2. 生产启用 Turnstile，并确认 CloudBase Hosting / API 的 CSP、CORS 和自定义请求头都已生效。
 3. 在独立任务里继续拆分 `lib/app.js` 和 `app.js`，把 auth、activities、safety、ai、trust、reports 路由和前端页面控制器逐步拆开。
+
+## 2026-07-22 - 0.18.1 AI 介入策略与活动重新分析修复
+
+### 任务目标
+
+按最新优化要求明确活动发布工作流：先走规则引擎，再按配置决定是否调用 AI，最后再进入策略分流或兜底审核。同时让 AI 后台可以配置“规则置信度达到什么阈值触发 AI”和“匿名身份前几场活动必须调用 AI”，并修复活动置信度页重新分析后分数异常飙升的问题。
+
+### 具体修改内容
+
+- `lib/community-safety/defaults.js`：AI 默认调用策略改为规则置信度 `<= 70` 触发、匿名身份前 `3` 场活动必调 AI；新增 AI 风险合并影响参数。
+- `lib/ai-analysis/service.js`：AI 设置读取改为深合并，旧配置会自动补齐新 `callStrategy` 字段；`shouldCallAi()` 增加草稿跳过、低规则置信度触发和新匿名身份前 N 场触发。
+- `lib/community-safety/service.js`：活动发布前统计匿名身份既有活动数量，并把活动序号、AI 触发原因写入分析报告元信息。
+- `lib/community-safety/policy-engine.js`：风险合并改为以规则引擎风险分为基准，默认 AI 不降低规则风险，只能按配置有限增加风险；低信任惩罚后同步重算 `confidenceScore`。
+- `lib/app.js`：活动置信度重新分析接口补齐匿名身份活动计数上下文，确保手动重分析和正常发布使用同一套策略输入。
+- `admin-ai.html` / `app.js`：AI 设置页新增“规则置信度 ≤”和“匿名前 N 场必调 AI”两个表单项，保存时写回调用策略 JSON；活动置信度页补充规则基准分、AI 调整和 AI 触发原因展示。
+- `tests/smoke.test.js`：新增 AI 触发策略断言、AI 设置深合并断言，以及修改敏感词规则权重后重新分析活动分数不会归零的回归断言。
+- `README.md`、`CHANGELOG.md`、`docs/security.md`：同步更新当前状态、功能说明、安全设计和版本记录。
+
+### 涉及文件
+
+- `admin-ai.html`
+- `app.js`
+- `lib/ai-analysis/service.js`
+- `lib/community-safety/defaults.js`
+- `lib/community-safety/policy-engine.js`
+- `lib/community-safety/service.js`
+- `lib/app.js`
+- `tests/smoke.test.js`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+- `docs/security.md`
+- `package.json`
+- `package-lock.json`
+- `*.html`
+
+### 技术方案选择
+
+- AI 调用策略放在 AI Analysis Engine 的 `callStrategy` 中，而不是写入活动业务代码，保证后续可以继续扩展全部分析、低信用度分析、随机抽检、举报后分析和手动分析。
+- 匿名身份前 N 场使用活动集合中的 `anonymousIdentityId` 计数，而不是只使用 Trust Profile 的 `activityCount`，避免重复提交或信用事件导致计数偏移。
+- 风险合并从“规则分和 AI 分加权平均”改为“规则分为基准，AI 有界调整”。这样 AI 仍能作为社区观察员补充语义风险，但不能把规则引擎已经明确命中的活动直接变成低风险满分。
+- 低规则置信度触发使用 `confidenceScore <= ruleConfidenceMax` 表达，比旧的 `riskScore 30-70` 更贴近后台活动置信度页面的语言。
+
+### 设计决策原因
+
+- 用户需要的是“开放优先，但机器人和广告成本更高”，所以 AI 应是后置观察员，不应覆盖规则引擎和社区配置。
+- 新发起者前几场调用 AI 可以在不要求注册的情况下增加早期风险识别，而老用户、高信用度用户可以逐步减少限制。
+- 重新分析应该可解释、可复现。管理员调整规则权重后，活动置信度应跟随规则明细稳定变化，而不是因为 AI 跳过或返回低风险就异常归零。
+
+### 当前完成情况
+
+- 代码修改、版本更新和文档更新已完成。
+- `npm test` 已通过：语法检查、API 冒烟和 Playwright 浏览器冒烟全部通过。
+- `npm run deploy:dry-run` 已通过：CloudBase 静态站点和云函数包可构建，必需文件完整。
+
+### 遗留问题
+
+- AI 设置页仍保留 JSON 编辑区，适合高级配置但不够产品化；后续可以把随机抽检、低信用度触发、手动重分析、举报后重分析等策略拆成开关和数字输入。
+- AI Provider 默认仍关闭；生产启用前仍需配置真实模型和 API Key，并观察 AI 用量日志。
+
+### 下一步建议
+
+1. 给活动置信度详情页继续增加分数变化趋势图和规则项瀑布图，让管理员更容易比较多次重新分析之间的差异。
+2. 将规则引擎管理页也从 JSON 参数编辑逐步改成结构化表单，降低误改 params 的概率。
+
+## 2026-07-22 - 0.19.0 Community Governance 核心模块
+
+### 任务目标
+
+按用户确认的方向，先实现 Community Governance 基础能力，不做积分商城、排行榜、治理委员会。目标是把 Community Trust 从简单分数升级为事件驱动的社区治理底座，并补齐 Trust Policy、Community Badge 和 Badge Policy，保证活动置信度与人的社区信用度解耦、可追溯、可配置。
+
+### 具体修改内容
+
+- 新增 `lib/community-governance/`：包含默认 Trust Policy / Badge / Badge Policy、通用 Rule Builder、Community Event 记录、Trust 投影、Badge 授予和身份详情服务。
+- `lib/store.js`：新增 `communityEvents`、`trustPolicies`、`communityBadges`、`identityBadges`、`badgePolicies` 集合，并在 JSON / CloudBase `ensureSeed()` 中补默认策略和徽章。
+- `lib/community-safety/service.js`：活动提交不再硬编码按风险等级加减分，改为写入 `activity.submitted` 和 `activity.confidence.evaluated` 事件，由 Trust Policy 计算 Trust 变化；社区举报提交也改为统一事件。
+- `lib/app.js`：新增 Governance API，覆盖概览、社区身份列表 / 详情、Trust Policy 增删改查、Community Badge 增删改查、Badge Policy 保存；活动直接发布、复核发布、举报成立、报名回应和报名里程碑写入统一事件流。
+- 新增页面：`admin-governance.html`、`admin-trust-policy.html`、`admin-badges.html`、`admin-badge-policy.html`。
+- `app.js`：新增治理后台渲染逻辑；社区信用度列表 / 详情展示 Community ID、社区等级、状态、徽章、Community Timeline、策略命中和徽章授予记录。
+- `script.js` / `styles.css`：新治理页面加入 product surface；补齐后台 JSON textarea 在白天 / 黑夜模式下的统一样式。
+- `tests/smoke.test.js`：新增 Governance API、策略增删改、徽章增删、展示策略保存和新后台页面移动端无横向溢出覆盖。
+- `README.md`、`CHANGELOG.md`、`docs/security.md`、`docs/cloudbase-indexes.md`：同步 0.19.0 功能、集合、索引、安全说明和验证结果。
+
+### 涉及文件
+
+- `admin-governance.html`
+- `admin-trust-policy.html`
+- `admin-badges.html`
+- `admin-badge-policy.html`
+- `app.js`
+- `script.js`
+- `styles.css`
+- `lib/app.js`
+- `lib/store.js`
+- `lib/community-governance/*`
+- `lib/community-safety/service.js`
+- `lib/community-safety/trust-engine.js`
+- `tests/smoke.test.js`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/dev-log.md`
+- `docs/security.md`
+- `docs/cloudbase-indexes.md`
+- `package.json`
+- `package-lock.json`
+- `*.html`
+
+### 技术方案选择
+
+- 采用 Event Sourcing 方向，但保留 `trustProfiles` 当前分数作为查询投影缓存，避免后台列表每次都扫描历史事件。
+- 新 `communityEvents` 是治理来源事件；旧 `trustEvents` 继续同步写入，保证旧接口、旧页面和已有测试兼容。
+- Trust Policy 使用 `{ eventType, conditions, conditionMode, effect.trustDelta }` 配置模型；Badge Rule 复用同一套条件判断器，避免两套规则语法。
+- Badge 和 Badge Policy 拆开：徽章定义“是什么、怎么获得”，展示策略定义“是否公开、在哪里展示、怎么展示”，便于把观察期 / 限制发布这类内部状态保持后台可见。
+- 直接发布和复核发布都写 `activity.published`，避免低风险开放发布活动在 Trust 上吃亏。
+
+### 设计决策原因
+
+- Activity Confidence 与 Community Trust 必须独立。前者是单次活动判断，后者是长期社区关系记录，不能互相覆盖。
+- 社区治理不应走“管理员审核 - 删除 - 封禁”的传统平台逻辑，因此事件时间线和策略解释比单个最终分数更重要。
+- 默认策略和默认徽章以 seed 数据存在，不是业务代码常量。管理员后续可以停用、编辑或新增规则。
+- 第一版后台仍使用 JSON 条件编辑，是为了先保留完整可配置能力；可视化 Rule Builder 可以在后续独立优化。
+
+### 当前完成情况
+
+- Community Governance 核心模块、API、后台页面和文档更新已完成。
+- `npm run test:syntax` 已通过。
+- `npm run test:smoke` 已通过，包含 API 和 Playwright 浏览器冒烟。
+
+### 遗留问题
+
+- Trust Policy 调整后尚未提供“一键按历史事件重算所有 Trust”的后台按钮，目前新策略只影响后续事件。
+- Rule Builder 仍是 JSON 编辑，缺少可视化条件编辑器、策略 dry-run、策略变更历史和批量回滚。
+- Badge 已能授予和展示后台摘要，但公开活动卡 / 活动详情还没有正式渲染公开徽章。
+- 报名里程碑目前按每 10 人触发默认策略，未来可继续通过 Trust Policy 做更细粒度的活动质量事件。
+
+### 下一步建议
+
+1. 增加 Trust Policy dry-run 和历史重算能力：管理员调整策略前可以预览哪些身份会改变多少分。
+2. 把 Trust Policy / Badge Rule JSON 编辑升级为可视化 Rule Builder，降低配置错误风险。
+3. 在活动详情和活动列表中按 Badge Policy 渲染公开正向徽章，后台内部状态继续保持不公开。

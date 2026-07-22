@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.18.0`
+当前版本：`0.19.0`
 
-状态：`0.18.0` 完成活动发布系统安全架构重构：发起活动取消登录门槛，浏览器匿名身份 + 管理 token 支持用户管理自己的活动；新增 Rule Engine、Community Trust、Community Report、Risk Notice、Cloudflare Turnstile 配置入口和可插拔 AI Analysis Engine，保留管理员 / 协作员作为兜底复核而非日常中心化审核。
+状态：`0.19.0` 完成 Community Governance 核心模块：新增统一 Community Event、Trust Policy、Community Badge、Badge Policy 和治理总入口；活动发布、置信度评估、复核发布、社区举报和报名里程碑开始写入可追溯事件流，Community Trust 由策略事件投影计算，并保留旧信用度接口兼容。
 
 ## 访问地址
 
@@ -30,7 +30,11 @@ CloudBase 动态线上站点：
 - 操作日志：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-logs.html
 - 规则引擎：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-safety.html
 - AI 分析：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-ai.html
+- 社区治理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-governance.html
 - 社区信用度：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-trust.html
+- 社区信用策略：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-trust-policy.html
+- 社区徽章：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-badges.html
+- 徽章展示策略：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-badge-policy.html
 - API 服务：https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com/api
 
 GitHub Pages 静态展示：
@@ -46,11 +50,13 @@ GitHub Pages 静态展示：
 - 管理员 / 协作员登录：手机号白名单只用于后台治理权限；管理员录入协作员昵称和手机号后，对方可登录处理兜底复核。
 - Community OS 安全架构：Rule Engine、Community Trust、AI Analysis Engine、Community Report、Risk Notice、Rate Limit、Turnstile 彼此解耦，所有阈值和策略配置化。
 - Rule Engine：支持敏感词、URL、HTML 标签、Script 注入、Markdown 危险语法、Unicode 混淆、Emoji 比例、重复字符、超长文本、重复内容、异常格式和活动完整度等规则，输出风险分和规则明细，不单条直接拒绝。
-- Community Trust：匿名身份初始 50 分，基于活动发起、低/中/高风险、活动发布、社区举报成立等事件逐步变化；信用度和活动置信度分开管理。
-- AI Analysis Engine：AI 是社区观察员，不是审核员；支持开关、Provider、Base URL、Model、加密 API Key、Prompt 版本、调用策略、能力开关、缓存、重试、用量日志和测试连接；关闭 AI 时系统继续可用。
+- Community Governance：新增统一 Community Event、Trust Policy、Community Badge 和 Badge Policy。Community Trust 不再只是直接分数，而是由活动发布、活动置信度、社区反馈和报名里程碑等事件按策略投影出来；活动置信度评价单次活动，Community Trust 评价长期匿名身份，两者通过可配置策略映射。
+- Community Trust：匿名身份初始 50 分，基于事件流逐步变化；后台可查看 Community ID、社区等级、状态、徽章、活动数、报名回应、举报和完整时间线。
+- Community Badge：后台可配置身份徽章、成就徽章和事件徽章，徽章获得规则使用 JSON Rule Builder；Badge Policy 控制徽章是否公开、展示在哪些位置、是否显示图标 / 名称和悬停说明。
+- AI Analysis Engine：AI 是社区观察员，不是审核员；支持开关、Provider、Base URL、Model、加密 API Key、Prompt 版本、调用策略、能力开关、缓存、重试、用量日志和测试连接；AI 介入条件可配置为规则置信度低于阈值、匿名身份前 N 场必调 AI、举报后重分析、手动重分析、低信用度、随机抽检或全部分析；关闭 AI 时系统继续可用。
 - Community Report：活动详情页支持社区反馈；举报达到阈值后触发再次分析和风险提示，默认不删除内容。
 - Risk Notice：低风险活动默认不展示“可信”标签；存在营销或较高风险时显示中立提示，帮助参与者自行判断。
-- YKadmin 后台：入口型工作台；全部活动、协作员管理、模块管理、活动模板、操作日志、规则引擎、AI 分析、社区信用度拆分为独立子页面。
+- YKadmin 后台：入口型工作台；全部活动、协作员管理、模块管理、活动模板、操作日志、规则引擎、AI 分析、Community Governance 拆分为独立子页面。
 - YKadmin 子页面：协作员新增、编辑、删除；活动模块新增、编辑、删除；活动描述模板新增、编辑、删除；管理员待办审核；按关键词、模块、状态、时间、报名数筛选全部活动。
 - YKadmin 活动管理：可查看全部状态活动，可取消或结束活动，可进入独立报名表页面。
 - YKadmin 操作日志：记录登录、退出、新增、保存、删除、提交、审核、退回、拒绝、撤回、报名、取消报名、删除报名、取消活动、结束活动和自动归档等关键动作，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载；日志手机号脱敏保存，仅保留最近 30 天。
@@ -60,7 +66,7 @@ GitHub Pages 静态展示：
 - 活动富文本编辑：发起活动页提供轻量富文本工具栏，支持正文段落、一级/二级/三级标题、加粗、引用、列表、分隔线和正文图片插入；正文图片可选择 10MB 以内原图，浏览器会压缩到约 1MB 后上传，图片保存为稳定代理链接，图片标签不计入 50000 字描述上限；服务端会对白名单标签做二次清洗；活动正文中的超长链接会在移动端自动换行，不会撑出页面。
 - 活动描述模板：YKadmin 可维护常用活动描述模板；模板列表页负责搜索、编辑入口和删除，新增 / 编辑进入独立详情页；发起活动时默认「无，自己写」，选择模板只覆盖活动描述，若已有正文会先确认是否覆盖。
 - 普通访客只看到发起活动和同一浏览器自己的活动管理；协作员才会看到自己的审核待办。
-- 兜底双岗复核：低风险活动直接发布，中风险活动发布并提示，高风险活动按策略进入管理员 / 协作员复核；任一岗位可退回，拒绝后不可编辑。
+- 兜底双岗复核：活动发布先走规则引擎，再按 AI 调用策略决定是否分析，最后由策略引擎决定低风险直接发布、中风险发布并提示、高风险进入管理员 / 协作员复核；任一岗位可退回，拒绝后不可编辑。
 - 审核待办详情支持查看活动描述、正文图片、审核记录和上传封面图；审核意见默认「请选择」，审核意见与备注区放在活动详情之后，桌面端统一为对齐审批面板，移动端保持单列排列。
 - 活动人数限制：发起活动时人数限额留空默认 99 人，最大 99 人。
 - 活动详情页：公开发布活动支持未登录访客填写昵称和手机号报名；重复报名会刷新并返回报名确认 token；草稿和审核中活动不开放报名；同一活动报名写入按活动维度串行化，降低并发超员风险；白天模式下地点与时间信息保持高对比度；活动详情支持生成分享海报、复制报名链接和下载 `.ics` 日历文件。
@@ -91,7 +97,7 @@ GitHub Pages 静态展示：
 - 查询分页：本地 JSON 模拟查询；CloudBase 使用 `where`、`orderBy`、`skip`、`limit` 和 `count`
 - 活动归档：Express 启动定时轮询 + 公开活动列表请求前兜底 sweep；CloudBase 云函数入口按节流策略执行 sweep
 - 操作日志：写入和查询时自动清理 30 天前日志，管理员日志页只查询保留期内记录
-- Community OS：匿名身份、管理 token、Rule Engine、Community Trust、Community Report、Risk Notice 和策略引擎模块化实现
+- Community OS：匿名身份、管理 token、Rule Engine、Community Governance、Community Trust、Community Badge、Community Report、Risk Notice 和策略引擎模块化实现
 - AI Analysis Engine：Provider Adapter、Prompt、Schema、Parser、Cache、Logger、Retry、Config、Service 分层；业务只调用统一分析服务
 - Turnstile：Cloudflare Turnstile 配置化接入，默认关闭，本地可绕过
 - API 诊断：慢请求 / 5xx 响应写入服务端日志，默认阈值 1200ms
@@ -129,8 +135,12 @@ GitHub Pages 静态展示：
 ├── admin-logs.html         # 管理员操作日志
 ├── admin-safety.html       # 规则引擎和策略配置
 ├── admin-ai.html           # AI Analysis Engine 设置和 Prompt
+├── admin-governance.html   # Community Governance 总入口
 ├── admin-trust.html        # Community Trust 列表
 ├── admin-trust-detail.html # Community Trust 详情
+├── admin-trust-policy.html # Trust Policy 配置
+├── admin-badges.html       # Community Badge 配置
+├── admin-badge-policy.html # Badge Policy 展示策略
 ├── admin-activity-confidence.html # 活动置信度详情
 ├── activity.html           # 活动详情与报名页面
 ├── success.html            # 报名成功 / 确认页面
@@ -142,6 +152,7 @@ GitHub Pages 静态展示：
 │   ├── app.js              # Express 应用与 API 路由
 │   ├── rich-text.js        # 活动富文本服务端白名单清洗
 │   ├── community-safety/   # 身份、限流、规则、信任、举报、策略和 Turnstile
+│   ├── community-governance/ # Community Event、Trust Policy、Badge 和策略服务
 │   ├── ai-analysis/        # 可插拔 AI Analysis Engine
 │   ├── routes/
 │   │   └── logs.js         # 操作日志 API 路由
@@ -221,7 +232,7 @@ YK_DB_FILE=
 
 - `.env` 不允许提交到 Git。
 - 本地默认使用 `STORE_DRIVER=json`，数据写入 `data/youkong-db.json`。
-- 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_templates`、`yk_activities`、`yk_registrations`、`yk_sessions`、`yk_logs`、`yk_safetyRules`、`yk_systemConfigs`、`yk_trustProfiles`、`yk_trustEvents`、`yk_rateEvents`、`yk_analysisReports`、`yk_communityReports`、`yk_aiPrompts`、`yk_aiCache`、`yk_aiUsageLogs`。
+- 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_templates`、`yk_activities`、`yk_registrations`、`yk_sessions`、`yk_logs`、`yk_safetyRules`、`yk_systemConfigs`、`yk_anonymousIdentities`、`yk_communityEvents`、`yk_trustProfiles`、`yk_trustEvents`、`yk_trustPolicies`、`yk_communityBadges`、`yk_identityBadges`、`yk_badgePolicies`、`yk_rateEvents`、`yk_analysisReports`、`yk_communityReports`、`yk_aiPrompts`、`yk_aiCache`、`yk_aiUsageLogs`。
 - `CORS_ORIGINS` 用英文逗号分隔允许跨域访问 API 的前端域名；`SESSION_MAX_AGE_DAYS` 会被限制在 1 到 30 天之间。
 - `ACTIVITY_AUTO_END_INTERVAL_MS` 控制本地 / 常驻服务的自动结束轮询间隔，默认 15 分钟；`ACTIVITY_AUTO_END_MIN_SWEEP_MS` 控制请求兜底 sweep 的最小间隔；`DISABLE_ACTIVITY_AUTO_END=true` 可关闭后台轮询。
 - `API_TIMING_LOGS=false` 可关闭 API 耗时日志；`API_SLOW_LOG_MS` 控制慢请求阈值，默认 1200ms。
@@ -259,8 +270,8 @@ npm test
 测试内容包括：
 
 - 语法检查：核心前后端脚本和构建脚本。
-- API 冒烟：登录安全头、协作员新增、匿名/登录发起活动、规则引擎、活动置信度、AI 设置脱敏、社区反馈、Community Trust、活动模板增删改、正文图片上传和伪图片拒绝、兜底双岗复核、富文本清洗、正文图片不计入描述长度校验、报名确认 token、无 token 访问 / 取消拦截、重复报名刷新 token、一人名额并发保护、报名表、删除报名日志、删除协作员日志、取消活动日志、模板日志、日志脱敏、日志字段筛选、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
-- Playwright 浏览器冒烟：管理员登录跳转、工作台概览卡片跳转、移动端关键页面无横向溢出、近期 / 历史活动页、活动编辑页模板下拉和 H1 工具、富文本 H1 重复点击恢复正文、粘贴文本清洗、活动模板管理页富文本编辑器、活动分享按钮、报名成功页 token 访问、CSV 防公式注入、审核默认「请选择」和审核封面图 / 正文图片展示。
+- API 冒烟：登录安全头、协作员新增、匿名/登录发起活动、规则引擎、活动置信度、AI 设置脱敏、社区反馈、Community Governance 事件流、Trust Policy、Community Badge、Badge Policy、Community Trust、活动模板增删改、正文图片上传和伪图片拒绝、兜底双岗复核、富文本清洗、正文图片不计入描述长度校验、报名确认 token、无 token 访问 / 取消拦截、重复报名刷新 token、一人名额并发保护、报名表、删除报名日志、删除协作员日志、取消活动日志、模板日志、日志脱敏、日志字段筛选、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
+- Playwright 浏览器冒烟：管理员登录跳转、工作台概览卡片跳转、移动端关键页面无横向溢出、Community Governance 新页面、近期 / 历史活动页、活动编辑页模板下拉和 H1 工具、富文本 H1 重复点击恢复正文、粘贴文本清洗、活动模板管理页富文本编辑器、活动分享按钮、报名成功页 token 访问、CSV 防公式注入、审核默认「请选择」和审核封面图 / 正文图片展示。
 
 CloudBase 部署 dry-run：
 
@@ -340,7 +351,11 @@ npm run deploy:cloudbase
 - YKadmin 操作日志独立页，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载，并仅保留最近 30 天日志。
 - YKadmin 规则引擎页面，支持查看、新增、保存、删除风险规则，并通过 JSON 调整限流、Turnstile、举报阈值、风险分流策略和 Community Trust 权重。
 - YKadmin AI 分析页面，支持配置 AI 总开关、Provider、Base URL、Model、加密 API Key、超时、温度、Token、重试、缓存、调用策略、能力开关、Prompt 版本和连接测试。
-- YKadmin 社区信用度页面，支持查看匿名身份 Community Trust 列表、脱敏 IP / UA、最近活动、信用度详情、信用变化事件和关联活动。
+- YKadmin Community Governance 总入口，集中进入 Community Trust、Trust Policy、Community Badge、Badge Policy、AI Analysis 和 Rule Engine。
+- YKadmin Trust Policy 页面，支持新增、编辑、删除事件驱动信用策略；策略由事件类型、条件 JSON、条件模式和 `trustDelta` 组成。
+- YKadmin Community Badge 页面，支持新增、编辑、删除身份徽章、成就徽章和事件徽章；徽章获得规则通过 JSON Rule Builder 配置。
+- YKadmin Badge Policy 页面，支持配置徽章公开可见性、展示位置、图标 / 名称显示、悬停说明和排序。
+- YKadmin 社区信用度页面，支持查看匿名身份 Community Trust 列表、Community ID、社区等级、状态、徽章、脱敏 IP / UA、最近活动、信用度详情、Community Timeline、策略命中、徽章授予记录和关联活动。
 - YKadmin 活动置信度详情页，支持查看活动风险分、置信分、规则引擎明细、AI Analysis Report、社区反馈和重新分析。
 - YKadmin 可取消或结束活动。
 - 开放工作台入口卡片，工作台概览位于所有入口模块之后。
@@ -349,7 +364,7 @@ npm run deploy:cloudbase
 - 活动、协作员、模块和日志列表使用 API 分页；搜索条件只在点击「筛选」时生效。
 - CloudBase 模式下列表查询通过存储层 `where/orderBy/skip/limit/count` 执行，避免云函数读取集合全量后再分页。
 - CloudBase 模式下登录态、手机号登录和工作台概览使用字段级查询与计数，降低已登录页面首屏等待时间。
-- 数据备份脚本支持本地 JSON 和 CloudBase NoSQL，默认导出协作员、模块、活动模板、活动、报名、操作日志和 Community OS 相关集合。
+- 数据备份脚本支持本地 JSON 和 CloudBase NoSQL，默认导出协作员、模块、活动模板、活动、报名、操作日志和 Community OS / Governance 相关集合。
 - API 慢请求日志支持通过 `API_SLOW_LOG_MS` 调节阈值，便于定位缺索引和慢接口。
 - `npm test` 自动化冒烟流程，覆盖 API 主链路和关键移动端浏览器布局。
 - 审核待办独立页，管理员和协作员按自己的待办进入。
@@ -386,6 +401,8 @@ npm run deploy:cloudbase
 
 ## 已验证
 
+- `0.19.0` 本地验证通过：`npm run test:syntax` 和 `npm run test:smoke` 均通过；新增覆盖 Community Governance 默认策略、身份详情事件流、Trust Policy 增删改、Community Badge 增删、Badge Policy 保存，以及新后台页面移动端无横向溢出。
+- `0.18.1` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 均通过；新增覆盖 AI 规则置信度阈值、匿名身份前 N 场必调 AI、AI 设置深合并和规则权重变更后的活动重新分析回归。
 - `0.18.0` 本地验证通过：`npm run test:syntax`、`npm run test:smoke`、`npm test` 和 `npm run deploy:dry-run` 均通过。
 - `0.18.0` API 冒烟新增覆盖：匿名发起活动、匿名管理 token、低风险直接发布、高风险进入兜底双岗复核、规则引擎配置、活动置信度详情、AI 设置脱敏与测试连接、社区反馈、Community Trust 列表 / 详情和活动重新分析。
 - `0.18.0` Playwright 冒烟新增覆盖：开放工作台未登录可进入、发起活动页无需登录、活动详情风险提示与举报入口、新增规则引擎 / AI 分析 / 社区信用度 / 置信度页面移动端无横向溢出。
@@ -466,7 +483,7 @@ npm run deploy:cloudbase
 - 生产级身份验证：短信验证码、密码或微信登录，替代当前手机号白名单免密登录。
 - 生产启用 Turnstile：在 Cloudflare 获取 Site Key / Secret Key 后写入 CloudBase 环境变量，并在规则引擎页开启策略。
 - 生产启用 AI Analysis Engine：先配置 Provider、Base URL、Model、API Key、Prompt 和调用策略，再用后台「测试连接」灰度验证。
-- CloudBase 控制台建议补齐 `docs/cloudbase-indexes.md` 中 `0.18.0` 新增的 Community OS 集合索引，尤其是 `yk_activities.anonymousIdentityId + createdAt`、`yk_trustEvents.identityId + createdAt`、`yk_analysisReports.activityId + createdAt`、`yk_communityReports.activityId + createdAt` 和 `yk_rateEvents.resetAt`。
+- CloudBase 控制台建议补齐 `docs/cloudbase-indexes.md` 中 `0.19.0` 新增的 Community Governance 集合索引，尤其是 `yk_communityEvents.identityId + createdAt`、`yk_trustPolicies.eventType + enabled`、`yk_communityBadges.type + enabled`、`yk_identityBadges.identityId + status` 和 `yk_badgePolicies.badgeId`。
 - 管理员仪表盘统计：增加风险分布、举报趋势、AI 调用量、信用度变化和活动发布转化概览。
 - CloudBase 恢复演练和权限策略文档。
 - 自定义域名和同源 API 路由，减少跨域 Cookie 运维复杂度。
@@ -478,7 +495,7 @@ npm run deploy:cloudbase
 - 支持审核通知、审核超时提醒和更细权限模型。
 - 支持 Notion / 飞书表格同步活动日历。
 - 增加财务公示模块和捐赠记录管理。
-- 基于 Community Trust 扩展徽章、志愿者体系、活动推荐权重和社区自治提案能力。
+- 基于 Community Trust 继续扩展志愿者体系、活动推荐权重和社区自治提案能力。
 - 为 CloudBase NoSQL 增加受控恢复脚本和定期备份自动化。
 
 ## Git 分支规范

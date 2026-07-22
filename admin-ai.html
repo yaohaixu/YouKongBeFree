@@ -8,8 +8,8 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <script src="theme.js?v=0.18.0"></script>
-    <link rel="stylesheet" href="styles.css?v=0.18.0" />
+    <script src="theme.js?v=0.19.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.19.0" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -53,6 +53,8 @@
               <label>Retry<input name="retryCount" type="number" min="0" max="5" /></label>
               <label>Cache TTL(s)<input name="cacheTtlSeconds" type="number" min="0" /></label>
               <label>Prompt Version<input name="promptVersion" /></label>
+              <label>规则置信度 ≤<input name="ruleConfidenceMax" type="number" min="0" max="100" step="1" /></label>
+              <label>匿名前 N 场必调 AI<input name="firstActivityCount" type="number" min="0" max="50" step="1" /></label>
             </div>
             <label>调用策略 JSON<textarea name="callStrategy" rows="8" spellcheck="false"></textarea></label>
             <label>能力开关 JSON<textarea name="capabilities" rows="8" spellcheck="false"></textarea></label>
@@ -98,7 +100,7 @@
         <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-safety.html">规则引擎</a><a href="admin-trust.html">社区信用度</a><a href="admin-logs.html">操作日志</a></nav>
       </div>
     </footer>
-    <script src="script.js?v=0.18.0"></script>
-    <script src="app.js?v=0.18.0"></script>
+    <script src="script.js?v=0.19.0"></script>
+    <script src="app.js?v=0.19.0"></script>
   </body>
 </html>

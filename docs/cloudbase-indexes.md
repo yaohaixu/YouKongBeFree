@@ -1,6 +1,6 @@
 # CloudBase 查询与索引建议
 
-本项目 `0.7.0` 起，活动、协作员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。`0.8.0` 起，活动自动结束任务也会按 `status + startsAt` 查询过期待归档活动。`0.9.0` 起，跨天活动可填写 `endsAt`，但 sweep 仍用 `status + startsAt` 缩小候选，再用 `endsAt` 做最终判断，暂不要求新增 `endsAt` 索引。`0.10.0` 起，报名记录新增 `phoneHash` 用于重复报名识别，操作日志手机号改为脱敏保存。`0.13.4` 起，登录态、手机号登录和工作台 dashboard 也使用字段查询与计数接口，建议同步补齐对应索引。`0.13.5` 起，API 慢请求会写入 CloudBase 云函数日志，可用日志中的 `path` 对照本文档补索引。`0.14.0` 起，操作日志页支持操作类型、操作人、角色和日期范围组合筛选，建议补充 `yk_logs` 组合索引。`0.15.0` 起新增活动描述模板集合 `yk_templates`，发起活动时会读取模板列表，管理员模板管理页会按更新时间分页和关键词搜索。`0.18.0` 起新增 Community OS 安全架构集合，规则引擎、匿名身份、Community Trust、社区反馈、活动置信度和 AI Analysis Engine 均建议按本文补充索引。
+本项目 `0.7.0` 起，活动、协作员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。`0.8.0` 起，活动自动结束任务也会按 `status + startsAt` 查询过期待归档活动。`0.9.0` 起，跨天活动可填写 `endsAt`，但 sweep 仍用 `status + startsAt` 缩小候选，再用 `endsAt` 做最终判断，暂不要求新增 `endsAt` 索引。`0.10.0` 起，报名记录新增 `phoneHash` 用于重复报名识别，操作日志手机号改为脱敏保存。`0.13.4` 起，登录态、手机号登录和工作台 dashboard 也使用字段查询与计数接口，建议同步补齐对应索引。`0.13.5` 起，API 慢请求会写入 CloudBase 云函数日志，可用日志中的 `path` 对照本文档补索引。`0.14.0` 起，操作日志页支持操作类型、操作人、角色和日期范围组合筛选，建议补充 `yk_logs` 组合索引。`0.15.0` 起新增活动描述模板集合 `yk_templates`，发起活动时会读取模板列表，管理员模板管理页会按更新时间分页和关键词搜索。`0.18.0` 起新增 Community OS 安全架构集合，规则引擎、匿名身份、Community Trust、社区反馈、活动置信度和 AI Analysis Engine 均建议按本文补充索引。`0.19.0` 起新增 Community Governance 集合，Trust Policy、Community Badge、Badge Policy 和统一 Community Event 时间线建议按本文补齐索引。
 
 ## 推荐索引
 
@@ -81,14 +81,48 @@
 
 - `identityId`：Community Trust 详情页读取单个匿名身份画像。
 - `communityTrust + updatedAt`：后台按社区信用度排序排查。
+- `communityId + updatedAt`：后台按短 Community ID 搜索身份。
+- `status + updatedAt`：观察期 / 限制发布身份排查。
+- `communityLevel + updatedAt`：按社区等级筛选和后续治理统计。
 - `lastActivityAt`：查找近期活跃发起者。
 - `ipMasked + updatedAt`：管理员按脱敏 IP 线索排查，不保存完整 IP。
+
+### `yk_communityEvents`
+
+- `identityId + createdAt`：Community Trust 详情页按匿名身份读取统一事件时间线。
+- `type + createdAt`：按事件类型排查策略触发情况，如 `activity.confidence.evaluated`、`community.report.confirmed`。
+- `activityId + createdAt`：按活动追踪置信度、举报、报名和发布事件。
+- `source + createdAt`：按活动、举报、报名、系统等来源分组排查。
 
 ### `yk_trustEvents`
 
 - `identityId + createdAt`：社区信用度详情页时间线。
 - `activityId + createdAt`：按活动追踪信用度变化原因。
 - `delta + createdAt`：排查大幅加分 / 降分事件。
+
+### `yk_trustPolicies`
+
+- `eventType + enabled`：按事件类型读取可用 Trust Policy。
+- `enabled + order`：后台策略列表和事件评估时按启用状态、排序读取。
+- `updatedAt`：策略变更排查。
+
+### `yk_communityBadges`
+
+- `type + enabled`：按身份徽章、成就徽章、事件徽章分组维护。
+- `enabled + order`：徽章授予评估和后台列表排序。
+- `name`：徽章搜索。
+
+### `yk_identityBadges`
+
+- `identityId + status`：读取某个匿名身份当前生效徽章。
+- `badgeId + status`：删除或调整某个徽章时排查授予记录。
+- `grantedAt`：徽章时间线排序。
+
+### `yk_badgePolicies`
+
+- `badgeId`：徽章展示策略读取和徽章删除时联动清理。
+- `publicVisible + order`：未来公开页筛选可展示徽章。
+- `enabled + order`：后台展示策略列表排序。
 
 ### `yk_rateEvents`
 

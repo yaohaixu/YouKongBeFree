@@ -14,6 +14,7 @@ process.env.YKADMIN_NICKNAME = "有空管理员";
 process.env.YKADMIN_PHONE = "18800000000";
 
 const { createApp, store } = require("../lib/app");
+const { shouldCallAi } = require("../lib/ai-analysis/service");
 
 let server;
 let baseUrl;
@@ -312,6 +313,43 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const aiSettings = await request("/api/ai/settings", {}, admin.token);
   assert.equal(aiSettings.settings.enabled, false);
   assert.equal(aiSettings.settings.apiKeyStatus, "未配置");
+  assert.equal(aiSettings.settings.callStrategy.ruleConfidenceMax, 70);
+  assert.equal(aiSettings.settings.callStrategy.firstActivityCount, 3);
+  const aiSettingsUpdate = await request("/api/ai/settings", {
+    method: "PUT",
+    body: { callStrategy: { ruleConfidenceMax: 55, firstActivityCount: 4 } },
+  }, admin.token);
+  assert.equal(aiSettingsUpdate.settings.callStrategy.ruleConfidenceMax, 55);
+  assert.equal(aiSettingsUpdate.settings.callStrategy.firstActivityCount, 4);
+  assert.equal(aiSettingsUpdate.settings.callStrategy.lowConfidenceOnly, true);
+  assert.equal(aiSettingsUpdate.settings.callStrategy.firstActivitiesAlways, true);
+  assert.equal(shouldCallAi({
+    enabled: true,
+    callStrategy: {
+      lowConfidenceOnly: true,
+      ruleConfidenceMax: 55,
+      firstActivitiesAlways: false,
+      mediumRiskOnly: false,
+      randomSampleRate: 0,
+    },
+  }, {
+    ruleReport: { riskScore: 47, confidenceScore: 53 },
+    identityActivityCount: 9,
+  }).reason, "low-rule-confidence");
+  assert.equal(shouldCallAi({
+    enabled: true,
+    callStrategy: {
+      lowConfidenceOnly: true,
+      ruleConfidenceMax: 55,
+      firstActivitiesAlways: true,
+      firstActivityCount: 4,
+      mediumRiskOnly: false,
+      randomSampleRate: 0,
+    },
+  }, {
+    ruleReport: { riskScore: 0, confidenceScore: 100 },
+    identityActivityCount: 3,
+  }).reason, "new-identity-first-activities");
   const confidenceDetail = await request(`/api/activities/${created.activity.id}/confidence`, {}, admin.token);
   assert.equal(confidenceDetail.activity.id, created.activity.id);
   assert.ok(confidenceDetail.latestAnalysis.ruleReport);
@@ -322,6 +360,99 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(communityReport.ok, true);
   const trustProfiles = await request("/api/trust-profiles?page=1&pageSize=10", {}, admin.token);
   assert.ok(trustProfiles.profiles.some((profile) => profile.id));
+  const governanceOverview = await request("/api/governance/overview", {}, admin.token);
+  assert.ok(governanceOverview.overview.identities.total >= 1);
+  const governanceIdentities = await request("/api/governance/identities?page=1&pageSize=10", {}, admin.token);
+  assert.ok(governanceIdentities.profiles.some((profile) => profile.communityId && Array.isArray(profile.badges)));
+  const governanceDetail = await request(`/api/governance/identities/${encodeURIComponent(created.activity.anonymousIdentityId)}`, {}, admin.token);
+  assert.ok(governanceDetail.communityEvents.some((event) => event.type === "activity.confidence.evaluated"));
+  assert.ok(governanceDetail.trustEvents.some((event) => event.metadata?.communityEventId));
+  const trustPolicies = await request("/api/governance/trust-policies?page=1&pageSize=100", {}, admin.token);
+  assert.ok(trustPolicies.policies.some((policy) => policy.eventType === "activity.confidence.evaluated"));
+  const createdTrustPolicy = await request("/api/governance/trust-policies", {
+    method: "POST",
+    body: {
+      name: "测试信用策略",
+      eventType: "test.event",
+      enabled: "true",
+      order: 999,
+      conditionMode: "all",
+      conditions: [],
+      effect: { trustDelta: 0 },
+      description: "测试可配置策略",
+    },
+  }, admin.token);
+  const updatedTrustPolicy = await request(`/api/governance/trust-policies/${createdTrustPolicy.policy.id}`, {
+    method: "PUT",
+    body: {
+      ...createdTrustPolicy.policy,
+      name: "测试信用策略更新",
+      effect: { trustDelta: 1 },
+    },
+  }, admin.token);
+  assert.equal(updatedTrustPolicy.policy.effect.trustDelta, 1);
+  await request(`/api/governance/trust-policies/${createdTrustPolicy.policy.id}`, { method: "DELETE" }, admin.token);
+  const badges = await request("/api/governance/badges?page=1&pageSize=100", {}, admin.token);
+  assert.ok(badges.badges.some((badge) => badge.type === "identity"));
+  const createdBadge = await request("/api/governance/badges", {
+    method: "POST",
+    body: {
+      name: "测试徽章",
+      type: "achievement",
+      icon: "test",
+      color: "#123456",
+      enabled: "true",
+      order: 999,
+      description: "测试徽章",
+      rule: { mode: "all", conditions: [{ field: "profile.communityTrust", op: "gte", value: 0 }] },
+    },
+  }, admin.token);
+  const badgePolicies = await request("/api/governance/badge-policies?page=1&pageSize=100", {}, admin.token);
+  const createdBadgePolicy = badgePolicies.policies.find((policy) => policy.badgeId === createdBadge.badge.id);
+  assert.ok(createdBadgePolicy);
+  const updatedBadgePolicy = await request(`/api/governance/badge-policies/${createdBadgePolicy.id}`, {
+    method: "PUT",
+    body: {
+      ...createdBadgePolicy,
+      publicVisible: "true",
+      displayLocations: { activityDetail: true, adminOnly: false },
+    },
+  }, admin.token);
+  assert.equal(updatedBadgePolicy.policy.publicVisible, true);
+  await request(`/api/governance/badges/${createdBadge.badge.id}`, { method: "DELETE" }, admin.token);
+
+  const sensitiveRule = safetyRules.rules.find((rule) => rule.type === "sensitive_terms");
+  assert.ok(sensitiveRule);
+  const beforeReanalysis = await request(`/api/activities/${reviewCandidate.activity.id}/confidence`, {}, admin.token);
+  await request(`/api/safety/rules/${sensitiveRule.id}`, {
+    method: "PUT",
+    body: {
+      name: sensitiveRule.name,
+      type: sensitiveRule.type,
+      weight: 8,
+      enabled: String(sensitiveRule.enabled !== false),
+      description: sensitiveRule.description,
+      params: sensitiveRule.params,
+    },
+  }, admin.token);
+  const reanalyzed = await request(`/api/activities/${reviewCandidate.activity.id}/reanalyze`, {
+    method: "POST",
+    body: {},
+  }, admin.token);
+  assert.ok(reanalyzed.activity.riskScore <= beforeReanalysis.activity.riskScore - 10);
+  assert.ok(reanalyzed.activity.confidenceScore < 100);
+  assert.ok(reanalyzed.analysis.ruleReport.findings.some((item) => item.ruleId === sensitiveRule.id && item.scoreDelta === 8));
+  await request(`/api/safety/rules/${sensitiveRule.id}`, {
+    method: "PUT",
+    body: {
+      name: sensitiveRule.name,
+      type: sensitiveRule.type,
+      weight: sensitiveRule.weight,
+      enabled: String(sensitiveRule.enabled !== false),
+      description: sensitiveRule.description,
+      params: sensitiveRule.params,
+    },
+  }, admin.token);
 
   await request(`/api/activities/${reviewCandidate.activity.id}/review`, {
     method: "POST",
@@ -564,6 +695,10 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-logs.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-safety.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-ai.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-governance.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-trust-policy.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-badges.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-badge-policy.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-trust.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-activity-confidence.html?id=${created.activity.id}`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/registrations.html?id=${created.activity.id}`);

@@ -146,6 +146,9 @@ let mePageState = {
   templatePage: 1,
   logPage: 1,
   publicActivityPage: 1,
+  trustPolicyPage: 1,
+  badgePage: 1,
+  badgePolicyPage: 1,
   myActivities: [],
   adminActivities: [],
   publicActivities: [],
@@ -155,6 +158,9 @@ let mePageState = {
   logs: [],
   safetyRules: [],
   trustProfiles: [],
+  trustPolicies: [],
+  badges: [],
+  badgePolicies: [],
   aiPrompts: [],
 };
 
@@ -194,6 +200,13 @@ const logActionOptions = [
   ["registration.create", "新增报名"],
   ["registration.delete", "删除报名"],
   ["registration.cancel", "取消报名"],
+  ["governance.trust_policy.create", "新增信用策略"],
+  ["governance.trust_policy.update", "保存信用策略"],
+  ["governance.trust_policy.delete", "删除信用策略"],
+  ["governance.badge.create", "新增社区徽章"],
+  ["governance.badge.update", "保存社区徽章"],
+  ["governance.badge.delete", "删除社区徽章"],
+  ["governance.badge_policy.update", "保存徽章展示策略"],
 ];
 
 const statusOptions = [
@@ -969,6 +982,9 @@ function resetPagedState(key) {
     publicActivities: "publicActivityPage",
     trustProfiles: "userPage",
     aiPrompts: "templatePage",
+    trustPolicies: "trustPolicyPage",
+    badges: "badgePage",
+    badgePolicies: "badgePolicyPage",
   };
   const pageKey = pageKeys[key];
   if (Object.prototype.hasOwnProperty.call(mePageState, pageKey)) {
@@ -1573,16 +1589,351 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
       count: "AI",
     },
     {
-      href: "admin-trust.html",
-      label: "社区信用度",
-      title: "查看匿名身份的社区信任变化",
-      body: "按活动发起、举报成立、低风险发布等事件追溯信用变化。",
+      href: "admin-governance.html",
+      label: "社区治理",
+      title: "管理信用策略、徽章和身份时间线",
+      body: "Community Trust、Trust Policy、Community Badge 和展示策略集中管理。",
       meta: "Community Trust",
       count: "Trust",
     },
   ];
   container.innerHTML = cards.map(renderWorkspaceCard).join("");
   revealDynamicContent(container);
+}
+
+function jsonText(value, fallback = {}) {
+  try {
+    return JSON.stringify(value ?? fallback, null, 2);
+  } catch {
+    return JSON.stringify(fallback, null, 2);
+  }
+}
+
+function parseAdminJsonField(value, fallback) {
+  try {
+    return JSON.parse(value || JSON.stringify(fallback));
+  } catch {
+    return fallback;
+  }
+}
+
+async function initAdminGovernancePage() {
+  const root = qs("[data-admin-governance-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const { overview } = await api.get("/api/governance/overview");
+  const cards = [
+    {
+      href: "admin-trust.html",
+      label: "Community Trust",
+      title: "查看社区身份和信用时间线",
+      body: "每个匿名身份的信用变化都来自可追溯事件。",
+      meta: "社区身份",
+      count: overview.identities?.total || 0,
+    },
+    {
+      href: "admin-trust-policy.html",
+      label: "Trust Policy",
+      title: "配置信用变化策略",
+      body: "用事件类型、条件和 trustDelta 映射长期信任。",
+      meta: "策略规则",
+      count: overview.trustPolicies?.total || 0,
+    },
+    {
+      href: "admin-badges.html",
+      label: "Community Badge",
+      title: "配置社区徽章",
+      body: "徽章依据 Community Trust、活动次数等条件自动授予。",
+      meta: "可配置徽章",
+      count: overview.badges?.total || 0,
+    },
+    {
+      href: "admin-badge-policy.html",
+      label: "Badge Policy",
+      title: "配置徽章展示位置",
+      body: "决定徽章公开展示还是仅后台可见。",
+      meta: "展示策略",
+      count: "View",
+    },
+    {
+      href: "admin-ai.html",
+      label: "AI Analysis",
+      title: "AI 作为社区观察员",
+      body: "AI 输出分析报告，不直接处罚或删除内容。",
+      meta: "Observer",
+      count: "AI",
+    },
+    {
+      href: "admin-safety.html",
+      label: "Rule Engine",
+      title: "开放发布前的风险规则",
+      body: "规则引擎给活动置信度提供基准分。",
+      meta: "Risk Rules",
+      count: "Rule",
+    },
+  ];
+  qs("[data-governance-cards]", root).innerHTML = cards.map(renderWorkspaceCard).join("");
+  revealDynamicContent(qs("[data-governance-cards]", root));
+}
+
+function trustPolicyPayload(form) {
+  return {
+    name: form.name.value,
+    eventType: form.eventType.value,
+    enabled: form.enabled.value,
+    order: form.order.value,
+    conditionMode: form.conditionMode.value,
+    description: form.description.value,
+    conditions: parseAdminJsonField(form.conditions.value, []),
+    effect: parseAdminJsonField(form.effect.value, { trustDelta: 0 }),
+  };
+}
+
+function resetTrustPolicyForm(form) {
+  mePageState.editingTrustPolicy = null;
+  form.reset();
+  form.order.value = "100";
+  form.conditions.value = "[]";
+  form.effect.value = "{\"trustDelta\":0}";
+  qs("[data-trust-policy-submit]", form).textContent = "保存策略";
+}
+
+function fillTrustPolicyForm(form, policy) {
+  mePageState.editingTrustPolicy = policy;
+  form.name.value = policy.name || "";
+  form.eventType.value = policy.eventType || "";
+  form.enabled.value = policy.enabled === false ? "false" : "true";
+  form.order.value = policy.order || 100;
+  form.conditionMode.value = policy.conditionMode || "all";
+  form.description.value = policy.description || "";
+  form.conditions.value = jsonText(policy.conditions || [], []);
+  form.effect.value = jsonText(policy.effect || { trustDelta: 0 }, { trustDelta: 0 });
+  qs("[data-trust-policy-submit]", form).textContent = "保存修改";
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function initAdminTrustPolicyPage() {
+  const root = qs("[data-admin-trust-policy-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const form = qs("[data-trust-policy-form]", root);
+  const message = qs("[data-trust-policy-message]", root);
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      const editing = mePageState.editingTrustPolicy;
+      const payload = trustPolicyPayload(form);
+      editing
+        ? await api.put(`/api/governance/trust-policies/${editing.id}`, payload)
+        : await api.post("/api/governance/trust-policies", payload);
+      resetTrustPolicyForm(form);
+      setMessage(message, "信用策略已保存。", "success");
+      showToast("保存成功");
+      await renderTrustPolicies();
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+  qs("[data-trust-policy-reset]", form)?.addEventListener("click", () => resetTrustPolicyForm(form));
+  await renderTrustPolicies();
+}
+
+async function renderTrustPolicies() {
+  const list = qs("[data-trust-policy-list]");
+  if (!list) return;
+  const { policies, pageInfo } = await api.get("/api/governance/trust-policies?page=1&pageSize=100");
+  mePageState.trustPolicies = policies;
+  updatePagedCount(qs("[data-trust-policy-count]"), policies.length, pageInfo);
+  if (!policies.length) {
+    list.innerHTML = `<div class="empty-state"><strong>还没有信用策略</strong><p>可以先新增一条 activity.confidence.evaluated 策略。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = policies.map((policy) => `
+    <article class="event-row" data-trust-policy-id="${policy.id}">
+      <div>
+        <span class="tag">${policy.enabled === false ? "停用" : "启用"} · ${escapeHtml(policy.eventType)}</span>
+        <h3>${escapeHtml(policy.name)}</h3>
+        <p>${escapeHtml(policy.description || "暂无说明")}</p>
+        <p>排序 ${Number(policy.order || 0)} · trustDelta ${Number(policy.effect?.trustDelta || 0) > 0 ? "+" : ""}${Number(policy.effect?.trustDelta || 0)}</p>
+        <details class="review-detail"><summary>查看条件</summary><pre>${escapeHtml(jsonText(policy.conditions || [], []))}</pre></details>
+      </div>
+      <div class="row-actions">
+        <button class="button outline" type="button" data-edit-trust-policy>编辑</button>
+        <button class="button outline danger-soft" type="button" data-delete-trust-policy>删除</button>
+      </div>
+    </article>
+  `).join("");
+  revealDynamicContent(list);
+  qsa("[data-trust-policy-id]", list).forEach((row) => {
+    const policy = policies.find((item) => item.id === row.dataset.trustPolicyId);
+    qs("[data-edit-trust-policy]", row).addEventListener("click", () => fillTrustPolicyForm(qs("[data-trust-policy-form]"), policy));
+    qs("[data-delete-trust-policy]", row).addEventListener("click", async () => {
+      if (!confirm("确定删除这条社区信用策略吗？")) return;
+      await api.delete(`/api/governance/trust-policies/${policy.id}`);
+      showToast("删除成功");
+      await renderTrustPolicies();
+    });
+  });
+}
+
+function badgePayload(form) {
+  return {
+    name: form.name.value,
+    type: form.type.value,
+    icon: form.icon.value,
+    color: form.color.value,
+    enabled: form.enabled.value,
+    order: form.order.value,
+    description: form.description.value,
+    rule: parseAdminJsonField(form.rule.value, { mode: "all", conditions: [] }),
+  };
+}
+
+function resetBadgeForm(form) {
+  mePageState.editingBadge = null;
+  form.reset();
+  form.order.value = "100";
+  form.rule.value = "{\"mode\":\"all\",\"conditions\":[]}";
+  qs("[data-badge-submit]", form).textContent = "保存徽章";
+}
+
+function fillBadgeForm(form, badge) {
+  mePageState.editingBadge = badge;
+  form.name.value = badge.name || "";
+  form.type.value = badge.type || "achievement";
+  form.icon.value = badge.icon || "";
+  form.color.value = badge.color || "";
+  form.enabled.value = badge.enabled === false ? "false" : "true";
+  form.order.value = badge.order || 100;
+  form.description.value = badge.description || "";
+  form.rule.value = jsonText(badge.rule || { mode: "all", conditions: [] }, { mode: "all", conditions: [] });
+  qs("[data-badge-submit]", form).textContent = "保存修改";
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function initAdminBadgesPage() {
+  const root = qs("[data-admin-badges-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const form = qs("[data-badge-form]", root);
+  const message = qs("[data-badge-message]", root);
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      const editing = mePageState.editingBadge;
+      const payload = badgePayload(form);
+      editing
+        ? await api.put(`/api/governance/badges/${editing.id}`, payload)
+        : await api.post("/api/governance/badges", payload);
+      resetBadgeForm(form);
+      setMessage(message, "社区徽章已保存。", "success");
+      showToast("保存成功");
+      await renderBadges();
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+  qs("[data-badge-reset]", form)?.addEventListener("click", () => resetBadgeForm(form));
+  await renderBadges();
+}
+
+async function renderBadges() {
+  const list = qs("[data-badge-list]");
+  if (!list) return;
+  const { badges, pageInfo } = await api.get("/api/governance/badges?page=1&pageSize=100");
+  mePageState.badges = badges;
+  updatePagedCount(qs("[data-badge-count]"), badges.length, pageInfo);
+  if (!badges.length) {
+    list.innerHTML = `<div class="empty-state"><strong>还没有社区徽章</strong><p>可以先新增一个身份徽章或成就徽章。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = badges.map((badge) => `
+    <article class="event-row" data-badge-id="${badge.id}">
+      <div>
+        <span class="tag">${badge.enabled === false ? "停用" : "启用"} · ${escapeHtml(badge.type)}</span>
+        <h3>${escapeHtml(badge.name)}</h3>
+        <p>${escapeHtml(badge.description || "暂无说明")}</p>
+        <p>图标 ${escapeHtml(badge.icon || "-")} · 颜色 ${escapeHtml(badge.color || "-")} · 排序 ${Number(badge.order || 0)}</p>
+        <details class="review-detail"><summary>查看获得规则</summary><pre>${escapeHtml(jsonText(badge.rule || {}, {}))}</pre></details>
+      </div>
+      <div class="row-actions">
+        <button class="button outline" type="button" data-edit-badge>编辑</button>
+        <button class="button outline danger-soft" type="button" data-delete-badge>删除</button>
+      </div>
+    </article>
+  `).join("");
+  revealDynamicContent(list);
+  qsa("[data-badge-id]", list).forEach((row) => {
+    const badge = badges.find((item) => item.id === row.dataset.badgeId);
+    qs("[data-edit-badge]", row).addEventListener("click", () => fillBadgeForm(qs("[data-badge-form]"), badge));
+    qs("[data-delete-badge]", row).addEventListener("click", async () => {
+      if (!confirm("确定删除这个社区徽章吗？已授予记录也会移除。")) return;
+      await api.delete(`/api/governance/badges/${badge.id}`);
+      showToast("删除成功");
+      await renderBadges();
+    });
+  });
+}
+
+async function initAdminBadgePolicyPage() {
+  const root = qs("[data-admin-badge-policy-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  await renderBadgePolicies();
+}
+
+async function renderBadgePolicies() {
+  const list = qs("[data-badge-policy-list]");
+  if (!list) return;
+  const { policies, pageInfo } = await api.get("/api/governance/badge-policies?page=1&pageSize=100");
+  mePageState.badgePolicies = policies;
+  updatePagedCount(qs("[data-badge-policy-count]"), policies.length, pageInfo);
+  if (!policies.length) {
+    list.innerHTML = `<div class="empty-state"><strong>还没有徽章展示策略</strong><p>新增徽章后会自动生成一条仅后台可见的展示策略。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = policies.map((policy) => `
+    <article class="event-row badge-policy-row" data-badge-policy-id="${policy.id}">
+      <div>
+        <span class="tag">${policy.enabled === false ? "停用" : "启用"} · ${policy.publicVisible ? "公开展示" : "仅后台"}</span>
+        <h3>${escapeHtml(policy.badge?.name || policy.badgeId)}</h3>
+        <p>${escapeHtml(policy.tooltip || policy.badge?.description || "暂无说明")}</p>
+        <label>展示位置 JSON<textarea name="displayLocations" rows="4">${escapeHtml(jsonText(policy.displayLocations || {}, {}))}</textarea></label>
+      </div>
+      <div class="row-actions">
+        <label>启用<select name="enabled"><option value="true" ${policy.enabled === false ? "" : "selected"}>启用</option><option value="false" ${policy.enabled === false ? "selected" : ""}>停用</option></select></label>
+        <label>公开<select name="publicVisible"><option value="true" ${policy.publicVisible ? "selected" : ""}>公开</option><option value="false" ${policy.publicVisible ? "" : "selected"}>仅后台</option></select></label>
+        <label>显示图标<select name="showIcon"><option value="true" ${policy.showIcon === false ? "" : "selected"}>显示</option><option value="false" ${policy.showIcon === false ? "selected" : ""}>隐藏</option></select></label>
+        <label>显示名称<select name="showName"><option value="true" ${policy.showName === false ? "" : "selected"}>显示</option><option value="false" ${policy.showName === false ? "selected" : ""}>隐藏</option></select></label>
+        <input name="tooltip" value="${escapeHtml(policy.tooltip || "")}" placeholder="悬停说明" />
+        <input name="order" type="number" value="${Number(policy.order || 100)}" />
+        <button class="button outline" type="button" data-save-badge-policy>保存</button>
+      </div>
+    </article>
+  `).join("");
+  revealDynamicContent(list);
+  qsa("[data-badge-policy-id]", list).forEach((row) => {
+    qs("[data-save-badge-policy]", row).addEventListener("click", async () => {
+      await api.put(`/api/governance/badge-policies/${row.dataset.badgePolicyId}`, {
+        enabled: qs('[name="enabled"]', row).value,
+        publicVisible: qs('[name="publicVisible"]', row).value,
+        showIcon: qs('[name="showIcon"]', row).value,
+        showName: qs('[name="showName"]', row).value,
+        tooltip: qs('[name="tooltip"]', row).value,
+        order: qs('[name="order"]', row).value,
+        displayLocations: parseAdminJsonField(qs('[name="displayLocations"]', row).value, {}),
+      });
+      showToast("保存成功");
+      await renderBadgePolicies();
+    });
+  });
 }
 
 async function initAdminActivitiesPage() {
@@ -1856,6 +2207,7 @@ async function initAdminAiPage() {
 
 function fillAiSettingsForm(form, settings = {}) {
   if (!form) return;
+  const strategy = settings.callStrategy || {};
   form.enabled.value = settings.enabled ? "true" : "false";
   form.provider.value = settings.provider || "openai-compatible";
   form.baseUrl.value = settings.baseUrl || "";
@@ -1868,11 +2220,31 @@ function fillAiSettingsForm(form, settings = {}) {
   form.retryCount.value = settings.retryCount || 1;
   form.cacheTtlSeconds.value = settings.cacheTtlSeconds || 86400;
   form.promptVersion.value = settings.promptVersion || "activity-default-v1";
-  form.callStrategy.value = JSON.stringify(settings.callStrategy || {}, null, 2);
+  if (form.ruleConfidenceMax) form.ruleConfidenceMax.value = strategy.ruleConfidenceMax ?? 70;
+  if (form.firstActivityCount) form.firstActivityCount.value = strategy.firstActivityCount ?? 3;
+  form.callStrategy.value = JSON.stringify(strategy, null, 2);
   form.capabilities.value = JSON.stringify(settings.capabilities || {}, null, 2);
 }
 
+function parseJsonText(value, fallback = {}) {
+  try {
+    return JSON.parse(value || "{}");
+  } catch {
+    return fallback;
+  }
+}
+
 function aiSettingsPayload(form) {
+  const callStrategy = parseJsonText(form.callStrategy.value, {});
+  if (form.ruleConfidenceMax) {
+    callStrategy.lowConfidenceOnly = true;
+    callStrategy.ruleConfidenceMax = Math.max(0, Math.min(100, Number(form.ruleConfidenceMax.value || 70)));
+  }
+  if (form.firstActivityCount) {
+    const firstActivityCount = Math.max(0, Math.min(50, Number(form.firstActivityCount.value || 0)));
+    callStrategy.firstActivitiesAlways = firstActivityCount > 0;
+    callStrategy.firstActivityCount = firstActivityCount;
+  }
   return {
     enabled: form.enabled.value,
     provider: form.provider.value,
@@ -1885,7 +2257,7 @@ function aiSettingsPayload(form) {
     retryCount: form.retryCount.value,
     cacheTtlSeconds: form.cacheTtlSeconds.value,
     promptVersion: form.promptVersion.value,
-    callStrategy: form.callStrategy.value,
+    callStrategy,
     capabilities: form.capabilities.value,
   };
 }
@@ -1957,6 +2329,11 @@ async function initAdminActivityConfidencePage() {
 async function renderActivityConfidence(root, id) {
   const container = qs("[data-confidence-detail]", root);
   const { activity, trustProfile, reports, analyses, latestAnalysis } = await api.get(`/api/activities/${id}/confidence`);
+  const policy = latestAnalysis?.policy || {};
+  const aiMeta = latestAnalysis?.aiMeta || {};
+  const sourceRiskScore = policy.sourceRiskScore ?? activity.sourceRiskScore ?? activity.riskScore ?? 0;
+  const aiAdjustment = policy.aiAdjustment ?? activity.aiAdjustment ?? 0;
+  const aiTriggerReason = aiMeta.triggerReason || aiMeta.reason || "rule-only";
   container.innerHTML = `
     <article class="confidence-panel">
       <div class="confidence-score">
@@ -1969,6 +2346,8 @@ async function renderActivityConfidence(root, id) {
         <div><span>活动</span><strong>${escapeHtml(activity.title)}</strong><p>${escapeHtml(activity.moduleName)} · ${formatActivityTime(activity)}</p></div>
         <div><span>发起人</span><strong>${escapeHtml(activity.initiator)}</strong><p>社区信用度：${trustProfile ? Number(trustProfile.communityTrust || 0) : "无记录"}</p></div>
         <div><span>社区反馈</span><strong>${reports.length}</strong><p>达到阈值会触发再次分析。</p></div>
+        <div><span>规则基准分</span><strong>${Number(sourceRiskScore || 0)}</strong><p>AI 调整：${Number(aiAdjustment || 0) > 0 ? "+" : ""}${Number(aiAdjustment || 0)}</p></div>
+        <div><span>AI 触发原因</span><strong>${escapeHtml(aiTriggerReason)}</strong><p>第 ${Number(aiMeta.activityNumber || 0) || "-"} 场 / 已有 ${Number(aiMeta.identityActivityCount || 0)} 场</p></div>
       </div>
     </article>
     <section class="panel-block">
@@ -2047,7 +2426,7 @@ async function renderTrustProfiles() {
     page: mePageState.userPage,
     pageSize: mePageState.pageSize,
   });
-  const { profiles, pageInfo } = await api.get(`/api/trust-profiles${query}`);
+  const { profiles, pageInfo } = await api.get(`/api/governance/identities${query}`);
   const loaded = mergePageItems("trustProfiles", mePageState.userPage, profiles);
   updatePagedCount(qs("[data-trust-count]"), loaded.length, pageInfo);
   updateLoadMore(qs("[data-load-more-trust]"), loaded.length, pageInfo?.total || loaded.length);
@@ -2058,9 +2437,10 @@ async function renderTrustProfiles() {
   list.innerHTML = loaded.map((profile) => `
     <article class="event-row">
       <div>
-        <span class="tag">信用度 ${Number(profile.communityTrust || 0)}</span>
-        <h3>${escapeHtml(profile.latestInitiator || profile.id)}</h3>
-        <p>${escapeHtml(profile.ipMasked || "IP 已脱敏")} · ${escapeHtml(profile.latestActivityTitle || "暂无活动")}</p>
+        <span class="tag">信用度 ${Number(profile.communityTrust || 0)} · ${escapeHtml(profile.status || "normal")}</span>
+        <h3>${escapeHtml(profile.latestInitiator || profile.communityId || profile.id)}</h3>
+        <p>${escapeHtml(profile.communityId || profile.id)} · ${escapeHtml(profile.communityLevel || "normal")} · ${escapeHtml(profile.latestActivityTitle || "暂无活动")}</p>
+        <p>${renderBadgeNames(profile.badges || []) || escapeHtml(profile.ipMasked || "IP 已脱敏")}</p>
         <p>${escapeHtml(profile.userAgentSample || "")}</p>
       </div>
       <div class="row-actions">
@@ -2069,6 +2449,10 @@ async function renderTrustProfiles() {
     </article>
   `).join("");
   revealDynamicContent(list);
+}
+
+function renderBadgeNames(badges = []) {
+  return badges.length ? badges.map((badge) => `#${escapeHtml(badge.name)}`).join(" ") : "";
 }
 
 async function initAdminTrustDetailPage() {
@@ -2082,18 +2466,28 @@ async function initAdminTrustDetailPage() {
     container.innerHTML = `<div class="empty-state"><strong>缺少身份 ID</strong><p>请从社区信用度列表进入。</p></div>`;
     return;
   }
-  const { profile, events, activities } = await api.get(`/api/trust-profiles/${encodeURIComponent(id)}`);
+  const { profile, communityEvents = [], events = [], badges = [], activities } = await api.get(`/api/trust-profiles/${encodeURIComponent(id)}`);
   container.innerHTML = `
     <article class="confidence-panel">
       <div class="confidence-score">
         <span>社区信用度</span>
         <strong>${Number(profile.communityTrust || 0)}</strong>
-        <p>${escapeHtml(profile.ipMasked || "IP 已脱敏")} · ${profile.activityCount || 0} 次活动记录</p>
+        <p>${escapeHtml(profile.communityId || profile.id)} · ${escapeHtml(profile.communityLevel || "normal")} · ${escapeHtml(profile.status || "normal")}</p>
+      </div>
+      <div class="detail-grid">
+        <div><span>累计活动</span><strong>${Number(profile.activityCount || 0)}</strong><p>开放发起记录</p></div>
+        <div><span>累计报名回应</span><strong>${Number(profile.registrationCount || 0)}</strong><p>报名事件计数</p></div>
+        <div><span>社区反馈</span><strong>${Number(profile.reportCount || 0)}</strong><p>成立 ${Number(profile.reportConfirmedCount || 0)} 次</p></div>
+        <div><span>脱敏 IP</span><strong>${escapeHtml(profile.ipMasked || "-")}</strong><p>${escapeHtml(profile.userAgentSample || "")}</p></div>
       </div>
     </article>
     <section class="panel-block">
-      <h3>信用变化</h3>
-      ${events.length ? events.map((event) => `<p><strong>${Number(event.delta || 0) > 0 ? "+" : ""}${Number(event.delta || 0)}</strong> · ${escapeHtml(event.reason || event.type)} · ${formatDate(event.createdAt)}</p>`).join("") : `<p class="muted-text">暂无信用变化事件。</p>`}
+      <h3>Community Timeline</h3>
+      ${communityEvents.length ? communityEvents.map(renderCommunityEventLine).join("") : events.length ? events.map((event) => `<p><strong>${Number(event.delta || 0) > 0 ? "+" : ""}${Number(event.delta || 0)}</strong> · ${escapeHtml(event.reason || event.type)} · ${formatDate(event.createdAt)}</p>`).join("") : `<p class="muted-text">暂无信用变化事件。</p>`}
+    </section>
+    <section class="panel-block">
+      <h3>社区徽章</h3>
+      ${badges.length ? badges.map((item) => `<p><strong>${escapeHtml(item.badge?.name || item.badgeId)}</strong> · ${escapeHtml(item.status)} · ${formatDate(item.grantedAt || item.updatedAt)}</p>`).join("") : `<p class="muted-text">暂无徽章授予记录。</p>`}
     </section>
     <section class="panel-block">
       <h3>关联活动</h3>
@@ -2101,6 +2495,19 @@ async function initAdminTrustDetailPage() {
     </section>
   `;
   revealDynamicContent(container);
+}
+
+function renderCommunityEventLine(event = {}) {
+  const delta = Number(event.effects?.trustDelta || 0);
+  const policies = event.policyResults || [];
+  return `
+    <details class="review-detail community-event-line">
+      <summary><strong>${delta > 0 ? "+" : ""}${delta}</strong> · ${escapeHtml(event.reason || event.type)} · ${formatDate(event.createdAt)}</summary>
+      <p>事件类型：${escapeHtml(event.type)} · 来源：${escapeHtml(event.source || "system")}</p>
+      <p>命中策略：${policies.length ? policies.map((policy) => `${escapeHtml(policy.policyName)} (${Number(policy.delta || 0) > 0 ? "+" : ""}${Number(policy.delta || 0)})`).join("；") : "无"}</p>
+      <pre>${escapeHtml(jsonText(event.payload || {}, {}))}</pre>
+    </details>
+  `;
 }
 
 function fillStatusSelect(select) {
@@ -2600,7 +3007,7 @@ async function safeInit(task) {
   } catch (error) {
     console.error(error);
     showToast("页面数据读取失败，请刷新后重试");
-    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-activity-detail], [data-success-detail], [data-safety-rules], [data-ai-prompts], [data-confidence-detail], [data-trust-list], [data-trust-detail]")
+    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-safety-rules], [data-ai-prompts], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list]")
       .filter((element) => /正在|读取|加载/.test(element.textContent || ""))
       .forEach((element) => {
         element.innerHTML = `<div class="empty-state"><strong>暂时没读到数据</strong><p>请刷新页面重试，或稍后再来。</p></div>`;
@@ -2630,6 +3037,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(initAdminLogsPage),
     safeInit(initAdminSafetyPage),
     safeInit(initAdminAiPage),
+    safeInit(initAdminGovernancePage),
+    safeInit(initAdminTrustPolicyPage),
+    safeInit(initAdminBadgesPage),
+    safeInit(initAdminBadgePolicyPage),
     safeInit(initAdminActivityConfidencePage),
     safeInit(initAdminTrustPage),
     safeInit(initAdminTrustDetailPage),

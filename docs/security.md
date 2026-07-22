@@ -9,9 +9,11 @@
 - 登录和写操作有基础限流：登录按 IP 和手机号双维度限制，报名和普通写操作按 IP / 匿名身份维度限制。
 - 活动创建、编辑、审核、撤回、取消和结束有细粒度限流；公开发布主要按综合匿名身份限流，治理操作按登录账号限流，避免单个身份短时间批量写入。
 - 活动发布前可按配置启用 Cloudflare Turnstile；本地开发可绕过，生产需填写 Site Key 和 Secret Key。
-- 活动发布、富文本图片上传和社区反馈采用综合匿名身份：本地 UUID、浏览器 fingerprint、UA 和 IP 摘要共同参与限流和社区信用度计算。
+- 活动发布、富文本图片上传和社区反馈采用综合匿名身份：本地 UUID、浏览器 fingerprint、UA 和 IP 摘要共同参与限流和 Community Governance 事件归属。
 - 活动发布链路接入 Rule Engine，违规或异常内容不会被单条规则直接一票否决，而是累计风险分并由策略引擎决定是否直接发布、带提示发布或进入兜底复核。
-- AI 仅作为分析引擎，不直接删除内容、不直接处罚、不直接修改社区信用度；API Key 采用加密存储，后台不能再查看明文。
+- AI 仅作为分析引擎，不直接删除内容、不直接处罚、不直接修改社区信用度；活动风险合并以规则引擎分数为基准，默认 AI 不能降低规则风险，只能按配置有限提高风险；API Key 采用加密存储，后台不能再查看明文。
+- Community Trust 采用事件驱动投影：活动提交、置信度评估、活动发布、社区举报和报名里程碑先写入 `communityEvents`，再由 `trustPolicies` 配置计算信任变化；当前值缓存到 `trustProfiles`，便于查询但不作为唯一来源。
+- Community Badge 与 Badge Policy 独立于分数本身；徽章获得和展示策略均可配置，负向或观察类内部状态可以只在后台可见，避免公开污名化。
 - Session Cookie 使用 `HttpOnly`，CloudBase 环境使用 `Secure` 和 `SameSite=None`；服务端只保存 token 哈希，并设置过期时间。
 - 登录和服务启动会清理过期 session，降低旧登录态长期留存在存储中的风险。
 - API 和本地 Express 静态服务返回安全响应头：CSP、`X-Frame-Options`、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy`，HTTPS 环境返回 HSTS。
@@ -36,7 +38,8 @@
 - 当前管理员 / 协作员登录只作为治理入口，公开活动发起不再依赖登录，但匿名管理 token 和本地浏览器身份依然应视作敏感控制面。
 - 报名确认 token 目前会在重复报名时刷新旧 token，但仍建议后续接入手机号二次校验或微信身份绑定，进一步降低确认链接转发风险。
 - 当前限流和活动报名锁仍是进程内存级，CloudBase 多实例下不是全局锁；如报名量变大，应接入数据库事务、唯一索引、队列或网关 / WAF 级限流。
-- Community Trust 不是黑名单，但它仍然是重要安全信号；若未来扩展更高价值操作，建议把高风险操作与信任度联动起来。
+- Community Trust 不是黑名单，但它仍然是重要安全信号；若未来扩展更高价值操作，建议通过 Trust Policy 和可解释事件时间线把高风险操作与信任度联动起来。
+- 当前 Trust Policy / Badge Rule 使用 JSON 条件配置，管理员应避免配置过大或无法解释的规则；后续可增加策略变更预览和历史重算 dry-run。
 - AI Analysis Engine 默认关闭；生产启用前请做好 Provider、Prompt、缓存和失败跳过策略的灰度验证。
 - `@cloudbase/node-sdk` 当前最新版本仍包含 audit 报告中的 axios / lodash 传递依赖风险，需要持续关注官方 SDK 更新。
 - CloudBase Hosting 静态响应头没有在代码中统一配置；如需静态页也返回 `X-Frame-Options`、HSTS 等 HTTP 头，应在 CloudBase / CDN 控制台继续配置自定义响应头。

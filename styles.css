@@ -1805,7 +1805,8 @@ select:disabled {
 }
 
 .filter-panel input,
-.filter-panel select {
+.filter-panel select,
+.filter-panel textarea {
   width: 100%;
   min-width: 0;
   min-height: 44px;
@@ -1814,6 +1815,18 @@ select:disabled {
   padding: 11px 12px;
   background: rgba(255, 255, 255, 0.86);
   color: var(--ink);
+}
+
+.filter-panel textarea {
+  min-height: 112px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.filter-panel .wide-field,
+.filter-panel .form-actions,
+.filter-panel .form-message {
+  grid-column: 1 / -1;
 }
 
 .form-grid > *,
@@ -1834,7 +1847,8 @@ input[type="datetime-local"] {
 }
 
 .filter-panel input:focus,
-.filter-panel select:focus {
+.filter-panel select:focus,
+.filter-panel textarea:focus {
   outline: none;
   border-color: rgba(0, 113, 227, 0.5);
   box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.16);
@@ -4962,6 +4976,7 @@ body.product-surface .form-note select,
 body.product-surface .manage-row input,
 body.product-surface .manage-row select,
 body.product-surface .filter-panel input,
+body.product-surface .filter-panel textarea,
 body.product-surface .filter-panel select,
 body.product-surface .review-actions select,
 body.product-surface .review-actions textarea {
@@ -5661,6 +5676,7 @@ html[data-theme="dark"] body.product-surface .form-note select,
 html[data-theme="dark"] body.product-surface .manage-row input,
 html[data-theme="dark"] body.product-surface .manage-row select,
 html[data-theme="dark"] body.product-surface .filter-panel input,
+html[data-theme="dark"] body.product-surface .filter-panel textarea,
 html[data-theme="dark"] body.product-surface .filter-panel select,
 html[data-theme="dark"] body.product-surface .review-actions select,
 html[data-theme="dark"] body.product-surface .review-actions textarea {
@@ -5670,7 +5686,8 @@ html[data-theme="dark"] body.product-surface .review-actions textarea {
 }
 
 html[data-theme="dark"] body.product-surface .form-note input::placeholder,
-html[data-theme="dark"] body.product-surface .form-note textarea::placeholder {
+html[data-theme="dark"] body.product-surface .form-note textarea::placeholder,
+html[data-theme="dark"] body.product-surface .filter-panel textarea::placeholder {
   color: rgba(255, 241, 223, 0.54);
 }
 
@@ -6248,6 +6265,7 @@ html[data-theme="light"] body.product-surface .form-note select,
 html[data-theme="light"] body.product-surface .manage-row input,
 html[data-theme="light"] body.product-surface .manage-row select,
 html[data-theme="light"] body.product-surface .filter-panel input,
+html[data-theme="light"] body.product-surface .filter-panel textarea,
 html[data-theme="light"] body.product-surface .filter-panel select,
 html[data-theme="light"] body.product-surface .review-actions select,
 html[data-theme="light"] body.product-surface .review-actions textarea {
@@ -6257,7 +6275,8 @@ html[data-theme="light"] body.product-surface .review-actions textarea {
 
 html[data-theme="light"] body.product-surface .form-note input::placeholder,
 html[data-theme="light"] body.product-surface .form-note textarea::placeholder,
-html[data-theme="light"] body.product-surface .filter-panel input::placeholder {
+html[data-theme="light"] body.product-surface .filter-panel input::placeholder,
+html[data-theme="light"] body.product-surface .filter-panel textarea::placeholder {
   color: #687167;
 }
 
