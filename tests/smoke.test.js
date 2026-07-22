@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const { once } = require("node:events");
 const fs = require("node:fs");
+const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
@@ -52,6 +53,57 @@ async function request(pathname, options = {}, token = "") {
 
 async function login(phone) {
   return request("/api/login", { method: "POST", body: { phone } });
+}
+
+async function startAiStub(report = {}) {
+  let calls = 0;
+  const server = http.createServer((req, res) => {
+    if (req.method === "POST" && req.url === "/v1/chat/completions") {
+      calls += 1;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              riskScore: 12,
+              confidence: 0.9,
+              riskLevel: "low",
+              isRealActivity: true,
+              isAdvertisement: false,
+              isSpam: false,
+              isScam: false,
+              containsPolitical: false,
+              containsIllegal: false,
+              containsAdult: false,
+              containsViolence: false,
+              summary: "AI stub 分析结果",
+              category: "测试",
+              tags: ["测试"],
+              positiveSignals: ["有明确时间地点"],
+              negativeSignals: [],
+              riskReason: [],
+              improvementSuggestions: [],
+              ...report,
+            }),
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 },
+      }));
+      return;
+    }
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end("{}");
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const address = server.address();
+  return {
+    baseUrl: `http://127.0.0.1:${address.port}/v1`,
+    get calls() {
+      return calls;
+    },
+    close: () => new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve()))),
+  };
 }
 
 function localDateTimeFromNow(days, hour = 19, minute = 30) {
@@ -350,6 +402,102 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     ruleReport: { riskScore: 0, confidenceScore: 100 },
     identityActivityCount: 3,
   }).reason, "new-identity-first-activities");
+  assert.equal(shouldCallAi({
+    enabled: true,
+    callStrategy: {
+      lowConfidenceOnly: true,
+      ruleConfidenceMax: 100,
+      firstActivitiesAlways: false,
+      mediumRiskOnly: false,
+      randomSampleRate: 0,
+    },
+  }, {
+    ruleReport: { riskScore: 0, confidenceScore: 100 },
+    identityActivityCount: 99,
+  }).reason, "low-rule-confidence");
+  const aiStub = await startAiStub();
+  try {
+    await request("/api/ai/settings", {
+      method: "PUT",
+      body: {
+        enabled: "true",
+        provider: "openai-compatible",
+        baseUrl: aiStub.baseUrl,
+        model: "stub-model",
+        apiKey: "stub-key",
+        cacheTtlSeconds: 0,
+        callStrategy: {
+          lowConfidenceOnly: true,
+          ruleConfidenceMax: 100,
+          firstActivitiesAlways: false,
+          mediumRiskOnly: false,
+          randomSampleRate: 0,
+        },
+      },
+    }, admin.token);
+    const savedAiSettings = await request("/api/ai/settings", {}, admin.token);
+    assert.equal(savedAiSettings.settings.apiKeyStatus, "已保存，可覆盖替换");
+    await request("/api/ai/settings", {
+      method: "PUT",
+      body: {
+        enabled: "true",
+        provider: "openai-compatible",
+        baseUrl: aiStub.baseUrl,
+        model: "stub-model",
+        apiKey: "",
+        cacheTtlSeconds: 0,
+        callStrategy: {
+          lowConfidenceOnly: true,
+          ruleConfidenceMax: 100,
+          firstActivitiesAlways: false,
+          mediumRiskOnly: false,
+          randomSampleRate: 0,
+        },
+      },
+    }, admin.token);
+    const savedKeyConnection = await request("/api/ai/test-connection", {
+      method: "POST",
+      body: {},
+    }, admin.token);
+    assert.equal(savedKeyConnection.ok, true);
+    const aiCalledActivity = await createActivity("", {
+      title: "匿名 AI 必调测试活动",
+      initiator: "匿名发起人",
+      description: "这是一个普通的匿名活动，用于验证规则置信度阈值为 100 时 AI 真的会被调用。",
+    });
+    assert.equal(aiCalledActivity.activity.status, "published");
+    assert.ok(aiStub.calls >= 1);
+    const aiCalledConfidence = await request(`/api/activities/${aiCalledActivity.activity.id}/confidence`, {}, admin.token);
+    assert.equal(aiCalledConfidence.latestAnalysis.aiMeta.skipped, false);
+    assert.equal(aiCalledConfidence.latestAnalysis.aiMeta.triggerReason, "low-rule-confidence");
+    assert.equal(aiCalledConfidence.latestAnalysis.aiReport.summary, "AI stub 分析结果");
+  } finally {
+    await aiStub.close();
+  }
+  await request("/api/ai/settings", {
+    method: "PUT",
+    body: {
+      enabled: "false",
+      callStrategy: {
+        lowConfidenceOnly: true,
+        ruleConfidenceMax: 100,
+        firstActivitiesAlways: false,
+        mediumRiskOnly: false,
+        randomSampleRate: 0,
+      },
+    },
+  }, admin.token);
+  const aiClosedFallback = await createActivity("", {
+    title: "匿名 AI 关闭兜底测试活动",
+    initiator: "匿名发起人",
+    description: "澳门赌场 发票 投资 成人 贷款 套现 返现，这是一条用于测试高风险内容在 AI 关闭时进入管理员兜底审核的活动。",
+  });
+  assert.equal(aiClosedFallback.activity.status, "admin_review");
+  assert.equal(aiClosedFallback.activity.policyAction, "review");
+  assert.equal(aiClosedFallback.activity.safetyFallbackReason, "ai-unavailable");
+  const fallbackConfidence = await request(`/api/activities/${aiClosedFallback.activity.id}/confidence`, {}, admin.token);
+  assert.equal(fallbackConfidence.latestAnalysis.aiMeta.reason, "disabled");
+  assert.ok(fallbackConfidence.latestAnalysis.ruleReport.findings.some((item) => item.ruleId === "regulated_sensitive_terms"));
   const confidenceDetail = await request(`/api/activities/${created.activity.id}/confidence`, {}, admin.token);
   assert.equal(confidenceDetail.activity.id, created.activity.id);
   assert.ok(confidenceDetail.latestAnalysis.ruleReport);

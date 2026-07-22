@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.19.0`
+当前版本：`0.19.1`
 
-状态：`0.19.0` 完成 Community Governance 核心模块：新增统一 Community Event、Trust Policy、Community Badge、Badge Policy 和治理总入口；活动发布、置信度评估、复核发布、社区举报和报名里程碑开始写入可追溯事件流，Community Trust 由策略事件投影计算，并保留旧信用度接口兼容。
+状态：`0.19.1` 修复 AI 介入与兜底审核链路：规则置信度阈值设为 100 时会真实调用 AI；AI 关闭、缺少 Key 或调用失败时，中高风险活动会自动进入管理员审核；新增赌场、发票、投资、成人等重点风险词规则，并按命中数量加重风险。
 
 ## 访问地址
 
@@ -49,11 +49,11 @@ GitHub Pages 静态展示：
 - 开放活动发布：任何人无需注册、无需登录即可发起活动；同一浏览器使用本地匿名 UUID 和活动管理 token 继续编辑、撤回、查看报名表。
 - 管理员 / 协作员登录：手机号白名单只用于后台治理权限；管理员录入协作员昵称和手机号后，对方可登录处理兜底复核。
 - Community OS 安全架构：Rule Engine、Community Trust、AI Analysis Engine、Community Report、Risk Notice、Rate Limit、Turnstile 彼此解耦，所有阈值和策略配置化。
-- Rule Engine：支持敏感词、URL、HTML 标签、Script 注入、Markdown 危险语法、Unicode 混淆、Emoji 比例、重复字符、超长文本、重复内容、异常格式和活动完整度等规则，输出风险分和规则明细，不单条直接拒绝。
+- Rule Engine：支持敏感词、重点风险词、URL、HTML 标签、Script 注入、Markdown 危险语法、Unicode 混淆、Emoji 比例、重复字符、超长文本、重复内容、异常格式和活动完整度等规则，输出风险分和规则明细，不单条直接拒绝；重点风险词覆盖赌场、发票、投资、成人等明显不适合开放活动发布的内容，并按命中数量加重风险。
 - Community Governance：新增统一 Community Event、Trust Policy、Community Badge 和 Badge Policy。Community Trust 不再只是直接分数，而是由活动发布、活动置信度、社区反馈和报名里程碑等事件按策略投影出来；活动置信度评价单次活动，Community Trust 评价长期匿名身份，两者通过可配置策略映射。
 - Community Trust：匿名身份初始 50 分，基于事件流逐步变化；后台可查看 Community ID、社区等级、状态、徽章、活动数、报名回应、举报和完整时间线。
 - Community Badge：后台可配置身份徽章、成就徽章和事件徽章，徽章获得规则使用 JSON Rule Builder；Badge Policy 控制徽章是否公开、展示在哪些位置、是否显示图标 / 名称和悬停说明。
-- AI Analysis Engine：AI 是社区观察员，不是审核员；支持开关、Provider、Base URL、Model、加密 API Key、Prompt 版本、调用策略、能力开关、缓存、重试、用量日志和测试连接；AI 介入条件可配置为规则置信度低于阈值、匿名身份前 N 场必调 AI、举报后重分析、手动重分析、低信用度、随机抽检或全部分析；关闭 AI 时系统继续可用。
+- AI Analysis Engine：AI 是社区观察员，不是审核员；支持开关、Provider、Base URL、Model、加密 API Key、Prompt 版本、调用策略、能力开关、缓存、重试、用量日志和测试连接；AI 介入条件可配置为规则置信度低于 / 等于阈值、匿名身份前 N 场必调 AI、举报后重分析、手动重分析、低信用度、随机抽检或全部分析；规则置信度阈值设为 100 时会覆盖全部活动；AI 关闭、缺少 Key 或不可用时，中高风险活动会进入管理员兜底审核。
 - Community Report：活动详情页支持社区反馈；举报达到阈值后触发再次分析和风险提示，默认不删除内容。
 - Risk Notice：低风险活动默认不展示“可信”标签；存在营销或较高风险时显示中立提示，帮助参与者自行判断。
 - YKadmin 后台：入口型工作台；全部活动、协作员管理、模块管理、活动模板、操作日志、规则引擎、AI 分析、Community Governance 拆分为独立子页面。
@@ -270,7 +270,7 @@ npm test
 测试内容包括：
 
 - 语法检查：核心前后端脚本和构建脚本。
-- API 冒烟：登录安全头、协作员新增、匿名/登录发起活动、规则引擎、活动置信度、AI 设置脱敏、社区反馈、Community Governance 事件流、Trust Policy、Community Badge、Badge Policy、Community Trust、活动模板增删改、正文图片上传和伪图片拒绝、兜底双岗复核、富文本清洗、正文图片不计入描述长度校验、报名确认 token、无 token 访问 / 取消拦截、重复报名刷新 token、一人名额并发保护、报名表、删除报名日志、删除协作员日志、取消活动日志、模板日志、日志脱敏、日志字段筛选、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
+- API 冒烟：登录安全头、协作员新增、匿名/登录发起活动、规则引擎、活动置信度、AI 设置脱敏、AI stub 真实调用、AI 关闭中高风险兜底审核、社区反馈、Community Governance 事件流、Trust Policy、Community Badge、Badge Policy、Community Trust、活动模板增删改、正文图片上传和伪图片拒绝、兜底双岗复核、富文本清洗、正文图片不计入描述长度校验、报名确认 token、无 token 访问 / 取消拦截、重复报名刷新 token、一人名额并发保护、报名表、删除报名日志、删除协作员日志、取消活动日志、模板日志、日志脱敏、日志字段筛选、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
 - Playwright 浏览器冒烟：管理员登录跳转、工作台概览卡片跳转、移动端关键页面无横向溢出、Community Governance 新页面、近期 / 历史活动页、活动编辑页模板下拉和 H1 工具、富文本 H1 重复点击恢复正文、粘贴文本清洗、活动模板管理页富文本编辑器、活动分享按钮、报名成功页 token 访问、CSV 防公式注入、审核默认「请选择」和审核封面图 / 正文图片展示。
 
 CloudBase 部署 dry-run：
@@ -401,6 +401,7 @@ npm run deploy:cloudbase
 
 ## 已验证
 
+- `0.19.1` 本地验证通过：`npm run test:syntax` 和 `npm run test:smoke` 均通过；新增覆盖规则置信度阈值 100 触发真实 AI 请求、AI 关闭时中高风险活动进入管理员审核、AI 不可用兜底原因写入活动置信度详情、重点风险词命中规则。
 - `0.19.0` 本地验证通过：`npm run test:syntax` 和 `npm run test:smoke` 均通过；新增覆盖 Community Governance 默认策略、身份详情事件流、Trust Policy 增删改、Community Badge 增删、Badge Policy 保存，以及新后台页面移动端无横向溢出。
 - `0.18.1` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 均通过；新增覆盖 AI 规则置信度阈值、匿名身份前 N 场必调 AI、AI 设置深合并和规则权重变更后的活动重新分析回归。
 - `0.18.0` 本地验证通过：`npm run test:syntax`、`npm run test:smoke`、`npm test` 和 `npm run deploy:dry-run` 均通过。

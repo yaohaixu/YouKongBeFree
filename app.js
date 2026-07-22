@@ -2348,6 +2348,7 @@ async function renderActivityConfidence(root, id) {
         <div><span>社区反馈</span><strong>${reports.length}</strong><p>达到阈值会触发再次分析。</p></div>
         <div><span>规则基准分</span><strong>${Number(sourceRiskScore || 0)}</strong><p>AI 调整：${Number(aiAdjustment || 0) > 0 ? "+" : ""}${Number(aiAdjustment || 0)}</p></div>
         <div><span>AI 触发原因</span><strong>${escapeHtml(aiTriggerReason)}</strong><p>第 ${Number(aiMeta.activityNumber || 0) || "-"} 场 / 已有 ${Number(aiMeta.identityActivityCount || 0)} 场</p></div>
+        <div><span>兜底策略</span><strong>${escapeHtml(activity.safetyFallbackReason || policy.safetyFallbackReason || "无")}</strong><p>${activity.safetyFallbackReason === "ai-unavailable" ? "AI 不可用时进入管理员审核" : "按当前策略分流"}</p></div>
       </div>
     </article>
     <section class="panel-block">
@@ -2356,7 +2357,7 @@ async function renderActivityConfidence(root, id) {
     </section>
     <section class="panel-block">
       <h3>AI Analysis Report</h3>
-      ${latestAnalysis?.aiReport ? renderAiReport(latestAnalysis.aiReport) : `<p class="muted-text">AI 未调用或当前已关闭。</p>`}
+      ${latestAnalysis?.aiReport ? renderAiReport(latestAnalysis.aiReport) : renderAiSkippedState(latestAnalysis?.aiMeta || {})}
     </section>
     <section class="panel-block">
       <h3>分析历史</h3>
@@ -2364,6 +2365,20 @@ async function renderActivityConfidence(root, id) {
     </section>
   `;
   revealDynamicContent(container);
+}
+
+function renderAiSkippedState(aiMeta = {}) {
+  const reason = aiMeta.reason || aiMeta.triggerReason || "strategy-skip";
+  const label = {
+    disabled: "AI 当前关闭，系统已按规则引擎和兜底策略处理。",
+    "missing-api-key": "AI 已启用但缺少可用 API Key，系统已按规则引擎和兜底策略处理。",
+    "ai-unavailable": `AI 调用失败：${aiMeta.error || "模型暂时不可用"}。系统已按规则引擎和兜底策略处理。`,
+    draft: "草稿不会调用 AI。",
+    "strategy-skip": "当前调用策略未要求 AI 介入。",
+    "low-rule-confidence": "系统判定需要 AI 介入，但本次未拿到分析报告。",
+    "new-identity-first-activities": "新匿名身份活动需要 AI 介入，但本次未拿到分析报告。",
+  }[reason] || `AI 未返回分析报告：${reason}`;
+  return `<p class="muted-text">${escapeHtml(label)}</p>`;
 }
 
 function renderRuleFindings(findings = []) {

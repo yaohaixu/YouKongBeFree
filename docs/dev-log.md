@@ -2498,3 +2498,69 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 增加 Trust Policy dry-run 和历史重算能力：管理员调整策略前可以预览哪些身份会改变多少分。
 2. 把 Trust Policy / Badge Rule JSON 编辑升级为可视化 Rule Builder，降低配置错误风险。
 3. 在活动详情和活动列表中按 Badge Policy 渲染公开正向徽章，后台内部状态继续保持不公开。
+
+## 2026-07-22 - 0.19.1 AI 调用与高风险兜底复核修复
+
+### 任务目标
+
+修复线上匿名发起活动时 AI 未真正介入的问题：管理员已在后台配置 AI Key 且测试连接成功，并把规则置信度阈值设为 100，但活动置信度详情仍显示“AI 未调用或当前已关闭”。同时修复“澳门赌场、发票、投资、成人”等明显高风险测试内容只降低活动分数、没有流转到 AI 或管理员审核的问题。目标是保证发布工作流稳定为：规则引擎先给基准风险分，再按 AI 调用策略决定是否分析，最后由策略引擎决定直接发布、带提示发布或进入管理员兜底复核。
+
+### 具体修改内容
+
+- `lib/community-safety/defaults.js`：新增 `regulated_sensitive_terms` 默认规则，覆盖赌场、发票、投资、成人、贷款、套现、返现等重点风险词；新增 AI 不可用兜底策略 `aiUnavailableAction`、`aiUnavailableReviewMinRisk`、`aiUnavailableReviewWhenAiExpected`。
+- `lib/community-safety/rule-engine.js`：敏感词规则支持 `perHitWeight` 和 `maxExtraWeight`，多词命中会逐步提高风险分，避免高风险词堆叠仍只算一次。
+- `lib/ai-analysis/service.js`：AI 已启用但缺少可解密 API Key 时返回明确的 `missing-api-key` 元信息并记录用量日志，不再静默表现为普通策略跳过。
+- `lib/community-safety/service.js`：把 AI 是否本应调用、是否不可用、不可用原因传入策略引擎，并把 `safetyFallbackReason` 写入活动风险快照。
+- `lib/community-safety/policy-engine.js`：当 AI 关闭、缺 Key 或 Provider 调用失败，且本次按策略本应调用 AI、规则风险达到阈值时，活动进入 `admin_review`，并标记 `safetyFallbackReason: ai-unavailable`。
+- `lib/app.js`：AI 设置保存支持后端直接接收 `ruleConfidenceMax` 和 `firstActivityCount` 字段，减少前端 JSON 合并异常导致配置不生效的风险。
+- `app.js`：活动置信度详情页区分 AI 关闭、缺少 API Key、Provider 不可用、草稿跳过和策略跳过，避免统一显示“AI 未调用或当前已关闭”造成误判。
+- `tests/smoke.test.js`：新增本地 OpenAI Compatible stub，覆盖规则置信度阈值设为 100 时真实请求 Provider；新增“API Key 已保存后输入框留空再保存，发布链路仍使用已保存 Key”的回归；新增 AI 关闭时高风险内容进入管理员审核的兜底覆盖。
+- `README.md`、`CHANGELOG.md`、`docs/security.md`、`package.json`、`package-lock.json`、`*.html`：同步版本、功能说明、安全说明和静态资源版本号。
+
+### 涉及文件
+
+- `app.js`
+- `lib/app.js`
+- `lib/ai-analysis/service.js`
+- `lib/community-safety/defaults.js`
+- `lib/community-safety/policy-engine.js`
+- `lib/community-safety/rule-engine.js`
+- `lib/community-safety/service.js`
+- `tests/smoke.test.js`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/security.md`
+- `docs/dev-log.md`
+- `package.json`
+- `package-lock.json`
+- `*.html`
+
+### 技术方案选择
+
+- 保持 AI 的定位为 Analysis Engine，而不是审核员。AI 仍不直接决定删除、封禁或扣 Community Trust；当 AI 不可用时，是策略引擎根据规则风险和兜底配置决定进入管理员审核。
+- “规则置信度阈值 100”明确解释为 `confidenceScore <= 100`，即覆盖所有非草稿活动；该语义已写入 smoke 回归。
+- 高风险词命中采用“基础权重 + 多词递增”的方式，而不是把某个词硬编码为一票拒绝，保留开放发布体系的可解释风险评分。
+- AI Key 继续加密存储且不回显；测试新增了“留空不覆盖”的回归，贴近后台真实配置操作。
+
+### 设计决策原因
+
+- 线上问题最容易发生在配置链路：测试连接使用表单临时值，发布使用已保存配置。因此必须验证保存后的加密 Key、调用策略和发布链路是同一套配置。
+- 如果 AI 不可用仍直接按中风险发布，用户会以为系统已经做了 AI 分析，实际上没有；改为中高风险兜底审核更符合“开放优先但风险逐步收束”的社区治理逻辑。
+- 活动置信度详情页必须展示具体 AI 状态，否则管理员无法区分“策略没要求调用”“AI 关闭”“缺 Key”“模型报错”。
+
+### 当前完成情况
+
+- AI 真实调用、配置保存、兜底审核、重点风险词和置信度详情展示均已完成。
+- `npm test` 已通过，包含语法检查、API 冒烟和 Playwright 浏览器冒烟。
+
+### 遗留问题
+
+- 当前 AI 不可用兜底阈值仍在规则引擎配置 JSON 中维护，后台可以配置但不够产品化；后续可在 AI 设置页增加独立表单项。
+- Provider Adapter 仍以 OpenAI Compatible 为主；Claude / Gemini 当前保留插件入口但需要专用 Adapter 后才能生产启用。
+- 线上若更换 `AI_CONFIG_ENCRYPTION_KEY`、`IDENTITY_HASH_SALT` 或 `SESSION_SECRET`，旧 API Key 可能无法解密，需要运维层保持环境变量稳定。
+
+### 下一步建议
+
+1. 在 AI 设置页增加“AI 不可用时兜底审核阈值”和“是否仅本应调用 AI 时兜底”的可视化配置，减少管理员编辑 JSON 的成本。
+2. 在活动置信度详情页补一条“本次最终工作流：规则引擎 -> AI 状态 -> 策略结果”的时间线，进一步提升可解释性。
+3. 给 `aiUsageLogs` 增加后台列表筛选，方便观察线上 Provider 成功率、耗时和失败原因。
