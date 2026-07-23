@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.19.1`
+当前版本：`0.20.0`
 
-状态：`0.19.1` 修复 AI 介入与兜底审核链路：规则置信度阈值设为 100 时会真实调用 AI；AI 关闭、缺少 Key 或调用失败时，中高风险活动会自动进入管理员审核；新增赌场、发票、投资、成人等重点风险词规则，并按命中数量加重风险。
+状态：`0.20.0` 重构活动发布安全工作流：活动提交先落库为「安全分析中」并立即返回工作台，后台异步执行规则引擎、AI 分析和策略流转；明确营销、垃圾、诈骗、违法、成人和政治敏感等 AI 强信号会提升风险下限并进入管理员兜底审核；新增独立社区举报后台，举报会触发活动重分析、举报历史留痕和必要时下架转管理员审核。
 
 ## 访问地址
 
@@ -28,6 +28,7 @@ CloudBase 动态线上站点：
 - 新增活动模板：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-template-editor.html
 - 报名表：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/registrations.html
 - 操作日志：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-logs.html
+- 社区举报：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-reports.html
 - 规则引擎：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-safety.html
 - AI 分析：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-ai.html
 - 社区治理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-governance.html
@@ -53,20 +54,20 @@ GitHub Pages 静态展示：
 - Community Governance：新增统一 Community Event、Trust Policy、Community Badge 和 Badge Policy。Community Trust 不再只是直接分数，而是由活动发布、活动置信度、社区反馈和报名里程碑等事件按策略投影出来；活动置信度评价单次活动，Community Trust 评价长期匿名身份，两者通过可配置策略映射。
 - Community Trust：匿名身份初始 50 分，基于事件流逐步变化；后台可查看 Community ID、社区等级、状态、徽章、活动数、报名回应、举报和完整时间线。
 - Community Badge：后台可配置身份徽章、成就徽章和事件徽章，徽章获得规则使用 JSON Rule Builder；Badge Policy 控制徽章是否公开、展示在哪些位置、是否显示图标 / 名称和悬停说明。
-- AI Analysis Engine：AI 是社区观察员，不是审核员；支持开关、Provider、Base URL、Model、加密 API Key、Prompt 版本、调用策略、能力开关、缓存、重试、用量日志和测试连接；AI 介入条件可配置为规则置信度低于 / 等于阈值、匿名身份前 N 场必调 AI、举报后重分析、手动重分析、低信用度、随机抽检或全部分析；规则置信度阈值设为 100 时会覆盖全部活动；AI 关闭、缺少 Key 或不可用时，中高风险活动会进入管理员兜底审核。
-- Community Report：活动详情页支持社区反馈；举报达到阈值后触发再次分析和风险提示，默认不删除内容。
+- AI Analysis Engine：AI 是社区观察员，不是审核员；支持开关、Provider、Base URL、Model、加密 API Key、Prompt 版本、调用策略、能力开关、缓存、重试、用量日志和测试连接；AI 介入条件可配置为规则置信度低于 / 等于阈值、匿名身份前 N 场必调 AI、举报后重分析、手动重分析、低信用度、随机抽检或全部分析；规则置信度阈值设为 100 时会覆盖全部活动；AI 关闭、缺少 Key 或不可用时，中高风险活动会进入管理员兜底审核；AI 明确识别营销、垃圾、诈骗、违法、成人和政治敏感内容时，策略引擎会提升风险下限并把高风险活动隐藏后转入管理员审核，疑似营销则保留公开但进入管理员关注待办。
+- Community Report：活动详情页支持社区反馈；每条新举报都会记录并触发活动重分析。举报理由与规则 / AI 分析相符时活动会下架并转入管理员审核，管理员通过后重新公开；举报暂不成立时只留痕不下架；多人举报会给活动增加中立风险提醒。
 - Risk Notice：低风险活动默认不展示“可信”标签；存在营销或较高风险时显示中立提示，帮助参与者自行判断。
-- YKadmin 后台：入口型工作台；全部活动、协作员管理、模块管理、活动模板、操作日志、规则引擎、AI 分析、Community Governance 拆分为独立子页面。
+- YKadmin 后台：入口型工作台；全部活动、协作员管理、模块管理、活动模板、社区举报、操作日志、规则引擎、AI 分析、Community Governance 拆分为独立子页面。
 - YKadmin 子页面：协作员新增、编辑、删除；活动模块新增、编辑、删除；活动描述模板新增、编辑、删除；管理员待办审核；按关键词、模块、状态、时间、报名数筛选全部活动。
 - YKadmin 活动管理：可查看全部状态活动，可取消或结束活动，可进入独立报名表页面。
 - YKadmin 操作日志：记录登录、退出、新增、保存、删除、提交、审核、退回、拒绝、撤回、报名、取消报名、删除报名、取消活动、结束活动和自动归档等关键动作，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载；日志手机号脱敏保存，仅保留最近 30 天。
 - 「我的」开放工作台：无需登录即可进入发起活动和我的活动入口；协作员 / 管理员登录后额外看到审核待办和后台入口。
-- 活动发起管理：保存活动草稿、可选选择协作员、发布活动、查看自己活动状态、撤回活动、查看独立报名表。
+- 活动发起管理：保存活动草稿、可选选择协作员、发布活动、查看自己活动状态、撤回活动、查看独立报名表；正式提交会先显示「安全分析中」并立即回到我的活动，后台任务完成后再变为已发布、管理员关注或管理员审核。
 - 活动发起人联系方式：发起活动页可选择是否展示发起人联系方式；选择展示时默认带出登录手机号，也可改成其他联系方式；公开活动详情页仅在选择展示时显示，并与活动状态 / 报名信息保持清晰间距。
 - 活动富文本编辑：发起活动页提供轻量富文本工具栏，支持正文段落、一级/二级/三级标题、加粗、引用、列表、分隔线和正文图片插入；正文图片可选择 10MB 以内原图，浏览器会压缩到约 1MB 后上传，图片保存为稳定代理链接，图片标签不计入 50000 字描述上限；服务端会对白名单标签做二次清洗；活动正文中的超长链接会在移动端自动换行，不会撑出页面。
 - 活动描述模板：YKadmin 可维护常用活动描述模板；模板列表页负责搜索、编辑入口和删除，新增 / 编辑进入独立详情页；发起活动时默认「无，自己写」，选择模板只覆盖活动描述，若已有正文会先确认是否覆盖。
 - 普通访客只看到发起活动和同一浏览器自己的活动管理；协作员才会看到自己的审核待办。
-- 兜底双岗复核：活动发布先走规则引擎，再按 AI 调用策略决定是否分析，最后由策略引擎决定低风险直接发布、中风险发布并提示、高风险进入管理员 / 协作员复核；任一岗位可退回，拒绝后不可编辑。
+- 兜底复核：活动发布先走规则引擎，再按 AI 调用策略决定是否分析，最后由策略引擎决定低风险直接发布、中风险发布并提示、疑似营销公开但进入管理员关注、高风险隐藏并进入管理员兜底复核；任一岗位可退回，拒绝后不可编辑。
 - 审核待办详情支持查看活动描述、正文图片、审核记录和上传封面图；审核意见默认「请选择」，审核意见与备注区放在活动详情之后，桌面端统一为对齐审批面板，移动端保持单列排列。
 - 活动人数限制：发起活动时人数限额留空默认 99 人，最大 99 人。
 - 活动详情页：公开发布活动支持未登录访客填写昵称和手机号报名；重复报名会刷新并返回报名确认 token；草稿和审核中活动不开放报名；同一活动报名写入按活动维度串行化，降低并发超员风险；白天模式下地点与时间信息保持高对比度；活动详情支持生成分享海报、复制报名链接和下载 `.ics` 日历文件。
@@ -131,9 +132,10 @@ GitHub Pages 静态展示：
 ├── admin-members.html      # 协作员管理
 ├── admin-modules.html      # 活动模块管理
 ├── admin-templates.html    # 活动描述模板管理
-├── admin-template-editor.html # 新增 / 编辑活动描述模板
-├── admin-logs.html         # 管理员操作日志
-├── admin-safety.html       # 规则引擎和策略配置
+	├── admin-template-editor.html # 新增 / 编辑活动描述模板
+	├── admin-logs.html         # 管理员操作日志
+	├── admin-reports.html      # 社区举报列表与复核结论
+	├── admin-safety.html       # 规则引擎和策略配置
 ├── admin-ai.html           # AI Analysis Engine 设置和 Prompt
 ├── admin-governance.html   # Community Governance 总入口
 ├── admin-trust.html        # Community Trust 列表
@@ -349,6 +351,7 @@ npm run deploy:cloudbase
 - YKadmin 活动模块管理独立页。
 - YKadmin 活动描述模板管理独立页，支持模板搜索、新增、编辑、删除和富文本正文维护。
 - YKadmin 操作日志独立页，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载，并仅保留最近 30 天日志。
+- YKadmin 社区举报独立页，支持关键词、处理状态、举报原因和日期范围筛选，列表展示举报理由、活动状态、复核结论并可跳转活动和置信度详情。
 - YKadmin 规则引擎页面，支持查看、新增、保存、删除风险规则，并通过 JSON 调整限流、Turnstile、举报阈值、风险分流策略和 Community Trust 权重。
 - YKadmin AI 分析页面，支持配置 AI 总开关、Provider、Base URL、Model、加密 API Key、超时、温度、Token、重试、缓存、调用策略、能力开关、Prompt 版本和连接测试。
 - YKadmin Community Governance 总入口，集中进入 Community Trust、Trust Policy、Community Badge、Badge Policy、AI Analysis 和 Rule Engine。
@@ -356,7 +359,7 @@ npm run deploy:cloudbase
 - YKadmin Community Badge 页面，支持新增、编辑、删除身份徽章、成就徽章和事件徽章；徽章获得规则通过 JSON Rule Builder 配置。
 - YKadmin Badge Policy 页面，支持配置徽章公开可见性、展示位置、图标 / 名称显示、悬停说明和排序。
 - YKadmin 社区信用度页面，支持查看匿名身份 Community Trust 列表、Community ID、社区等级、状态、徽章、脱敏 IP / UA、最近活动、信用度详情、Community Timeline、策略命中、徽章授予记录和关联活动。
-- YKadmin 活动置信度详情页，支持查看活动风险分、置信分、规则引擎明细、AI Analysis Report、社区反馈和重新分析。
+- YKadmin 活动置信度详情页，支持查看活动风险分、置信分、规则引擎明细、AI Analysis Report、社区举报历史和重新分析。
 - YKadmin 可取消或结束活动。
 - 开放工作台入口卡片，工作台概览位于所有入口模块之后。
 - 发起活动独立编辑页。
@@ -368,7 +371,7 @@ npm run deploy:cloudbase
 - API 慢请求日志支持通过 `API_SLOW_LOG_MS` 调节阈值，便于定位缺索引和慢接口。
 - `npm test` 自动化冒烟流程，覆盖 API 主链路和关键移动端浏览器布局。
 - 审核待办独立页，管理员和协作员按自己的待办进入。
-- 活动草稿、直接发布、风险分流复核、编辑退回活动。
+- 活动草稿、异步安全分析、直接发布、风险分流复核、编辑退回活动。
 - 活动富文本编辑器：支持一级/二级/三级标题、加粗、引用、列表、分隔线和正文图片；正文图片 10MB 内可选，浏览器压缩后上传，服务端白名单清洗后保存。
 - 发起活动页支持选择活动描述模板，默认不套用；已有正文时选择模板会弹窗确认是否覆盖当前描述。
 - 双岗审核流：管理员审核、协作员审核、通过/退回/拒绝。
@@ -376,6 +379,9 @@ npm run deploy:cloudbase
 - 工作台概览卡片可点击跳转：全部、草稿、审核中、已发布分别进入对应活动筛选页。
 - 发起人可撤回审核中、已发布、已满员活动，撤回后回到草稿。
 - 活动详情页和访客报名。
+- 活动提交异步分析队列：正式提交先进入 `analysis_pending` 并立即返回，后台任务完成后写入分析报告、风险快照、Community Event 和最终状态；撤回或重新编辑会递增 `analysisVersion`，旧分析任务不会覆盖新内容。
+- AI 强信号策略：明确营销、垃圾、诈骗、违法、成人和政治敏感内容会设置风险下限并隐藏转管理员审核；疑似营销保留公开但进入管理员关注待办。
+- Community Report 复核：每条新举报都会触发活动重分析；举报成立或安全复核发现强风险时活动下架进入管理员审核，举报暂不成立只记录，达到多人举报阈值时展示中立风险提示。
 - 活动详情页分享能力：生成分享海报、复制报名链接、下载 `.ics` 日历文件。
 - 活动可选结束时间：支持跨天活动更精确归档，结束时间不能早于开始时间。
 - 重复报名自动进入已有报名确认页。
@@ -401,6 +407,7 @@ npm run deploy:cloudbase
 
 ## 已验证
 
+- `0.20.0` 本地验证通过：`npm test` 通过，包含语法检查、API 冒烟和 Playwright 浏览器冒烟；新增覆盖异步活动安全分析、AI 明确营销强信号转隐藏管理员审核、社区举报后台列表、活动置信度页举报历史和新后台举报页面移动端无横向溢出。
 - `0.19.1` 本地验证通过：`npm run test:syntax` 和 `npm run test:smoke` 均通过；新增覆盖规则置信度阈值 100 触发真实 AI 请求、AI 关闭时中高风险活动进入管理员审核、AI 不可用兜底原因写入活动置信度详情、重点风险词命中规则。
 - `0.19.0` 本地验证通过：`npm run test:syntax` 和 `npm run test:smoke` 均通过；新增覆盖 Community Governance 默认策略、身份详情事件流、Trust Policy 增删改、Community Badge 增删、Badge Policy 保存，以及新后台页面移动端无横向溢出。
 - `0.18.1` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 均通过；新增覆盖 AI 规则置信度阈值、匿名身份前 N 场必调 AI、AI 设置深合并和规则权重变更后的活动重新分析回归。
@@ -484,7 +491,7 @@ npm run deploy:cloudbase
 - 生产级身份验证：短信验证码、密码或微信登录，替代当前手机号白名单免密登录。
 - 生产启用 Turnstile：在 Cloudflare 获取 Site Key / Secret Key 后写入 CloudBase 环境变量，并在规则引擎页开启策略。
 - 生产启用 AI Analysis Engine：先配置 Provider、Base URL、Model、API Key、Prompt 和调用策略，再用后台「测试连接」灰度验证。
-- CloudBase 控制台建议补齐 `docs/cloudbase-indexes.md` 中 `0.19.0` 新增的 Community Governance 集合索引，尤其是 `yk_communityEvents.identityId + createdAt`、`yk_trustPolicies.eventType + enabled`、`yk_communityBadges.type + enabled`、`yk_identityBadges.identityId + status` 和 `yk_badgePolicies.badgeId`。
+- CloudBase 控制台建议补齐 `docs/cloudbase-indexes.md` 中 `0.20.0` 新增 / 更新的集合索引，尤其是 `yk_activityAnalysisJobs.status + createdAt`、`yk_communityReports.status + createdAt`、`yk_communityReports.activityId + createdAt`，以及 `0.19.0` 的 Community Governance 相关索引。
 - 管理员仪表盘统计：增加风险分布、举报趋势、AI 调用量、信用度变化和活动发布转化概览。
 - CloudBase 恢复演练和权限策略文档。
 - 自定义域名和同源 API 路由，减少跨域 Cookie 运维复杂度。

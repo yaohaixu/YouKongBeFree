@@ -145,6 +145,7 @@ let mePageState = {
   modulePage: 1,
   templatePage: 1,
   logPage: 1,
+  reportPage: 1,
   publicActivityPage: 1,
   trustPolicyPage: 1,
   badgePage: 1,
@@ -156,6 +157,7 @@ let mePageState = {
   modulesPageItems: [],
   templates: [],
   logs: [],
+  reports: [],
   safetyRules: [],
   trustProfiles: [],
   trustPolicies: [],
@@ -190,6 +192,9 @@ const logActionOptions = [
   ["activity.create_submit", "提交活动审核"],
   ["activity.update_draft", "保存活动草稿"],
   ["activity.update_submit", "重新提交活动审核"],
+  ["activity.analysis.pending", "活动安全分析中"],
+  ["activity.analysis.complete", "活动安全分析完成"],
+  ["activity.analysis.failed", "活动安全分析失败"],
   ["activity.withdraw", "撤回活动"],
   ["activity.review.approve", "审核通过"],
   ["activity.review.return", "审核退回"],
@@ -200,6 +205,10 @@ const logActionOptions = [
   ["registration.create", "新增报名"],
   ["registration.delete", "删除报名"],
   ["registration.cancel", "取消报名"],
+  ["activity.report", "社区举报"],
+  ["activity.report.review", "举报分析"],
+  ["activity.report.substantiated", "举报成立"],
+  ["activity.report.unsubstantiated", "举报记录"],
   ["governance.trust_policy.create", "新增信用策略"],
   ["governance.trust_policy.update", "保存信用策略"],
   ["governance.trust_policy.delete", "删除信用策略"],
@@ -212,6 +221,7 @@ const logActionOptions = [
 const statusOptions = [
   ["", "全部状态"],
   ["draft", "草稿"],
+  ["analysis_pending", "安全分析中"],
   ["reviewing", "审核中"],
   ["admin_review", "管理员审核"],
   ["collaborator_review", "协作员审核"],
@@ -226,6 +236,7 @@ const statusOptions = [
 
 const statusTone = {
   draft: "草稿",
+  analysis_pending: "分析中",
   admin_review: "审核中",
   collaborator_review: "审核中",
   returned: "退回",
@@ -377,12 +388,22 @@ function renderInitiatorContact(activity) {
 
 function renderRiskNotice(activity = {}) {
   const notice = activity.riskNotice || {};
-  if (!notice.text || notice.level === "none") return "";
+  const notices = [];
+  if (notice.text && notice.level !== "none") notices.push({ level: notice.level || "medium", text: notice.text });
+  if (activity.reportWarning) {
+    notices.push({
+      level: "medium",
+      text: activity.reportWarningText || "这个活动被多人举报，参与前可以多看一眼活动说明和风险提示。",
+    });
+  }
+  if (!notices.length) return "";
   return `
-    <div class="risk-notice ${escapeHtml(notice.level || "medium")}" role="note">
-      <strong>社区提示</strong>
-      <p>${escapeHtml(notice.text)}</p>
-    </div>
+    ${notices.map((item) => `
+      <div class="risk-notice ${escapeHtml(item.level || "medium")}" role="note">
+        <strong>社区提示</strong>
+        <p>${escapeHtml(item.text)}</p>
+      </div>
+    `).join("")}
   `;
 }
 
@@ -508,6 +529,7 @@ function renderMainNav(navLinks, baseLinks, pageName, user) {
     "admin-templates.html",
     "admin-template-editor.html",
     "admin-logs.html",
+    "admin-reports.html",
     "admin-safety.html",
     "admin-ai.html",
     "admin-trust.html",
@@ -687,7 +709,7 @@ function renderDashboardSummary(container, summary) {
   if (!container) return;
   const counts = Array.isArray(summary) ? countByStatus(summary) : (summary?.byStatus || {});
   const total = Array.isArray(summary) ? summary.length : Number(summary?.total || 0);
-  const reviewing = Number(summary?.reviewing ?? ((counts.admin_review || 0) + (counts.collaborator_review || 0)));
+  const reviewing = Number(summary?.reviewing ?? ((counts.analysis_pending || 0) + (counts.admin_review || 0) + (counts.collaborator_review || 0)));
   const published = Number(summary?.published ?? ((counts.published || 0) + (counts.full || 0)));
   container.innerHTML = `
     <a class="stat stat-link" href="my-activities.html"><strong>${total}</strong><span>我发起的活动</span></a>
@@ -703,7 +725,7 @@ function renderWorkspaceCards(root, user, summary, pendingSummary) {
   if (!container) return;
   const counts = Array.isArray(summary) ? countByStatus(summary) : (summary?.byStatus || {});
   const total = Array.isArray(summary) ? summary.length : Number(summary?.total || 0);
-  const reviewing = Number(summary?.reviewing ?? ((counts.admin_review || 0) + (counts.collaborator_review || 0)));
+  const reviewing = Number(summary?.reviewing ?? ((counts.analysis_pending || 0) + (counts.admin_review || 0) + (counts.collaborator_review || 0)));
   const pendingTotal = Array.isArray(pendingSummary) ? pendingSummary.length : Number(pendingSummary?.total || 0);
   const cards = [
     {
@@ -807,6 +829,8 @@ async function initActivityEditorPage() {
         : await api.post("/api/activities", formData);
       const submitMessage = activity.status === "published"
         ? "活动已发布。"
+        : activity.status === "analysis_pending"
+          ? "活动已提交，正在进行安全分析。你可以先回到我的活动查看状态。"
         : activity.status === "admin_review" || activity.status === "collaborator_review"
           ? "活动已进入社区复核。"
           : activity.status === "rejected"
@@ -968,7 +992,7 @@ function canEditMine(activity) {
 }
 
 function canWithdraw(activity) {
-  return ["admin_review", "collaborator_review", "published", "full"].includes(activity.status);
+  return ["analysis_pending", "admin_review", "collaborator_review", "published", "full"].includes(activity.status);
 }
 
 function resetPagedState(key) {
@@ -979,6 +1003,7 @@ function resetPagedState(key) {
     modulesPageItems: "modulePage",
     templates: "templatePage",
     logs: "logPage",
+    reports: "reportPage",
     publicActivities: "publicActivityPage",
     trustProfiles: "userPage",
     aiPrompts: "templatePage",
@@ -1368,6 +1393,24 @@ async function initActivityPage() {
     },
   });
 
+  const reportForm = qs("[data-report-form]", root);
+  reportForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const reportMessage = qs("[data-report-message]", reportForm);
+    setMessage(reportMessage, "正在提交社区反馈...");
+    try {
+      await api.post(`/api/activities/${id}/reports`, {
+        reason: reportForm.reason.value,
+        detail: reportForm.detail.value,
+      });
+      reportForm.reset();
+      setMessage(reportMessage, "已经收到。社区会把这些反馈纳入风险提示，不会因为一次反馈就直接删除内容。", "success");
+      showToast("反馈已提交");
+    } catch (error) {
+      setMessage(reportMessage, error.message, "error");
+    }
+  });
+
   const form = qs("[data-register-form]");
   if (!form) return;
   const message = qs("[data-register-message]");
@@ -1384,24 +1427,6 @@ async function initActivityPage() {
       location.href = `success.html?activity=${encodeURIComponent(id)}&registration=${encodeURIComponent(registration.id)}${tokenQuery}`;
     } catch (error) {
       setMessage(message, error.message, "error");
-    }
-  });
-
-  const reportForm = qs("[data-report-form]", root);
-  reportForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const reportMessage = qs("[data-report-message]", reportForm);
-    setMessage(reportMessage, "正在提交社区反馈...");
-    try {
-      await api.post(`/api/activities/${id}/reports`, {
-        reason: reportForm.reason.value,
-        detail: reportForm.detail.value,
-      });
-      reportForm.reset();
-      setMessage(reportMessage, "已经收到。社区会把这些反馈纳入风险提示，不会因为一次反馈就直接删除内容。", "success");
-      showToast("反馈已提交");
-    } catch (error) {
-      setMessage(reportMessage, error.message, "error");
     }
   });
 }
@@ -1571,6 +1596,14 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
       body: "新增、保存、删除、提交、审核、撤回都会留下记录。",
       meta: "审计记录",
       count: "Log",
+    },
+    {
+      href: "admin-reports.html",
+      label: "社区举报",
+      title: "查看活动举报和分析结论",
+      body: "每条举报都会记录原因、AI/规则复核结果和活动后续流转。",
+      meta: "Community Report",
+      count: "Report",
     },
     {
       href: "admin-safety.html",
@@ -2048,6 +2081,24 @@ async function initAdminLogsPage() {
   await renderLogs();
 }
 
+async function initAdminReportsPage() {
+  const root = qs("[data-admin-reports-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const filters = qs("[data-report-filters]", root);
+  filters?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    resetPagedState("reports");
+    renderReports();
+  });
+  qs("[data-load-more-reports]", root)?.addEventListener("click", () => {
+    mePageState.reportPage += 1;
+    renderReports();
+  });
+  await renderReports();
+}
+
 async function initAdminSafetyPage() {
   const root = qs("[data-admin-safety-page]");
   if (!root) return;
@@ -2355,16 +2406,37 @@ async function renderActivityConfidence(root, id) {
       <h3>规则引擎明细</h3>
       ${renderRuleFindings(latestAnalysis?.ruleReport?.findings || activity.ruleFindings || [])}
     </section>
-    <section class="panel-block">
-      <h3>AI Analysis Report</h3>
-      ${latestAnalysis?.aiReport ? renderAiReport(latestAnalysis.aiReport) : renderAiSkippedState(latestAnalysis?.aiMeta || {})}
-    </section>
-    <section class="panel-block">
-      <h3>分析历史</h3>
-      ${analyses.length ? analyses.map((item) => `<p>${formatDate(item.createdAt)} · 风险分 ${item.policy?.riskScore ?? item.ruleReport?.riskScore ?? 0} · ${escapeHtml(item.aiMeta?.reason || "rule")}</p>`).join("") : `<p class="muted-text">暂无分析历史。</p>`}
-    </section>
+	    <section class="panel-block">
+	      <h3>AI Analysis Report</h3>
+	      ${latestAnalysis?.aiReport ? renderAiReport(latestAnalysis.aiReport) : renderAiSkippedState(latestAnalysis?.aiMeta || {})}
+	    </section>
+	    <section class="panel-block">
+	      <h3>举报历史</h3>
+	      ${renderConfidenceReports(reports)}
+	    </section>
+	    <section class="panel-block">
+	      <h3>分析历史</h3>
+	      ${analyses.length ? analyses.map((item) => `<p>${formatDate(item.createdAt)} · 风险分 ${item.policy?.riskScore ?? item.ruleReport?.riskScore ?? 0} · ${escapeHtml(item.aiMeta?.reason || "rule")}</p>`).join("") : `<p class="muted-text">暂无分析历史。</p>`}
+	    </section>
   `;
   revealDynamicContent(container);
+}
+
+function renderConfidenceReports(reports = []) {
+  if (!reports.length) return `<p class="muted-text">暂无举报记录。</p>`;
+  return `
+    <div class="finding-list">
+      ${reports.map((report) => `
+        <div class="finding-item">
+          <strong>${escapeHtml(report.reason || "社区举报")}</strong>
+          <span>${escapeHtml(reportStatusLabel(report.status))}</span>
+          <p>${escapeHtml(report.detail || "没有补充说明")} · ${formatDate(report.createdAt)}</p>
+          ${report.reportReview ? `<p>复核：风险分 ${Number(report.reportReview.riskScore || 0)} · ${report.reportReview.matched ? "举报理由与分析相符" : "暂未支持下架"} · ${escapeHtml(report.reportReview.reason || "")}</p>` : ""}
+          ${report.analysisReportId ? `<p>分析报告：${escapeHtml(report.analysisReportId)}</p>` : ""}
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function renderAiSkippedState(aiMeta = {}) {
@@ -2400,8 +2472,12 @@ function renderAiReport(report = {}) {
   const flags = [
     ["真实活动", report.isRealActivity],
     ["广告倾向", report.isAdvertisement],
+    ["营销等级", report.advertisementLevel || "none"],
     ["垃圾内容", report.isSpam],
+    ["垃圾等级", report.spamLevel || "none"],
     ["诈骗风险", report.isScam],
+    ["政治敏感", report.containsPolitical],
+    ["政治等级", report.politicalSensitivity || "none"],
     ["违法风险", report.containsIllegal],
   ];
   return `
@@ -2411,7 +2487,7 @@ function renderAiReport(report = {}) {
       <p><strong>风险原因：</strong>${escapeHtml((report.riskReason || []).join("；") || "无")}</p>
       <p><strong>可信特征：</strong>${escapeHtml((report.positiveSignals || []).join("；") || "无")}</p>
       <p><strong>风险特征：</strong>${escapeHtml((report.negativeSignals || []).join("；") || "无")}</p>
-      <div class="chip-row">${flags.map(([label, value]) => `<span class="tag">${escapeHtml(label)}：${value ? "是" : "否"}</span>`).join("")}</div>
+	      <div class="chip-row">${flags.map(([label, value]) => `<span class="tag">${escapeHtml(label)}：${typeof value === "boolean" ? (value ? "是" : "否") : escapeHtml(String(value))}</span>`).join("")}</div>
     </div>
   `;
 }
@@ -3016,13 +3092,57 @@ async function renderLogs() {
   revealDynamicContent(list);
 }
 
+function reportStatusLabel(status = "") {
+  return {
+    submitted: "已提交",
+    substantiated: "举报成立",
+    unsubstantiated: "已记录",
+    existing: "重复举报",
+  }[status] || status || "已提交";
+}
+
+async function renderReports() {
+  const list = qs("[data-report-list]");
+  if (!list) return;
+  const filters = qs("[data-report-filters]");
+  const query = queryFromForm(filters, {
+    page: mePageState.reportPage,
+    pageSize: mePageState.pageSize,
+  });
+  const { reports, pageInfo } = await api.get(`/api/reports${query}`);
+  const loaded = mergePageItems("reports", mePageState.reportPage, reports);
+  updatePagedCount(qs("[data-report-count]"), loaded.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-reports]"), loaded.length, pageInfo?.total || loaded.length);
+  if (!loaded.length) {
+    list.innerHTML = `<div class="empty-state"><strong>暂无社区举报</strong><p>访客提交举报后，会在这里看到记录和复核结论。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = loaded.map((report) => `
+    <article class="event-row report-row">
+      <div>
+        <span class="tag">${escapeHtml(reportStatusLabel(report.status))}</span>
+        <h3>${escapeHtml(report.activityTitle || report.activityId || "未命名活动")}</h3>
+        <p>${escapeHtml(report.reason)} · ${formatDate(report.createdAt)} · 活动状态：${escapeHtml(report.activityStatusLabel || report.activityStatus || "-")}</p>
+        <p>${escapeHtml(report.detail || "没有补充说明")}</p>
+        ${report.reportReview ? `<p>复核：风险分 ${Number(report.reportReview.riskScore || 0)} · ${report.reportReview.matched ? "举报理由与分析相符" : "暂未支持下架"}</p>` : ""}
+      </div>
+      <div class="row-actions">
+        <a class="button outline" href="activity.html?id=${encodeURIComponent(report.activityId)}">查看活动</a>
+        <a class="button outline" href="admin-activity-confidence.html?id=${encodeURIComponent(report.activityId)}">置信度</a>
+      </div>
+    </article>
+  `).join("");
+  revealDynamicContent(list);
+}
+
 async function safeInit(task) {
   try {
     await task();
   } catch (error) {
     console.error(error);
     showToast("页面数据读取失败，请刷新后重试");
-    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-safety-rules], [data-ai-prompts], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list]")
+    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-safety-rules], [data-ai-prompts], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list]")
       .filter((element) => /正在|读取|加载/.test(element.textContent || ""))
       .forEach((element) => {
         element.innerHTML = `<div class="empty-state"><strong>暂时没读到数据</strong><p>请刷新页面重试，或稍后再来。</p></div>`;
@@ -3050,6 +3170,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(initAdminTemplatesPage),
     safeInit(initAdminTemplateEditorPage),
     safeInit(initAdminLogsPage),
+    safeInit(initAdminReportsPage),
     safeInit(initAdminSafetyPage),
     safeInit(initAdminAiPage),
     safeInit(initAdminGovernancePage),

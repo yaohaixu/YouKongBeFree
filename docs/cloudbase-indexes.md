@@ -1,6 +1,6 @@
 # CloudBase 查询与索引建议
 
-本项目 `0.7.0` 起，活动、协作员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。`0.8.0` 起，活动自动结束任务也会按 `status + startsAt` 查询过期待归档活动。`0.9.0` 起，跨天活动可填写 `endsAt`，但 sweep 仍用 `status + startsAt` 缩小候选，再用 `endsAt` 做最终判断，暂不要求新增 `endsAt` 索引。`0.10.0` 起，报名记录新增 `phoneHash` 用于重复报名识别，操作日志手机号改为脱敏保存。`0.13.4` 起，登录态、手机号登录和工作台 dashboard 也使用字段查询与计数接口，建议同步补齐对应索引。`0.13.5` 起，API 慢请求会写入 CloudBase 云函数日志，可用日志中的 `path` 对照本文档补索引。`0.14.0` 起，操作日志页支持操作类型、操作人、角色和日期范围组合筛选，建议补充 `yk_logs` 组合索引。`0.15.0` 起新增活动描述模板集合 `yk_templates`，发起活动时会读取模板列表，管理员模板管理页会按更新时间分页和关键词搜索。`0.18.0` 起新增 Community OS 安全架构集合，规则引擎、匿名身份、Community Trust、社区反馈、活动置信度和 AI Analysis Engine 均建议按本文补充索引。`0.19.0` 起新增 Community Governance 集合，Trust Policy、Community Badge、Badge Policy 和统一 Community Event 时间线建议按本文补齐索引。
+本项目 `0.7.0` 起，活动、协作员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。`0.8.0` 起，活动自动结束任务也会按 `status + startsAt` 查询过期待归档活动。`0.9.0` 起，跨天活动可填写 `endsAt`，但 sweep 仍用 `status + startsAt` 缩小候选，再用 `endsAt` 做最终判断，暂不要求新增 `endsAt` 索引。`0.10.0` 起，报名记录新增 `phoneHash` 用于重复报名识别，操作日志手机号改为脱敏保存。`0.13.4` 起，登录态、手机号登录和工作台 dashboard 也使用字段查询与计数接口，建议同步补齐对应索引。`0.13.5` 起，API 慢请求会写入 CloudBase 云函数日志，可用日志中的 `path` 对照本文档补索引。`0.14.0` 起，操作日志页支持操作类型、操作人、角色和日期范围组合筛选，建议补充 `yk_logs` 组合索引。`0.15.0` 起新增活动描述模板集合 `yk_templates`，发起活动时会读取模板列表，管理员模板管理页会按更新时间分页和关键词搜索。`0.18.0` 起新增 Community OS 安全架构集合，规则引擎、匿名身份、Community Trust、社区反馈、活动置信度和 AI Analysis Engine 均建议按本文补充索引。`0.19.0` 起新增 Community Governance 集合，Trust Policy、Community Badge、Badge Policy 和统一 Community Event 时间线建议按本文补齐索引。`0.20.0` 起活动发布改为异步安全分析，并新增社区举报后台，建议补齐 `yk_activityAnalysisJobs` 和 `yk_communityReports.status + createdAt` 相关索引。
 
 ## 推荐索引
 
@@ -137,10 +137,17 @@
 - `riskScore + createdAt`：低置信活动排查和后续推荐降权。
 - `riskLevel + createdAt`：后台按风险等级筛选。
 
+### `yk_activityAnalysisJobs`
+
+- `status + createdAt`：后台分析队列按待处理状态顺序 sweep。
+- `activityId + activityVersion`：定位某条活动当前分析版本，排查旧任务是否被跳过。
+- `updatedAt`：排查长期卡在 `pending` / `running` 的任务。
+
 ### `yk_communityReports`
 
 - `activityId + createdAt`：活动详情统计举报数量和后台查看举报明细。
 - `identityId + activityId`：同一匿名身份对同一活动重复举报控制。
+- `status + createdAt`：社区举报后台按已提交、举报成立、已记录等状态筛选。
 - `reason + createdAt`：按举报原因排查集中问题。
 
 ### `yk_aiPrompts`

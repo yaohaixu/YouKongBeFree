@@ -151,7 +151,21 @@ async function createActivity(token, overrides = {}) {
   if (overrides.cover) {
     form.set("cover", overrides.cover.blob, overrides.cover.name);
   }
-  return request("/api/activities", { method: "POST", body: form }, token);
+  const created = await request("/api/activities", { method: "POST", body: form }, token);
+  if (overrides.waitForAnalysis === false || created.activity.status !== "analysis_pending") {
+    return created;
+  }
+  return waitForActivityAnalysis(created, token);
+}
+
+async function waitForActivityAnalysis(created, token = "", attempts = 80) {
+  let current = created;
+  for (let index = 0; index < attempts; index += 1) {
+    if (current.activity?.status && current.activity.status !== "analysis_pending") return { ...created, ...current };
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    current = await request(`/api/activities/${created.activity.id}`, {}, token);
+  }
+  throw new Error(`activity ${created.activity.id} stayed analysis_pending`);
 }
 
 async function assertNoHorizontalOverflow(page, url) {
@@ -474,6 +488,45 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   } finally {
     await aiStub.close();
   }
+  const clearAdStub = await startAiStub({
+    riskScore: 20,
+    confidence: 0.95,
+    isAdvertisement: true,
+    advertisementLevel: "clear",
+    summary: "这是明确营销引流活动",
+    riskReason: ["明确营销、引流和销售"],
+  });
+  try {
+    await request("/api/ai/settings", {
+      method: "PUT",
+      body: {
+        enabled: "true",
+        provider: "openai-compatible",
+        baseUrl: clearAdStub.baseUrl,
+        model: "stub-model",
+        apiKey: "stub-key",
+        cacheTtlSeconds: 0,
+        callStrategy: {
+          lowConfidenceOnly: true,
+          ruleConfidenceMax: 100,
+          firstActivitiesAlways: false,
+          mediumRiskOnly: false,
+          randomSampleRate: 0,
+        },
+      },
+    }, admin.token);
+    const clearAdActivity = await createActivity("", {
+      title: "明确营销强信号测试活动",
+      initiator: "匿名发起人",
+      description: "表面上是一场分享会，但 AI 会明确标记为营销。",
+    });
+    assert.equal(clearAdActivity.activity.status, "admin_review");
+    assert.equal(clearAdActivity.activity.isHidden, true);
+    assert.equal(clearAdActivity.activity.reviewFlag, "clear_advertisement");
+    assert.ok(clearAdActivity.activity.riskScore >= 75);
+  } finally {
+    await clearAdStub.close();
+  }
   await request("/api/ai/settings", {
     method: "PUT",
     body: {
@@ -506,6 +559,10 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     body: { reason: "广告营销", detail: "测试社区反馈入口" },
   });
   assert.equal(communityReport.ok, true);
+  const reportAdminList = await request("/api/reports?page=1&pageSize=10&q=测试社区反馈入口", {}, admin.token);
+  assert.ok(reportAdminList.reports.some((report) => report.activityId === created.activity.id));
+  const confidenceAfterReport = await request(`/api/activities/${created.activity.id}/confidence`, {}, admin.token);
+  assert.ok(confidenceAfterReport.reports.some((report) => report.detail === "测试社区反馈入口"));
   const trustProfiles = await request("/api/trust-profiles?page=1&pageSize=10", {}, admin.token);
   assert.ok(trustProfiles.profiles.some((profile) => profile.id));
   const governanceOverview = await request("/api/governance/overview", {}, admin.token);
@@ -606,11 +663,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     method: "POST",
     body: { action: "approve", comment: "管理员通过" },
   }, admin.token);
-  const collaborator = await login("13300001111");
-  await request(`/api/activities/${reviewCandidate.activity.id}/review`, {
-    method: "POST",
-    body: { action: "approve", comment: "协作员通过" },
-  }, collaborator.token);
+  const reviewedCandidate = await request(`/api/activities/${reviewCandidate.activity.id}`, {}, member.token);
+  assert.equal(reviewedCandidate.activity.status, "published");
   const publishedMine = await request("/api/activities?owner=me&status=published_group&page=1&pageSize=10", {}, member.token);
   assert.ok(publishedMine.activities.some((activity) => activity.id === created.activity.id));
   assert.ok(publishedMine.activities.every((activity) => ["published", "full"].includes(activity.status)));
@@ -841,6 +895,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-templates.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-template-editor.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-logs.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-reports.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-safety.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-ai.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-governance.html`);

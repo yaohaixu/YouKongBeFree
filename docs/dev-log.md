@@ -2564,3 +2564,81 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 在 AI 设置页增加“AI 不可用时兜底审核阈值”和“是否仅本应调用 AI 时兜底”的可视化配置，减少管理员编辑 JSON 的成本。
 2. 在活动置信度详情页补一条“本次最终工作流：规则引擎 -> AI 状态 -> 策略结果”的时间线，进一步提升可解释性。
 3. 给 `aiUsageLogs` 增加后台列表筛选，方便观察线上 Provider 成功率、耗时和失败原因。
+
+## 2026-07-23 - 0.20.0 异步安全分析与社区举报治理
+
+### 任务目标
+
+按新的开放治理思路优化活动发布系统：匿名发起人提交活动后不应被 AI 响应时间卡在表单页，而应立即提交成功并返回列表；发布与否由后台规则引擎、AI Analysis Engine 和策略引擎继续流转。社区举报需要从活动页拆出独立后台模块，并形成“举报记录 -> 活动重分析 -> 必要时下架进管理员审核 -> 管理员通过后重新上架”的可追溯流程。同时强化 AI 与策略引擎之间的强信号衔接：疑似营销公开但进入管理员关注，明确营销 / 垃圾 / 诈骗 / 违法 / 成人 / 政治敏感内容隐藏并进入管理员兜底审核。
+
+### 具体修改内容
+
+- `lib/app.js`：新增 `analysis_pending` 活动状态、`activityAnalysisJobs` 异步任务执行器、任务 sweep 接口、管理员关注待办合并、举报分析流程和 `/api/reports` 管理接口。
+- `lib/community-safety/service.js`：拆分 `prepareActivitySubmissionGate()`，提交前只做身份、Turnstile 和限流；新增活动分析上下文构建和分析事件记录函数。
+- `lib/community-safety/policy-engine.js`：新增 AI 强信号策略，支持风险下限、隐藏管理员审核和公开管理员关注。
+- `lib/community-safety/defaults.js`：新增 AI 强信号阈值、风险下限配置和举报复核默认策略。
+- `lib/ai-analysis/schema/analysis-report.js`、`lib/ai-analysis/service.js`：扩展 AI 统一输出 Schema，新增 `advertisementLevel`、`spamLevel`、`politicalSensitivity`。
+- `lib/store.js`：新增 `activityAnalysisJobs` 集合，JSON / CloudBase 双驱动都会自动初始化。
+- `app.js`：新增 `analysis_pending` 状态展示、后台社区举报页面逻辑、活动置信度页举报历史、多人举报风险提示，以及活动详情页举报表单独立绑定。
+- `admin-reports.html`：新增社区举报后台子页面，支持搜索、状态、原因和日期筛选。
+- `script.js`：把社区举报页纳入后台产品界面识别。
+- `tests/smoke.test.js`：更新活动创建 helper 等待异步分析完成，新增 AI 明确营销强信号、举报后台列表、置信度页举报历史和新页面移动端覆盖。
+- `README.md`、`CHANGELOG.md`、`docs/security.md`、`package.json`、`package-lock.json`、`*.html`：同步 0.20.0 版本、功能说明、安全说明和静态资源版本号。
+
+### 涉及文件
+
+- `app.js`
+- `script.js`
+- `admin-reports.html`
+- `admin.html`
+- `admin-activities.html`
+- `admin-ai.html`
+- `admin-safety.html`
+- `admin-logs.html`
+- `admin-activity-confidence.html`
+- `lib/app.js`
+- `lib/store.js`
+- `lib/ai-analysis/schema/analysis-report.js`
+- `lib/ai-analysis/service.js`
+- `lib/community-safety/defaults.js`
+- `lib/community-safety/policy-engine.js`
+- `lib/community-safety/service.js`
+- `tests/smoke.test.js`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/security.md`
+- `docs/dev-log.md`
+- `package.json`
+- `package-lock.json`
+- `*.html`
+
+### 技术方案选择
+
+- 采用持久化任务表 `activityAnalysisJobs`，而不是只用内存 `setTimeout`。活动提交返回快，同时后台任务可被列表接口或管理员 sweep 唤醒，降低云函数重启导致活动长期卡住的风险。
+- 使用 `analysisVersion` 做并发保护。用户撤回或重新编辑会递增版本，旧任务即使跑完也只会标记跳过，不会把旧分析结果重新写回活动。
+- AI 仍不是裁判。AI 只输出结构化报告；策略引擎根据 AI 强信号、规则分、配置阈值和举报结果决定公开、提示、隐藏或进入管理员审核。
+- 举报不做“一次举报直接删除”。举报理由与分析结果不匹配时只记录；多人举报只增加提示；举报成立或重分析发现强风险时才隐藏并进入管理员兜底审核。
+
+### 设计决策原因
+
+- 用户体验上，AI Provider 响应时间不可控，提交按钮长时间停留“正在提交活动”会让真实发起人以为失败；异步分析能把等待从表单交互中移走。
+- 中国大陆线上环境对政治敏感、违法、诈骗和成人内容风险容忍度低，因此这些 AI 强信号被设计为隐藏进管理员兜底，而不是公开带提示。
+- 疑似营销仍保留公开，是为了符合“开放优先、自治优先”；但进入管理员关注待办，让社区可以补充判断并清掉或处理关注标记。
+- 独立举报页面和置信度页举报历史让社区治理可追溯，避免管理员只看到最终状态却不知道为什么下架。
+
+### 当前完成情况
+
+- 异步提交、后台分析流转、AI 强信号路由、社区举报后台、置信度页举报历史、多人举报提示和相关文档已完成。
+- `npm test` 已通过，包含语法检查、API 冒烟和 Playwright 浏览器冒烟。
+
+### 遗留问题
+
+- 当前异步任务由应用进程和列表接口唤醒，生产上更稳的方式是 CloudBase 定时触发器或独立任务队列定期扫 `activityAnalysisJobs`。
+- 社区举报目前复用活动 AI 分析结果判断“理由是否相符”，还没有独立的举报分析 Prompt；后续可增加 `analyzeReport()` 专用能力。
+- 管理员关注待办目前以 `reviewFlag=admin_attention` 表达，未来可以独立成 `governanceTasks` 集合，支持任务 SLA、领取、备注和关闭原因。
+
+### 下一步建议
+
+1. 给 CloudBase 增加 `yk_activityAnalysisJobs.status + createdAt`、`yk_communityReports.status + createdAt`、`yk_communityReports.activityId + createdAt` 索引，并在 `docs/cloudbase-indexes.md` 记录。
+2. 增加独立 Report Analysis Prompt，让 AI 同时分析举报文本与活动内容的匹配度，而不是只通过活动分析结果做启发式判断。
+3. 在管理员仪表盘增加举报趋势、分析队列积压数、AI 失败率和管理员关注任务数量。

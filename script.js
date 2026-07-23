@@ -10,6 +10,7 @@ const productSurfaceSelectors = [
   "[data-admin-templates-page]",
   "[data-admin-template-editor-page]",
   "[data-admin-logs-page]",
+  "[data-admin-reports-page]",
   "[data-admin-safety-page]",
   "[data-admin-ai-page]",
   "[data-admin-governance-page]",

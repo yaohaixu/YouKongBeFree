@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>社区信用度｜有空客厅</title>
-    <meta name="description" content="YKadmin 查看匿名身份的 Community Trust 列表。" />
+    <title>社区举报｜有空客厅</title>
+    <meta name="description" content="YKadmin 查看有空客厅活动社区举报和复核结论。" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -28,35 +28,55 @@
       </div>
     </header>
 
-    <main id="main" data-admin-trust-page>
+    <main id="main" data-admin-reports-page>
       <section class="page-hero">
         <div class="wrap">
-          <p class="eyebrow">Community Trust</p>
-          <h1>人的社区信用度，和活动置信度分开看。</h1>
-          <p>这里不是黑名单。信用度会随着真实活动、社区反馈和风险触发逐步变化。</p>
+          <p class="eyebrow">Community Report</p>
+          <h1>每条举报都留下理由和复核过程。</h1>
+          <p>这里不是人工审核流水线，而是社区反馈、规则引擎和 AI 分析共同形成的可追溯记录。</p>
         </div>
       </section>
 
       <section class="section alt">
         <div class="wrap">
-          <form class="filter-panel" data-trust-filters>
-            <label>搜索<input name="q" placeholder="匿名 ID / 脱敏 IP / UA" /></label>
+          <form class="filter-panel wide" data-report-filters>
+            <label>搜索<input name="q" placeholder="活动 / 原因 / 说明 / 身份" /></label>
+            <label>处理状态
+              <select name="status">
+                <option value="">全部状态</option>
+                <option value="submitted">已提交</option>
+                <option value="substantiated">举报成立</option>
+                <option value="unsubstantiated">已记录</option>
+              </select>
+            </label>
+            <label>举报原因
+              <select name="reason">
+                <option value="">全部原因</option>
+                <option value="广告营销">广告营销</option>
+                <option value="虚假活动">虚假活动</option>
+                <option value="违法违规">违法违规</option>
+                <option value="人身攻击">人身攻击</option>
+                <option value="其他">其他</option>
+              </select>
+            </label>
+            <label>开始日期<input name="from" type="date" /></label>
+            <label>结束日期<input name="to" type="date" /></label>
             <button class="button ghost" type="submit">筛选</button>
           </form>
           <div class="list-toolbar">
-            <span data-trust-count>正在读取社区信用度...</span>
+            <span data-report-count>正在读取举报...</span>
             <a class="button ghost" href="admin.html">回后台</a>
           </div>
-          <div class="event-list rows" data-trust-list></div>
-          <button class="button ghost load-more" type="button" data-load-more-trust hidden>加载更多</button>
+          <div class="event-list rows" data-report-list></div>
+          <button class="button ghost load-more" type="button" data-load-more-reports hidden>加载更多</button>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-grid">
-        <div><div class="footer-brand">有空客厅</div><div>长期真实参与的人，应该获得更少限制和更多信任。</div><div class="credit">网站制作人：海旭</div></div>
-        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-safety.html">规则引擎</a><a href="admin-ai.html">AI 分析</a><a href="admin-logs.html">操作日志</a></nav>
+        <div><div class="footer-brand">有空客厅</div><div>举报不是封禁按钮，而是社区一起看见风险的入口。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-activities.html">全部活动</a><a href="admin-safety.html">规则引擎</a><a href="admin-ai.html">AI 分析</a><a href="admin-logs.html">操作日志</a></nav>
       </div>
     </footer>
     <script src="script.js?v=0.20.0"></script>
