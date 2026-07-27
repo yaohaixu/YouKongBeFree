@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.20.1`
+当前版本：`0.20.2`
 
-状态：`0.20.1` 修复 CloudBase 线上活动可能长期停留「安全分析中」的问题；分析队列现在会恢复超时 `running` 任务，并为缺少任务记录的 `analysis_pending` 活动补建任务。活动置信度页「重新分析」改为强制调用 AI、跳过缓存、使用当前启用 / 配置的 Prompt，并重新应用完整策略流转。
+状态：`0.20.2` 优化「我的」工作台和我发起的活动列表查询性能：后端不再为了统计入口卡片拉取最多 1000 条活动，而是使用 CloudBase `count()` 按状态聚合，并对登录身份与匿名身份交集做去重扣减；同时将过期 Session 清理改为索引条件删除，并已在 CloudBase 补齐活动、日志、模板、治理、AI、举报、限流等核心集合索引。
 
 ## 访问地址
 
@@ -345,7 +345,7 @@ npm run deploy:cloudbase
 - 登录入口：右上角「有空」和左上角圆形「有空」均可进入登录/我的入口。
 - 管理员登录后自动进入后台，协作员登录后进入「我的」。
 - YKadmin 工作台入口卡片。
-- YKadmin / 开放工作台性能优化：入口卡片使用轻量 dashboard API 返回计数和待办预览，避免工作台首屏拉取完整列表。
+- YKadmin / 开放工作台性能优化：入口卡片使用轻量 dashboard API 返回计数和待办预览；`0.20.2` 起「我的」工作台改为数据库计数聚合，避免首屏拉取完整活动列表。
 - YKadmin 全部活动独立管理页，支持关键词、模块、状态、时间和排序筛选。
 - YKadmin 协作员管理独立页。
 - YKadmin 活动模块管理独立页。
@@ -407,6 +407,8 @@ npm run deploy:cloudbase
 
 ## 已验证
 
+- `0.20.2` 本地验证通过：`npm test` 与 `npm run deploy:dry-run` 通过；新增覆盖登录身份与匿名身份同时命中同一活动时，工作台和我发起的活动列表不会重复计数。
+- `0.20.2` CloudBase 索引已通过 CLI 创建并抽样验证，覆盖 `yk_activities`、`yk_logs`、`yk_trustProfiles`、`yk_aiPrompts` 等关键集合；详见 `docs/cloudbase-indexes.md`。
 - `0.20.1` 本地验证通过：`npm test` 通过，新增覆盖置信度页强制重新分析会绕过 AI 缓存、记录当前 Prompt 版本，以及 `analysis_pending` 活动在分析任务缺失时可被 sweep 恢复。
 - `0.20.0` 本地验证通过：`npm test` 通过，包含语法检查、API 冒烟和 Playwright 浏览器冒烟；新增覆盖异步活动安全分析、AI 明确营销强信号转隐藏管理员审核、社区举报后台列表、活动置信度页举报历史和新后台举报页面移动端无横向溢出。
 - `0.19.1` 本地验证通过：`npm run test:syntax` 和 `npm run test:smoke` 均通过；新增覆盖规则置信度阈值 100 触发真实 AI 请求、AI 关闭时中高风险活动进入管理员审核、AI 不可用兜底原因写入活动置信度详情、重点风险词命中规则。
@@ -492,7 +494,7 @@ npm run deploy:cloudbase
 - 生产级身份验证：短信验证码、密码或微信登录，替代当前手机号白名单免密登录。
 - 生产启用 Turnstile：在 Cloudflare 获取 Site Key / Secret Key 后写入 CloudBase 环境变量，并在规则引擎页开启策略。
 - 生产启用 AI Analysis Engine：先配置 Provider、Base URL、Model、API Key、Prompt 和调用策略，再用后台「测试连接」灰度验证。
-- CloudBase 控制台建议补齐 `docs/cloudbase-indexes.md` 中 `0.20.x` 新增 / 更新的集合索引，尤其是 `yk_activityAnalysisJobs.status + createdAt`、`yk_activityAnalysisJobs.status + startedAt`、`yk_communityReports.status + createdAt`、`yk_communityReports.activityId + createdAt`，以及 `0.19.0` 的 Community Governance 相关索引。
+- CloudBase 索引已在 `0.20.2` 通过 CLI 批量补齐；后续新增筛选字段时，需要继续同步 `docs/cloudbase-indexes.md` 并在云端补建索引。
 - 管理员仪表盘统计：增加风险分布、举报趋势、AI 调用量、信用度变化和活动发布转化概览。
 - CloudBase 恢复演练和权限策略文档。
 - 自定义域名和同源 API 路由，减少跨域 Cookie 运维复杂度。

@@ -2703,3 +2703,61 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 部署后用管理员身份打开线上这条卡住的活动置信度页，或调用分析队列 sweep，确认它从「安全分析中」流转到发布或管理员审核。
 2. 在后台增加“分析队列积压数 / running 超时数 / 最近失败原因”卡片，管理员不需要看数据库也能发现队列异常。
 3. 接入 CloudBase 定时触发器，每 1-5 分钟自动调用一次队列 sweep。
+
+## 2026-07-27 - 0.20.2 工作台性能与 CloudBase 索引补齐
+
+### 任务目标
+
+优化线上「我的」页面入口卡片加载慢的问题，并在 CloudBase 中尽可能补齐当前查询路径会使用到的索引，降低活动、日志、Community Governance 和 AI 分析数据增长后的列表查询风险。
+
+### 具体修改内容
+
+- `lib/app.js`：`/api/dashboard/me` 不再通过 `ownedActivitiesForRequest()` 拉取最多 1000 条活动后在内存统计，改为按活动状态调用数据库 `count()` 聚合。
+- `lib/app.js`：新增登录身份与匿名身份双归属计数的交集扣减逻辑，避免同一活动同时命中 `createdBy` 和 `anonymousIdentityId` 时重复计数。
+- `lib/app.js`：`owner=me` 活动列表在单一归属身份时直接使用数据库分页；双归属身份只按当前页拉取候选后合并、排序、去重。
+- `lib/app.js`：管理员待办列表不再固定拉取最多 1000 条候选，改为根据当前页大小拉取候选后合并。
+- `lib/app.js`：登录时清理过期 Session 改为 `expiresAt < now` 的索引条件删除；退出登录优先按 `tokenHash` 精确删除。
+- `tests/smoke.test.js`：新增 `owner=me` 分页总数断言，覆盖同一活动被登录身份和匿名身份同时命中时不能重复计数。
+- `README.md`、`CHANGELOG.md`、`docs/cloudbase-indexes.md`、`package.json`、`package-lock.json`、`*.html`：同步 `0.20.2` 版本、性能说明、索引说明和静态资源缓存版本号。
+- CloudBase 生产环境：通过 CLI 创建并验证活动、用户、Session、模块、模板、日志、报名、规则引擎、系统配置、Community Governance、AI Analysis、社区举报和限流相关集合索引。
+
+### 涉及文件
+
+- `lib/app.js`
+- `tests/smoke.test.js`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/cloudbase-indexes.md`
+- `docs/dev-log.md`
+- `package.json`
+- `package-lock.json`
+- `*.html`
+
+### 技术方案选择
+
+- 工作台计数使用数据库 `count()`，而不是把活动列表拉回 Node 内存统计，是因为入口卡片只需要状态数量，不需要完整活动正文、封面和报名信息。
+- 双归属身份采用“分别计数后扣减交集”的方式，兼容未登录匿名发起、登录协作员发起，以及同一浏览器登录后继续发起三种场景。
+- 索引优先覆盖筛选、排序、详情读取和时间线查询；关键词正则搜索仍适合 MVP 阶段，后续如数据量继续增长，应改成冗余搜索字段或专门搜索服务。
+
+### 设计决策原因
+
+- 「我的」页面慢的根因不只是缺索引，还包括 API 结构中一次性拉取大列表再统计。单纯加索引不能解决响应体和内存统计成本。
+- CloudBase 默认 `_id` 索引不能完全覆盖本项目的业务 `id` 字段查询；大量 `findById()` 实际使用业务 `id`，因此本次额外补充了核心集合的 `id` 索引。
+- 管理员待办和 owner 列表仍需要处理跨归属 / 跨状态合并，当前实现先压缩候选规模，保留现有业务语义，避免一次性引入更复杂的数据冗余设计。
+
+### 当前完成情况
+
+- 后端查询优化、测试断言、版本和文档更新已完成。
+- CloudBase 索引创建完成并抽样验证：`yk_activities`、`yk_logs`、`yk_trustProfiles`、`yk_aiPrompts` 等关键集合均可列出新增索引。
+
+### 遗留问题
+
+- `owner=me` 双归属分页仍需要合并两个查询结果；当某个身份活动超过 1000 条且访问非常靠后的页时，仍建议引入独立 owner 映射表或冗余 `ownerKeys` 字段来实现真正单查询分页。
+- CloudBase 索引数量增加会略微增加写入成本，后续如发现某些后台能力长期不用，可根据命中次数清理低价值索引。
+- 关键词搜索仍是正则匹配，不适合无限增长的数据量。
+
+### 下一步建议
+
+1. 部署后在线上对 `/api/session`、`/api/dashboard/me`、`/api/activities?owner=me&page=1&pageSize=12` 做冷启动和热启动耗时对比。
+2. 为 `/api/dashboard/me` 增加后端分段 timing 日志，拆分 session、owner counts、pending preview 各自耗时。
+3. 如果「我的活动」未来超过千级数据，新增 `ownerKeys` 冗余数组字段并建立 `ownerKeys + status + createdAt` 索引，把双归属合并变成单查询。

@@ -2,6 +2,24 @@
 
 所有重要变更都会记录在此文件中。格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循语义化版本思路。
 
+## [0.20.2] - 2026-07-27
+
+### Added
+
+- CloudBase 线上补齐活动、用户、Session、模块、模板、日志、报名、规则引擎、Community Governance、AI Analysis、举报和限流相关集合索引。
+- 冒烟测试新增「登录身份 + 匿名身份」同时命中同一活动时，`owner=me` 列表和 dashboard 不重复计数的断言。
+
+### Changed
+
+- 「我的」工作台活动统计改为数据库 `count()` 按状态聚合，不再拉取最多 1000 条活动后在 Node 进程内统计。
+- 「我发起的活动」列表在单一归属身份时直接使用数据库分页；双归属身份时只按当前页拉取候选并合并去重。
+- 管理员待办列表从固定拉取最多 1000 条改为按当前页大小拉取候选后合并。
+- 登录时清理过期 Session 改为按 `expiresAt < now` 索引条件删除；退出登录改为优先按 `tokenHash` 精确删除。
+
+### Fixed
+
+- 修复登录用户同一条活动同时命中 `createdBy` 和 `anonymousIdentityId` 时，工作台总数可能重复计算的风险。
+
 ## [0.20.1] - 2026-07-27
 
 ### Added

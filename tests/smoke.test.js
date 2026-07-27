@@ -350,6 +350,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const owned = await request("/api/activities?owner=me&page=1&pageSize=1", {}, member.token);
   assert.equal(owned.activities.length, 1);
   assert.equal(owned.pageInfo.pageSize, 1);
+  assert.equal(owned.pageInfo.total, 1);
   const reviewingMine = await request("/api/activities?owner=me&status=reviewing&page=1&pageSize=10", {}, member.token);
   assert.ok(reviewingMine.activities.every((activity) => ["admin_review", "collaborator_review"].includes(activity.status)));
 
