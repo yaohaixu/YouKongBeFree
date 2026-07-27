@@ -2821,7 +2821,7 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 ### 当前完成情况
 
 - 功能开发和文档同步已完成。
-- 本地 `npm run test:syntax` 和 `npm run test:smoke` 已通过；最终提交前继续执行完整 `npm test` 和 `npm run deploy:dry-run`。
+- 本地 `npm test` 和 `npm run deploy:dry-run` 已通过。
 
 ### 遗留问题
 
@@ -2834,3 +2834,91 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 在 CloudBase 控制台补齐 `0.21.0` 新增索引，并观察 `yk_activityInterests` 写入量。
 2. 为最低报名活动增加前端倒计时或“距离报名截止”提示，让参与者更容易理解成团状态。
 3. 后续如引入微信登录，可把匿名报名记录与实名联系方式做可选绑定，而不是重新把手机号作为公开报名必填项。
+
+## 2026-07-27 - 0.22.0 活动来源、客厅朋友与匿名反馈
+
+### 任务目标
+
+把活动历史从单一「有空客厅」来源扩展为「客厅」与「客厅的朋友们」两类；让管理员可以维护客厅朋友空间；为每场活动增加匿名反馈闭环，支持二维码收集、AI 展示适宜性分析、发起人查看、管理员复核和 CSV 导出；同时在「我的」页面补充当前设备报名记录和活动反馈记录，并明确取消报名后的活动不再展示在我的报名中。
+
+### 具体修改内容
+
+- `lib/store.js`：新增 `livingRoomFriends` 和 `activityFeedbacks` 集合初始化。
+- `lib/app.js`：新增客厅朋友 CRUD API、活动来源字段解析 / 校验、历史活动 `sourceType` 筛选、活动反馈提交 / 查询 / 管理 / 复核 / CSV 导出 API。
+- `lib/app.js`：活动 payload 增加 `sourceType`、`sourceName`、`friend`、`showFeedbacks` 和 `publicFeedbacks`；旧活动默认归为「客厅」。
+- `lib/app.js`：新增 `/api/my/registrations` 和 `/api/my/feedbacks`，按当前浏览器匿名身份展示仍有效报名记录和已提交匿名反馈；取消报名仍采用删除报名记录，因此不会进入我的报名。
+- `lib/community-safety/defaults.js`：新增默认 `feedback` Prompt，强调 AI 只做反馈展示适宜性与排序权重分析，不给活动打分。
+- `lib/ai-analysis/schema/feedback-report.js`：新增反馈分析标准 Schema，规范 `shouldDisplay`、`feedbackWeight`、风险标记、展示理由和信号数组。
+- `lib/ai-analysis/prompts/service.js`、`lib/ai-analysis/service.js`：新增 `buildFeedbackMessages()`、按类型读取 Prompt 版本、`analyzeFeedback()` 统一服务。
+- `activity-editor.html`：发起活动页新增发起形式、客厅朋友选择和是否展示活动反馈字段。
+- `activities.html`：历史活动页新增「全部历史 / 客厅 / 客厅的朋友们」来源筛选。
+- `me.html`：新增我的报名和我的活动反馈两个当前设备记录区。
+- `admin.html`：后台入口增加客厅朋友和活动反馈管理。
+- `admin-friends.html`：新增客厅朋友管理页面。
+- `admin-feedbacks.html`：新增全站活动反馈管理页面。
+- `activity-feedback.html`：新增发起人活动反馈页，支持反馈二维码下载和反馈列表。
+- `feedback.html`：新增匿名反馈问卷页。
+- `app.js`：新增客厅朋友管理、活动来源选择、历史来源筛选、匿名反馈提交、反馈二维码、我的报名、我的反馈、反馈复核和 CSV 下载交互。
+- `styles.css`：新增紧凑列表、标签行、反馈卡片、二维码面板和反馈问卷样式。
+- `tests/smoke.test.js`：新增客厅朋友维护、来源活动创建、历史来源筛选、取消报名不进入我的报名、匿名反馈 AI 自动展示、重复反馈幂等、反馈管理员复核、反馈 CSV 导出和新增页面移动端无横向溢出覆盖。
+- `README.md`、`CHANGELOG.md`、`docs/security.md`、`docs/cloudbase-indexes.md`、`package.json`、`package-lock.json`、`*.html`：同步版本、文档、索引建议和静态资源缓存参数。
+
+### 涉及文件
+
+- `lib/app.js`
+- `lib/store.js`
+- `lib/community-safety/defaults.js`
+- `lib/ai-analysis/prompts/service.js`
+- `lib/ai-analysis/service.js`
+- `lib/ai-analysis/schema/feedback-report.js`
+- `app.js`
+- `activity-editor.html`
+- `activities.html`
+- `me.html`
+- `admin.html`
+- `admin-friends.html`
+- `admin-feedbacks.html`
+- `activity-feedback.html`
+- `feedback.html`
+- `styles.css`
+- `tests/smoke.test.js`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/security.md`
+- `docs/cloudbase-indexes.md`
+- `docs/dev-log.md`
+- `package.json`
+- `package-lock.json`
+- `*.html`
+
+### 技术方案选择
+
+- 客厅朋友作为独立集合维护，而不是写死到活动模块里，是因为它描述的是发起来源 / 合作空间，不等同于活动类型。
+- 活动来源采用 `sourceType + friendId`，旧活动没有 `sourceType` 时默认视为 `living_room`，避免历史数据迁移阻塞上线。
+- 反馈采用匿名身份 + 活动 ID 生成幂等 ID，保持“匿名但可防重复”的开放体验；不填写名称、不评分，避免把反馈系统做成评价平台。
+- 反馈 AI 使用独立 Prompt 和 Schema，是因为它分析的是“是否适合公开展示”和“对复盘是否有信息量”，不能复用活动置信度评分。
+- 反馈不轻易删除，默认进入 `approved / admin_review / rejected` 三态；活动详情只展示 `approved`，管理员保留复核和导出能力。
+
+### 设计决策原因
+
+- 「取消报名了的活动不展示」应作用在当前设备我的报名列表；报名历史如果未来需要保留，应该作为单独历史记录或审计记录，而不是混在当前有效报名中。
+- 历史活动按来源分组可以帮助访客理解哪些活动发生在有空客厅，哪些来自朋友空间，同时不破坏近期活动的简单入口。
+- 反馈展示权重只用于同一活动内排序，不跨活动比较，避免形成分数竞赛或排行榜倾向。
+- AI 在反馈链路中仍是观察员，不是最终裁判；疑似垃圾或风险反馈进入管理员复核，由管理员决定是否公开展示。
+
+### 当前完成情况
+
+- 功能开发、文档同步和版本号更新已完成。
+- 本地 `npm test` 和 `npm run deploy:dry-run` 已通过。
+
+### 遗留问题
+
+- CloudBase 生产环境需要补齐 `yk_livingRoomFriends`、`yk_activityFeedbacks` 和活动来源相关索引。
+- 当前活动反馈提交会先等待 AI 分析再返回；如果未来反馈量变大，可复用活动异步分析队列，把反馈提交也改成先入库再异步分析。
+- 当前 `app.js` 和 `lib/app.js` 继续变大，后续应优先拆分 friends、feedbacks、activities、ai 和 dashboard 模块。
+
+### 下一步建议
+
+1. 部署后在 CloudBase 控制台创建 `yk_activityFeedbacks.activityId + identityId`、`yk_activityFeedbacks.status + createdAt`、`yk_livingRoomFriends.enabled + updatedAt` 等索引。
+2. 线上验证一个已开始活动的匿名反馈二维码，确认微信内置浏览器也能提交且同设备重复提交返回已有反馈。
+3. 后续可增加反馈异步分析队列和反馈导出字段配置，进一步降低 AI 调用等待和 CSV 字段变更成本。

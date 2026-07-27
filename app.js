@@ -1,6 +1,7 @@
 const CLIENT_ID_KEY = "yk_client_id";
 const ACTIVITY_TOKEN_KEY = "yk_activity_tokens";
 const ACTIVITY_INTEREST_KEY = "yk_activity_interests";
+const REGISTRATION_TOKEN_KEY = "yk_registration_tokens";
 
 function randomToken() {
   const webCrypto = window.crypto || window.msCrypto;
@@ -58,6 +59,25 @@ function readActivityInterests() {
   } catch {
     return {};
   }
+}
+
+function readRegistrationTokens() {
+  try {
+    return JSON.parse(localStorage.getItem(REGISTRATION_TOKEN_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveRegistrationToken(activityId, registrationId, token) {
+  if (!activityId || !registrationId || !token) return;
+  const tokens = readRegistrationTokens();
+  tokens[`${activityId}:${registrationId}`] = token;
+  localStorage.setItem(REGISTRATION_TOKEN_KEY, JSON.stringify(tokens));
+}
+
+function registrationTokenFor(activityId, registrationId) {
+  return readRegistrationTokens()[`${activityId}:${registrationId}`] || "";
 }
 
 function rememberActivityInterest(activityId) {
@@ -185,6 +205,17 @@ let mePageState = {
   badges: [],
   badgePolicies: [],
   aiPrompts: [],
+  friends: [],
+  feedbacks: [],
+  activityFeedbacks: [],
+  myRegistrations: [],
+  myFeedbacks: [],
+  friendPage: 1,
+  feedbackPage: 1,
+  activityFeedbackPage: 1,
+  myRegistrationPage: 1,
+  myFeedbackPage: 1,
+  editingFriend: null,
 };
 
 const actionLabels = {
@@ -206,6 +237,9 @@ const logActionOptions = [
   ["module.create", "新增模块"],
   ["module.update", "保存模块"],
   ["module.delete", "删除模块"],
+  ["friend.create", "新增客厅朋友"],
+  ["friend.update", "保存客厅朋友"],
+  ["friend.delete", "删除客厅朋友"],
   ["template.create", "新增模板"],
   ["template.update", "保存模板"],
   ["template.delete", "删除模板"],
@@ -227,6 +261,9 @@ const logActionOptions = [
   ["registration.create", "新增报名"],
   ["registration.delete", "删除报名"],
   ["registration.cancel", "取消报名"],
+  ["activity.feedback.create", "提交活动反馈"],
+  ["activity.feedback.review", "审核活动反馈"],
+  ["activity.feedback.export", "导出活动反馈"],
   ["activity.report", "社区举报"],
   ["activity.report.review", "举报分析"],
   ["activity.report.substantiated", "举报成立"],
@@ -256,6 +293,14 @@ const statusOptions = [
   ["not_formed_cancelled", "未成团取消"],
   ["ended", "活动结束"],
 ];
+
+function feedbackStatusLabel(status = "") {
+  return {
+    approved: "已展示",
+    admin_review: "待管理员审核",
+    rejected: "不展示",
+  }[status] || status || "待管理员审核";
+}
 
 const statusTone = {
   draft: "草稿",
@@ -483,6 +528,33 @@ function renderPublicRegistrationNames(activity = {}) {
   `;
 }
 
+function renderPublicFeedbacks(activity = {}) {
+  const feedbacks = Array.isArray(activity.publicFeedbacks) ? activity.publicFeedbacks : [];
+  if (activity.showFeedbacks === false || !feedbacks.length) return "";
+  return `
+    <section class="section tight public-feedback-section">
+      <div class="wrap">
+        <div class="section-head compact-head">
+          <div>
+            <p class="section-kicker">活动反馈</p>
+            <h2>活动之后留下的话。</h2>
+          </div>
+          <a class="button ghost" href="feedback.html?id=${encodeURIComponent(activity.id)}">写匿名反馈</a>
+        </div>
+        <div class="feedback-highlight-grid">
+          ${feedbacks.map((feedback) => `
+            <article class="feedback-card">
+              ${feedback.favorite ? `<p><strong>最喜欢：</strong>${escapeHtml(feedback.favorite)}</p>` : ""}
+              ${feedback.improvement ? `<p><strong>可以改进：</strong>${escapeHtml(feedback.improvement)}</p>` : ""}
+              ${feedback.other ? `<p><strong>还想说：</strong>${escapeHtml(feedback.other)}</p>` : ""}
+            </article>
+          `).join("")}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function registrationClosedText(activity = {}) {
   if (activity.status === "full") return "这个活动名额已经满了。";
   if (activity.status === "not_formed_cancelled") return "这个活动没有达到最低报名人数，已自动取消。";
@@ -580,8 +652,12 @@ function renderMainNav(navLinks, baseLinks, pageName, user) {
     "activity-editor.html",
     "review-tasks.html",
     "registrations.html",
+    "activity-feedback.html",
+    "feedback.html",
     "admin.html",
     "admin-activities.html",
+    "admin-friends.html",
+    "admin-feedbacks.html",
     "admin-members.html",
     "admin-modules.html",
     "admin-templates.html",
@@ -637,6 +713,33 @@ async function fillCollaboratorSelect(select) {
   return collaborators;
 }
 
+async function fillFriendSelect(select) {
+  if (!select) return [];
+  const { friends } = await api.get("/api/living-room-friends?enabled=true&page=1&pageSize=100");
+  select.innerHTML = friends.length
+    ? `<option value="">请选择客厅朋友</option>${friends.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("")}`
+    : `<option value="">暂无已启用的客厅朋友</option>`;
+  return friends;
+}
+
+function bindSourceTypeToggle(form) {
+  const select = qs("[data-source-type-toggle]", form);
+  const field = qs("[data-friend-field]", form);
+  if (!select || !field) return;
+  const friendSelect = field.querySelector("select");
+  const sync = () => {
+    const shouldShow = select.value === "friend";
+    field.hidden = !shouldShow;
+    if (friendSelect) friendSelect.required = shouldShow;
+    if (!shouldShow && friendSelect) friendSelect.value = "";
+  };
+  if (select.dataset.bound !== "true") {
+    select.addEventListener("change", sync);
+    select.dataset.bound = "true";
+  }
+  sync();
+}
+
 async function fillModuleFilterSelect(select) {
   if (!select) return [];
   const { modules } = await api.get("/api/modules");
@@ -689,7 +792,7 @@ function renderActivityCard(activity) {
     <article class="event-card">
       <a class="event-cover" href="activity.html?id=${activity.id}">${cover}</a>
       <div class="event-body">
-        <span class="tag">${escapeHtml(activity.moduleName)}</span>
+        <div class="tag-row"><span class="tag">${escapeHtml(activity.moduleName)}</span><span class="tag soft">${escapeHtml(activity.sourceName || activity.sourceLabel || "客厅")}</span></div>
         <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
         <p>${escapeHtml(activity.location)} · ${formatActivityTime(activity)}</p>
         <div class="event-meta">
@@ -797,6 +900,10 @@ async function initMeDashboardPage() {
 
   renderWorkspaceCards(root, user, dashboard.summary, dashboard.pending);
   renderDashboardSummary(qs("[data-workspace-summary]", root), dashboard.summary);
+  await Promise.all([
+    renderMyRegistrations(root),
+    renderMyFeedbacks(root),
+  ]);
 
   const pendingPreview = qs("[data-my-pending]", root);
   const pendingSection = qs("[data-my-pending-section]", root);
@@ -805,6 +912,61 @@ async function initMeDashboardPage() {
   } else {
     renderPendingTasks(pendingPreview, (dashboard.pending?.activities || []).slice(0, 3), { compact: true });
   }
+}
+
+async function renderMyRegistrations(root = document) {
+  const list = qs("[data-my-registrations]", root);
+  if (!list) return;
+  const { registrations } = await api.get("/api/my/registrations?page=1&pageSize=6");
+  if (!registrations.length) {
+    list.innerHTML = `<div class="empty-state slim"><strong>还没有报名记录</strong><p>报名参加过的活动会留在这里，取消报名后不再显示。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = registrations.map((registration) => {
+    const activity = registration.activity || {};
+    const token = registrationTokenFor(activity.id, registration.id);
+    const detailUrl = token
+      ? `success.html?activity=${encodeURIComponent(activity.id)}&registration=${encodeURIComponent(registration.id)}&token=${encodeURIComponent(token)}`
+      : `activity.html?id=${encodeURIComponent(activity.id)}`;
+    return `
+      <article class="event-row compact-row">
+        <div>
+          <span class="tag">${escapeHtml(activity.statusLabel || "活动")}</span>
+          <h3><a href="${detailUrl}">${escapeHtml(activity.title || "未命名活动")}</a></h3>
+          <p>${escapeHtml(activity.location || "地点待定")} · ${formatActivityTime(activity)} · 报名昵称：${escapeHtml(registration.nickname)}</p>
+        </div>
+        <div class="row-actions">
+          <a class="button outline" href="${detailUrl}">查看详情</a>
+        </div>
+      </article>
+    `;
+  }).join("");
+  revealDynamicContent(list);
+}
+
+async function renderMyFeedbacks(root = document) {
+  const list = qs("[data-my-feedbacks]", root);
+  if (!list) return;
+  const { feedbacks } = await api.get("/api/my/feedbacks?page=1&pageSize=6");
+  if (!feedbacks.length) {
+    list.innerHTML = `<div class="empty-state slim"><strong>还没有写过反馈</strong><p>活动开始后可以匿名留下真实感受。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = feedbacks.map((feedback) => `
+    <article class="event-row compact-row">
+      <div>
+        <span class="tag">${escapeHtml(feedback.statusLabel || feedbackStatusLabel(feedback.status))}</span>
+        <h3><a href="activity.html?id=${encodeURIComponent(feedback.activityId)}">${escapeHtml(feedback.activityTitle || "未命名活动")}</a></h3>
+        <p>${escapeHtml(feedback.favorite || feedback.improvement || feedback.other || "已提交匿名反馈")}</p>
+      </div>
+      <div class="row-actions">
+        <a class="button outline" href="activity.html?id=${encodeURIComponent(feedback.activityId)}">查看活动</a>
+      </div>
+    </article>
+  `).join("");
+  revealDynamicContent(list);
 }
 
 function countByStatus(activities) {
@@ -899,9 +1061,11 @@ async function initActivityEditorPage() {
   resetActivityForm(form);
   bindInitiatorContactToggle(form);
   bindMinRegistrationToggle(form);
+  bindSourceTypeToggle(form);
   mePageState.richEditor = window.youkongRichEditor ? window.youkongRichEditor.mount(form) : null;
   mePageState.modules = await fillModuleSelect(form.moduleId);
   mePageState.collaborators = await fillCollaboratorSelect(form.collaboratorId);
+  mePageState.friends = await fillFriendSelect(form.friendId);
   mePageState.templates = await fillTemplateSelect(qs("[data-template-select]", form));
   bindTemplateSelect(form);
   await initTurnstileForForm(form);
@@ -1099,6 +1263,10 @@ function resetActivityForm(form) {
   if (form.initiatorContact) form.initiatorContact.value = mePageState.user?.phone || "";
   bindInitiatorContactToggle(form);
   if (form.showRegistrationNames) form.showRegistrationNames.value = "no";
+  if (form.showFeedbacks) form.showFeedbacks.value = "yes";
+  if (form.sourceType) form.sourceType.value = "living_room";
+  if (form.friendId) form.friendId.value = "";
+  bindSourceTypeToggle(form);
   if (form.minRegistrationEnabled) form.minRegistrationEnabled.value = "no";
   if (form.minRegistrationCount) form.minRegistrationCount.value = "";
   if (form.registrationDeadline) form.registrationDeadline.value = "";
@@ -1127,6 +1295,10 @@ function fillActivityForm(form, activity) {
   form.location.value = activity.location;
   form.capacity.value = activity.capacity || "";
   if (form.showRegistrationNames) form.showRegistrationNames.value = activity.showRegistrationNames ? "yes" : "no";
+  if (form.showFeedbacks) form.showFeedbacks.value = activity.showFeedbacks === false ? "no" : "yes";
+  if (form.sourceType) form.sourceType.value = activity.sourceType === "friend" ? "friend" : "living_room";
+  if (form.friendId) form.friendId.value = activity.friendId || "";
+  bindSourceTypeToggle(form);
   if (form.minRegistrationEnabled) form.minRegistrationEnabled.value = activity.minRegistrationEnabled ? "yes" : "no";
   if (form.minRegistrationCount) form.minRegistrationCount.value = activity.minRegistrationCount || "";
   if (form.registrationDeadline) form.registrationDeadline.value = toDatetimeLocal(activity.registrationDeadline || activity.startsAt);
@@ -1158,6 +1330,11 @@ function resetPagedState(key) {
     templates: "templatePage",
     logs: "logPage",
     reports: "reportPage",
+    friends: "friendPage",
+    feedbacks: "feedbackPage",
+    activityFeedbacks: "activityFeedbackPage",
+    myRegistrations: "myRegistrationPage",
+    myFeedbacks: "myFeedbackPage",
     publicActivities: "publicActivityPage",
     trustProfiles: "userPage",
     aiPrompts: "templatePage",
@@ -1187,6 +1364,12 @@ async function initPublicActivitiesPage() {
   qsa("[data-public-activity-tab]", root).forEach((link) => {
     link.classList.toggle("active", link.dataset.publicActivityTab === view);
   });
+  qsa("[data-public-source-tab]", root).forEach((link) => {
+    const sourceType = params.get("sourceType") || "";
+    link.classList.toggle("active", (link.dataset.publicSourceTab || "") === sourceType);
+  });
+  const sourceTabs = qs(".history-source-tabs", root);
+  if (sourceTabs) sourceTabs.hidden = view !== "history";
   qs("[data-load-more-public-activities]", root)?.addEventListener("click", () => {
     mePageState.publicActivityPage += 1;
     renderPublicActivities();
@@ -1205,6 +1388,9 @@ async function renderPublicActivities() {
     pageSize: String(mePageState.pageSize),
     sort: view === "history" ? "start-desc" : "start-asc",
   });
+  const urlParams = new URLSearchParams(location.search);
+  const sourceType = urlParams.get("sourceType") || "";
+  if (view === "history" && sourceType) params.set("sourceType", sourceType);
   const { activities, pageInfo } = await api.get(`/api/activities?${params.toString()}`);
   const loaded = mergePageItems("publicActivities", mePageState.publicActivityPage, activities);
   updatePagedCount(qs("[data-public-activity-count]"), loaded.length, pageInfo);
@@ -1280,15 +1466,16 @@ async function renderMineActivities() {
       (activity) => `
         <article class="event-row">
           <div>
-            <span class="tag">${escapeHtml(activity.moduleName)}</span>
+            <div class="tag-row"><span class="tag">${escapeHtml(activity.moduleName)}</span><span class="tag soft">${escapeHtml(activity.sourceName || activity.sourceLabel || "客厅")}</span></div>
             <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
-            <p>${formatActivityTime(activity)} · ${escapeHtml(activity.location)} · ${escapeHtml(activity.statusLabel)} · ${escapeHtml(activity.reviewStepLabel)} · ${activity.registrationCount} 人报名</p>
+            <p>${formatActivityTime(activity)} · ${escapeHtml(activity.location)} · ${escapeHtml(activity.statusLabel)} · ${escapeHtml(activity.reviewStepLabel)} · ${activity.registrationCount} 人报名 · ${Number(activity.feedbackCount || 0)} 条反馈</p>
             <p>协作员：${escapeHtml(activity.collaboratorName || "未选择")}</p>
           </div>
           <div class="row-actions">
             ${canEditMine(activity) ? `<a class="button outline" href="activity-editor.html?id=${encodeURIComponent(activity.id)}">编辑</a>` : ""}
             ${canWithdraw(activity) ? `<button class="button outline danger-soft" type="button" data-withdraw-activity-id="${activity.id}">撤回</button>` : ""}
             ${canViewRegistrations(activity) ? `<a class="button outline" href="registrations.html?id=${encodeURIComponent(activity.id)}">查看报名表</a>` : ""}
+            <a class="button outline" href="activity-feedback.html?id=${encodeURIComponent(activity.id)}">活动反馈</a>
           </div>
         </article>
       `
@@ -1479,7 +1666,7 @@ async function initActivityPage() {
   root.innerHTML = `
     <section class="activity-hero">
       <div>
-        <span class="tag">${escapeHtml(activity.moduleName)}</span>
+        <div class="tag-row"><span class="tag">${escapeHtml(activity.moduleName)}</span><span class="tag soft">${escapeHtml(activity.sourceName || activity.sourceLabel || "客厅")}</span></div>
         <h1>${escapeHtml(activity.title)}</h1>
         <p>${escapeHtml(activity.location)} · ${formatActivityTime(activity)}</p>
         <div class="event-meta">
@@ -1529,6 +1716,7 @@ async function initActivityPage() {
       </div>
     </section>
     ${renderPublicRegistrationNames(activity)}
+    ${renderPublicFeedbacks(activity)}
   `;
   revealDynamicContent(root);
   window.youkongActivityShare?.mount(root, activity, {
@@ -1571,6 +1759,7 @@ async function initActivityPage() {
         nickname: form.nickname.value,
       });
       const token = accessToken || registration.accessToken || "";
+      saveRegistrationToken(id, registration.id, token);
       const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : "";
       location.href = `success.html?activity=${encodeURIComponent(id)}&registration=${encodeURIComponent(registration.id)}${tokenQuery}`;
     } catch (error) {
@@ -1670,7 +1859,7 @@ async function initAdminPage() {
   if (!user) return;
 
   const dashboard = await api.get("/api/dashboard/admin");
-  renderAdminDashboardCards(adminRoot, dashboard.activities, dashboard.users, dashboard.modules, dashboard.templates, dashboard.pending);
+  renderAdminDashboardCards(adminRoot, dashboard.activities, dashboard.users, dashboard.modules, dashboard.templates, dashboard.pending, dashboard.friends, dashboard.feedbacks);
   renderPendingTasks(qs("[data-admin-pending]", adminRoot), (dashboard.pending?.activities || []).slice(0, 4), { compact: true });
 }
 
@@ -1686,7 +1875,7 @@ async function requireAdminUser(root) {
   return user;
 }
 
-function renderAdminDashboardCards(root, activitiesSummary, usersSummary, modulesSummary, templatesSummary, pendingSummary) {
+function renderAdminDashboardCards(root, activitiesSummary, usersSummary, modulesSummary, templatesSummary, pendingSummary, friendsSummary, feedbackSummary) {
   const container = qs("[data-admin-dashboard-cards]", root);
   if (!container) return;
   const counts = activitiesSummary?.byStatus || {};
@@ -1695,6 +1884,8 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
   const userTotal = Number(usersSummary?.total || 0);
   const moduleTotal = Number(modulesSummary?.total || 0);
   const templateTotal = Number(templatesSummary?.total || 0);
+  const friendTotal = Number(friendsSummary?.total || 0);
+  const feedbackPending = Number(feedbackSummary?.pendingReview || 0);
   const pendingTotal = Number(pendingSummary?.total || 0);
   const cards = [
     {
@@ -1728,6 +1919,22 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
       body: "给放映、食堂、夜校等活动准备可复用正文。",
       meta: "描述模板",
       count: templateTotal,
+    },
+    {
+      href: "admin-friends.html",
+      label: "客厅的朋友们",
+      title: "维护朋友主体",
+      body: "名称、简介、Logo、地址、联系人和启用状态。",
+      meta: "活动来源",
+      count: friendTotal,
+    },
+    {
+      href: "admin-feedbacks.html",
+      label: "活动反馈",
+      title: "查看和审核匿名反馈",
+      body: "AI 会先判断是否适合展示，管理员可兜底决定。",
+      meta: "待审核反馈",
+      count: feedbackPending,
     },
     {
       href: "review-tasks.html",
@@ -3054,15 +3261,16 @@ async function renderAllActivities() {
       (activity) => `
         <article class="event-row">
           <div>
-            <span class="tag">${escapeHtml(statusTone[activity.status] || activity.statusLabel)}</span>
+            <div class="tag-row"><span class="tag">${escapeHtml(statusTone[activity.status] || activity.statusLabel)}</span><span class="tag soft">${escapeHtml(activity.sourceName || activity.sourceLabel || "客厅")}</span></div>
             <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
-            <p>${escapeHtml(activity.reviewStepLabel)} · ${formatActivityTime(activity)} · ${escapeHtml(activity.location || "地点待定")} · ${activity.registrationCount} 人报名</p>
+            <p>${escapeHtml(activity.reviewStepLabel)} · ${formatActivityTime(activity)} · ${escapeHtml(activity.location || "地点待定")} · ${activity.registrationCount} 人报名 · ${Number(activity.feedbackCount || 0)} 条反馈</p>
             <p>发起人：${escapeHtml(activity.initiator)} · 协作员：${escapeHtml(activity.collaboratorName || "未选择")}</p>
           </div>
           <div class="row-actions">
             <a class="button outline" href="activity.html?id=${encodeURIComponent(activity.id)}">查看</a>
             <a class="button outline" href="admin-activity-confidence.html?id=${encodeURIComponent(activity.id)}">置信度</a>
             ${canViewRegistrations(activity) ? `<a class="button outline" href="registrations.html?id=${encodeURIComponent(activity.id)}">报名表</a>` : ""}
+            <a class="button outline" href="activity-feedback.html?id=${encodeURIComponent(activity.id)}">反馈</a>
             ${canAdminCancel(activity) ? `<button class="button outline danger-soft" type="button" data-admin-cancel-activity-id="${activity.id}">取消</button>` : ""}
             ${canAdminEnd(activity) ? `<button class="button outline" type="button" data-admin-end-activity-id="${activity.id}">结束</button>` : ""}
           </div>
@@ -3285,13 +3493,360 @@ async function renderReports() {
   revealDynamicContent(list);
 }
 
+async function initAdminFriendsPage() {
+  const root = qs("[data-admin-friends-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const form = qs("[data-friend-form]", root);
+  const filters = qs("[data-friend-filters]", root);
+  const message = qs("[data-friend-message]", root);
+  filters?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    resetPagedState("friends");
+    renderFriends();
+  });
+  qs("[data-load-more-friends]", root)?.addEventListener("click", () => {
+    mePageState.friendPage += 1;
+    renderFriends();
+  });
+  qs("[data-cancel-friend-edit]", form)?.addEventListener("click", () => {
+    mePageState.editingFriend = null;
+    form.reset();
+    form.enabled.value = "true";
+    qs("[data-friend-form-title]", form).textContent = "新增客厅朋友";
+    qs("[data-cancel-friend-edit]", form).hidden = true;
+    setMessage(message, "已取消编辑。");
+  });
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const editing = mePageState.editingFriend;
+    try {
+      editing
+        ? await api.put(`/api/living-room-friends/${encodeURIComponent(editing.id)}`, formData)
+        : await api.post("/api/living-room-friends", formData);
+      showToast("保存成功");
+      setMessage(message, "保存成功", "success");
+      mePageState.editingFriend = null;
+      form.reset();
+      form.enabled.value = "true";
+      qs("[data-friend-form-title]", form).textContent = "新增客厅朋友";
+      qs("[data-cancel-friend-edit]", form).hidden = true;
+      resetPagedState("friends");
+      await renderFriends();
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+  await renderFriends();
+}
+
+async function renderFriends() {
+  const list = qs("[data-friend-list]");
+  if (!list) return;
+  const filters = qs("[data-friend-filters]");
+  const query = queryFromForm(filters, {
+    page: mePageState.friendPage,
+    pageSize: mePageState.pageSize,
+  });
+  const { friends, pageInfo } = await api.get(`/api/living-room-friends${query}`);
+  const loaded = mergePageItems("friends", mePageState.friendPage, friends);
+  updatePagedCount(qs("[data-friend-count]"), loaded.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-friends]"), loaded.length, pageInfo?.total || loaded.length);
+  if (!loaded.length) {
+    list.innerHTML = `<div class="empty-state"><strong>还没有客厅朋友</strong><p>新增后，发起活动时就可以选择它。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = loaded.map((friend) => `
+    <article class="event-row" data-friend-id="${escapeHtml(friend.id)}">
+      <div>
+        <div class="tag-row"><span class="tag">${friend.enabled ? "启用" : "停用"}</span><span class="tag soft">${escapeHtml(friend.address || "地址待补")}</span></div>
+        <h3>${escapeHtml(friend.name)}</h3>
+        <p>${escapeHtml(friend.description || "暂无简介")}</p>
+        <p>${escapeHtml(friend.contactName || "联系人待补")} · ${escapeHtml(friend.contactInfo || "联系方式待补")}</p>
+      </div>
+      <div class="row-actions">
+        <button class="button outline" type="button" data-edit-friend>编辑</button>
+        <button class="button outline danger-soft" type="button" data-delete-friend>删除</button>
+      </div>
+    </article>
+  `).join("");
+  revealDynamicContent(list);
+  qsa("[data-friend-id]", list).forEach((row) => {
+    const friend = loaded.find((item) => item.id === row.dataset.friendId);
+    qs("[data-edit-friend]", row)?.addEventListener("click", () => fillFriendForm(friend));
+    qs("[data-delete-friend]", row)?.addEventListener("click", async () => {
+      if (!confirm("确定删除这个客厅朋友吗？已有活动使用时不能删除。")) return;
+      await api.delete(`/api/living-room-friends/${encodeURIComponent(row.dataset.friendId)}`);
+      showToast("删除成功");
+      resetPagedState("friends");
+      await renderFriends();
+    });
+  });
+}
+
+function fillFriendForm(friend = {}) {
+  const form = qs("[data-friend-form]");
+  if (!form) return;
+  mePageState.editingFriend = friend;
+  form.name.value = friend.name || "";
+  form.address.value = friend.address || "";
+  form.contactName.value = friend.contactName || "";
+  form.contactInfo.value = friend.contactInfo || "";
+  form.enabled.value = friend.enabled === false ? "false" : "true";
+  form.logoUrl.value = friend.logoUrl || "";
+  form.description.value = friend.description || "";
+  form.logo.value = "";
+  qs("[data-friend-form-title]", form).textContent = "编辑客厅朋友";
+  qs("[data-cancel-friend-edit]", form).hidden = false;
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function initAdminFeedbacksPage() {
+  const root = qs("[data-admin-feedbacks-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root);
+  if (!user) return;
+  const filters = qs("[data-feedback-filters]", root);
+  filters?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    resetPagedState("feedbacks");
+    renderFeedbacks();
+  });
+  qs("[data-load-more-feedbacks]", root)?.addEventListener("click", () => {
+    mePageState.feedbackPage += 1;
+    renderFeedbacks();
+  });
+  qs("[data-export-feedbacks]", root)?.addEventListener("click", downloadFeedbacksCsv);
+  await renderFeedbacks();
+}
+
+async function renderFeedbacks() {
+  const list = qs("[data-feedback-list]");
+  if (!list) return;
+  const filters = qs("[data-feedback-filters]");
+  const query = queryFromForm(filters, {
+    page: mePageState.feedbackPage,
+    pageSize: mePageState.pageSize,
+  });
+  const { feedbacks, pageInfo } = await api.get(`/api/feedbacks${query}`);
+  const loaded = mergePageItems("feedbacks", mePageState.feedbackPage, feedbacks);
+  updatePagedCount(qs("[data-feedback-count]"), loaded.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-feedbacks]"), loaded.length, pageInfo?.total || loaded.length);
+  if (!loaded.length) {
+    list.innerHTML = `<div class="empty-state"><strong>暂无活动反馈</strong><p>活动开始后，参与者扫码提交的匿名反馈会显示在这里。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = loaded.map((feedback) => renderFeedbackRow(feedback, { reviewActions: true })).join("");
+  bindFeedbackReviewActions(list, renderFeedbacks);
+  revealDynamicContent(list);
+}
+
+function renderFeedbackText(feedback = {}) {
+  return [
+    feedback.favorite ? `最喜欢：${feedback.favorite}` : "",
+    feedback.improvement ? `可以改进：${feedback.improvement}` : "",
+    feedback.other ? `其他：${feedback.other}` : "",
+  ].filter(Boolean).join(" / ") || "没有文字内容";
+}
+
+function renderFeedbackRow(feedback = {}, options = {}) {
+  return `
+    <article class="event-row feedback-row" data-feedback-id="${escapeHtml(feedback.id)}">
+      <div>
+        <div class="tag-row"><span class="tag">${escapeHtml(feedback.statusLabel || feedbackStatusLabel(feedback.status))}</span><span class="tag soft">权重 ${Number(feedback.feedbackWeight || 0)}</span></div>
+        <h3><a href="activity.html?id=${encodeURIComponent(feedback.activityId)}">${escapeHtml(feedback.activityTitle || "未命名活动")}</a></h3>
+        <p>${escapeHtml(renderFeedbackText(feedback))}</p>
+        <p>AI：${escapeHtml(feedback.aiStatus || "未分析")} · ${escapeHtml(feedback.aiReason || "暂无说明")} · ${formatDate(feedback.createdAt)}</p>
+      </div>
+      <div class="row-actions">
+        <a class="button outline" href="activity-feedback.html?id=${encodeURIComponent(feedback.activityId)}">活动反馈</a>
+        ${options.reviewActions && feedback.status === "admin_review" ? `<button class="button outline" type="button" data-approve-feedback>展示</button><button class="button outline danger-soft" type="button" data-reject-feedback>不展示</button>` : ""}
+      </div>
+    </article>
+  `;
+}
+
+function bindFeedbackReviewActions(root = document, after = async () => {}) {
+  qsa("[data-feedback-id]", root).forEach((row) => {
+    qs("[data-approve-feedback]", row)?.addEventListener("click", async () => {
+      await api.post(`/api/feedbacks/${encodeURIComponent(row.dataset.feedbackId)}/review`, { action: "approve" });
+      showToast("保存成功");
+      resetPagedState("feedbacks");
+      await after();
+    });
+    qs("[data-reject-feedback]", row)?.addEventListener("click", async () => {
+      if (!confirm("确定不展示这条反馈吗？")) return;
+      await api.post(`/api/feedbacks/${encodeURIComponent(row.dataset.feedbackId)}/review`, { action: "reject" });
+      showToast("保存成功");
+      resetPagedState("feedbacks");
+      await after();
+    });
+  });
+}
+
+async function downloadFeedbacksCsv() {
+  const filters = qs("[data-feedback-filters]");
+  const query = queryFromForm(filters, {});
+  const token = localStorage.getItem("yk_session_token");
+  const response = await fetch(`${api.baseUrl}/api/feedbacks/export${query}`, {
+    credentials: "include",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "X-YK-Client-Id": getClientId(),
+      "X-YK-Fingerprint": getFingerprint(),
+    },
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    showToast(data.error || "导出失败");
+    return;
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `有空活动反馈-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function feedbackPageUrl(activityId) {
+  return new URL(`feedback.html?id=${encodeURIComponent(activityId)}`, location.href).href;
+}
+
+async function loadQrSvg(text) {
+  const response = await fetch(`${api.baseUrl}/api/qr?text=${encodeURIComponent(text)}`, {
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error("二维码生成失败");
+  return response.text();
+}
+
+async function initActivityFeedbackPage() {
+  const root = qs("[data-activity-feedback-page]");
+  if (!root) return;
+  const id = new URLSearchParams(location.search).get("id");
+  if (!id) {
+    root.innerHTML = `<section class="section"><div class="wrap"><div class="empty-state"><strong>缺少活动 ID</strong><p>请从我的活动进入。</p></div></div></section>`;
+    return;
+  }
+  await renderActivityFeedbackPage(root, id);
+  qs("[data-load-more-activity-feedbacks]", root)?.addEventListener("click", async () => {
+    mePageState.activityFeedbackPage += 1;
+    await renderActivityFeedbackList(root, id);
+  });
+}
+
+async function renderActivityFeedbackPage(root, id) {
+  const { activity } = await api.get(`/api/activities/${encodeURIComponent(id)}`);
+  qs("[data-feedback-activity-title]", root).textContent = activity.title;
+  qs("[data-feedback-activity-summary]", root).textContent = `${activity.sourceName || "有空客厅"} · ${formatActivityTime(activity)} · ${activity.location}`;
+  const url = feedbackPageUrl(activity.id);
+  qs("[data-open-feedback-form]", root).href = url;
+  const qrBox = qs("[data-feedback-qr]", root);
+  try {
+    const svg = await loadQrSvg(url);
+    qrBox.innerHTML = svg;
+    qs("[data-download-feedback-qr]", root)?.addEventListener("click", () => downloadTextFile(`${activity.title || "活动反馈"}-反馈二维码.svg`, svg, "image/svg+xml"));
+  } catch (error) {
+    qrBox.innerHTML = `<div class="empty-state slim"><strong>二维码生成失败</strong><p>${escapeHtml(error.message)}</p></div>`;
+  }
+  await renderActivityFeedbackList(root, id);
+}
+
+async function renderActivityFeedbackList(root, id) {
+  const list = qs("[data-activity-feedback-list]", root);
+  if (!list) return;
+  const params = new URLSearchParams({
+    manage: "true",
+    page: String(mePageState.activityFeedbackPage),
+    pageSize: String(mePageState.pageSize),
+  });
+  const { feedbacks, pageInfo } = await api.get(`/api/activities/${encodeURIComponent(id)}/feedbacks?${params.toString()}`);
+  const loaded = mergePageItems("activityFeedbacks", mePageState.activityFeedbackPage, feedbacks);
+  updatePagedCount(qs("[data-activity-feedback-count]", root), loaded.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-activity-feedbacks]", root), loaded.length, pageInfo?.total || loaded.length);
+  if (!loaded.length) {
+    list.innerHTML = `<div class="empty-state"><strong>还没有活动反馈</strong><p>把二维码发给参与者，活动开始后就可以匿名填写。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = loaded.map((feedback) => renderFeedbackRow(feedback, { reviewActions: false })).join("");
+  bindFeedbackReviewActions(list, async () => {
+    resetPagedState("activityFeedbacks");
+    await renderActivityFeedbackList(root, id);
+  });
+  revealDynamicContent(list);
+}
+
+function downloadTextFile(filename, text, type = "text/plain") {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function initFeedbackFormPage() {
+  const root = qs("[data-feedback-form-page]");
+  if (!root) return;
+  const id = new URLSearchParams(location.search).get("id");
+  const form = qs("[data-activity-feedback-form]", root);
+  const message = qs("[data-feedback-form-message]", root);
+  if (!id) {
+    form.hidden = true;
+    setMessage(message, "缺少活动 ID，请从活动页面扫码进入。", "error");
+    return;
+  }
+  try {
+    const { activity } = await api.get(`/api/activities/${encodeURIComponent(id)}`);
+    qs("[data-feedback-form-title]", root).textContent = activity.title;
+    qs("[data-feedback-form-subtitle]", root).textContent = `${formatActivityTime(activity)} · ${activity.location}`;
+    qs("[data-feedback-back-link]", root).href = `activity.html?id=${encodeURIComponent(activity.id)}`;
+  } catch (error) {
+    form.hidden = true;
+    setMessage(message, error.message, "error");
+    return;
+  }
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setMessage(message, "正在提交匿名反馈...");
+    try {
+      const result = await api.post(`/api/activities/${encodeURIComponent(id)}/feedbacks`, {
+        favorite: form.favorite.value,
+        improvement: form.improvement.value,
+        other: form.other.value,
+      });
+      setMessage(
+        message,
+        result.existing ? "这个设备已经提交过反馈了。" : "反馈已提交。适合公开的内容会展示在活动页，也会留给发起人复盘。",
+        "success"
+      );
+      form.querySelector("button[type='submit']").disabled = true;
+      showToast(result.existing ? "已经提交过反馈" : "反馈已提交");
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+}
+
 async function safeInit(task) {
   try {
     await task();
   } catch (error) {
     console.error(error);
     showToast("页面数据读取失败，请刷新后重试");
-    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-safety-rules], [data-ai-prompts], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list]")
+    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-safety-rules], [data-ai-prompts], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list], [data-friend-list], [data-feedback-list], [data-activity-feedback-list], [data-my-registrations], [data-my-feedbacks]")
       .filter((element) => /正在|读取|加载/.test(element.textContent || ""))
       .forEach((element) => {
         element.innerHTML = `<div class="empty-state"><strong>暂时没读到数据</strong><p>请刷新页面重试，或稍后再来。</p></div>`;
@@ -3320,6 +3875,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(initAdminTemplateEditorPage),
     safeInit(initAdminLogsPage),
     safeInit(initAdminReportsPage),
+    safeInit(initAdminFriendsPage),
+    safeInit(initAdminFeedbacksPage),
+    safeInit(initActivityFeedbackPage),
+    safeInit(initFeedbackFormPage),
     safeInit(initAdminSafetyPage),
     safeInit(initAdminAiPage),
     safeInit(initAdminGovernancePage),

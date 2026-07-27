@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Community Governance｜有空客厅</title>
-    <meta name="description" content="YKadmin 管理 Community Trust、Trust Policy、Community Badge 和 Badge Policy。" />
+    <title>活动反馈详情｜有空客厅</title>
+    <meta name="description" content="活动发起人查看活动反馈、下载反馈二维码。" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -28,26 +28,48 @@
       </div>
     </header>
 
-    <main id="main" data-admin-governance-page>
+    <main id="main" data-activity-feedback-page>
       <section class="page-hero">
         <div class="wrap">
-          <p class="eyebrow">Community Governance</p>
-          <h1>把社区信任做成可追溯的治理基础。</h1>
-          <p>这里管理人的 Community Trust、策略映射、社区徽章和徽章展示方式。活动置信度评价一次活动，社区信用记录一个匿名身份的长期行为。</p>
+          <p class="eyebrow">活动反馈</p>
+          <h1 data-feedback-activity-title>正在读取活动...</h1>
+          <p data-feedback-activity-summary>活动结束后，可以把二维码发给参与者留下匿名反馈。</p>
         </div>
       </section>
 
       <section class="section alt">
+        <div class="wrap editor-layout">
+          <div class="form-note qr-download-panel">
+            <h3>反馈二维码</h3>
+            <div class="qr-preview" data-feedback-qr>正在生成二维码...</div>
+            <div class="button-row">
+              <a class="button primary" data-open-feedback-form href="feedback.html">打开问卷</a>
+              <button class="button outline" type="button" data-download-feedback-qr>下载二维码</button>
+            </div>
+          </div>
+          <aside class="panel-block sticky-panel">
+            <p class="section-kicker">展示规则</p>
+            <h3>公开页只展示通过反馈。</h3>
+            <p class="muted-text">如果活动设置为展示评价，活动详情页会默认展示 AI 权重最高的前三条已通过反馈。</p>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section">
         <div class="wrap">
-          <div class="workspace-grid" data-governance-cards></div>
+          <div class="list-toolbar">
+            <span data-activity-feedback-count>正在读取反馈...</span>
+          </div>
+          <div class="event-list rows" data-activity-feedback-list></div>
+          <button class="button ghost load-more" type="button" data-load-more-activity-feedbacks hidden>加载更多</button>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-grid">
-        <div><div class="footer-brand">有空客厅</div><div>治理不是封闭后台，而是社区信任的可解释记录。</div><div class="credit">网站制作人：海旭</div></div>
-        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-trust.html">社区信用</a><a href="admin-trust-policy.html">信用策略</a><a href="admin-badges.html">社区徽章</a><a href="admin-badge-policy.html">徽章展示</a></nav>
+        <div><div class="footer-brand">有空客厅</div><div>活动之后的话，也值得被好好收起来。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="me.html">工作台</a><a href="my-activities.html">我的活动</a><a href="admin-feedbacks.html">活动反馈</a></nav>
       </div>
     </footer>
     <script src="script.js?v=0.22.0"></script>

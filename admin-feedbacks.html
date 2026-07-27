@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Community Governance｜有空客厅</title>
-    <meta name="description" content="YKadmin 管理 Community Trust、Trust Policy、Community Badge 和 Badge Policy。" />
+    <title>活动反馈｜有空客厅</title>
+    <meta name="description" content="YKadmin 查看、审核和导出活动反馈。" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -28,26 +28,48 @@
       </div>
     </header>
 
-    <main id="main" data-admin-governance-page>
+    <main id="main" data-admin-feedbacks-page>
       <section class="page-hero">
         <div class="wrap">
-          <p class="eyebrow">Community Governance</p>
-          <h1>把社区信任做成可追溯的治理基础。</h1>
-          <p>这里管理人的 Community Trust、策略映射、社区徽章和徽章展示方式。活动置信度评价一次活动，社区信用记录一个匿名身份的长期行为。</p>
+          <p class="eyebrow">Activity Feedback</p>
+          <h1>看见活动之后留下的话。</h1>
+          <p>匿名反馈先经 AI 分析；不适合公开的内容进入这里由管理员决定展示或不展示。</p>
         </div>
       </section>
 
       <section class="section alt">
         <div class="wrap">
-          <div class="workspace-grid" data-governance-cards></div>
+          <form class="filter-panel wide" data-feedback-filters>
+            <label>搜索<input name="q" placeholder="活动 / 反馈 / AI 说明 / 身份" /></label>
+            <label>状态
+              <select name="status">
+                <option value="">全部状态</option>
+                <option value="approved">已展示</option>
+                <option value="admin_review">待管理员审核</option>
+                <option value="rejected">不展示</option>
+              </select>
+            </label>
+            <label>开始日期<input name="from" type="date" /></label>
+            <label>结束日期<input name="to" type="date" /></label>
+            <button class="button ghost" type="submit">筛选</button>
+          </form>
+          <div class="list-toolbar">
+            <span data-feedback-count>正在读取反馈...</span>
+            <div class="button-row">
+              <button class="button outline" type="button" data-export-feedbacks>导出 CSV</button>
+              <a class="button ghost" href="admin.html">回后台</a>
+            </div>
+          </div>
+          <div class="event-list rows" data-feedback-list></div>
+          <button class="button ghost load-more" type="button" data-load-more-feedbacks hidden>加载更多</button>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-grid">
-        <div><div class="footer-brand">有空客厅</div><div>治理不是封闭后台，而是社区信任的可解释记录。</div><div class="credit">网站制作人：海旭</div></div>
-        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-trust.html">社区信用</a><a href="admin-trust-policy.html">信用策略</a><a href="admin-badges.html">社区徽章</a><a href="admin-badge-policy.html">徽章展示</a></nav>
+        <div><div class="footer-brand">有空客厅</div><div>反馈不是评分，是复盘材料。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-friends.html">客厅的朋友们</a><a href="admin-reports.html">社区举报</a><a href="admin-ai.html">AI 分析</a></nav>
       </div>
     </footer>
     <script src="script.js?v=0.22.0"></script>

@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Community Governance｜有空客厅</title>
-    <meta name="description" content="YKadmin 管理 Community Trust、Trust Policy、Community Badge 和 Badge Policy。" />
+    <title>活动反馈问卷｜有空客厅</title>
+    <meta name="description" content="匿名提交有空客厅活动反馈。" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -28,26 +28,35 @@
       </div>
     </header>
 
-    <main id="main" data-admin-governance-page>
-      <section class="page-hero">
+    <main id="main" data-feedback-form-page>
+      <section class="page-hero river compact-hero">
         <div class="wrap">
-          <p class="eyebrow">Community Governance</p>
-          <h1>把社区信任做成可追溯的治理基础。</h1>
-          <p>这里管理人的 Community Trust、策略映射、社区徽章和徽章展示方式。活动置信度评价一次活动，社区信用记录一个匿名身份的长期行为。</p>
+          <p class="eyebrow">匿名反馈</p>
+          <h1 data-feedback-form-title>正在读取活动...</h1>
+          <p data-feedback-form-subtitle>不用写名字，也不用打分。留下具体感受就好。</p>
         </div>
       </section>
 
       <section class="section alt">
-        <div class="wrap">
-          <div class="workspace-grid" data-governance-cards></div>
+        <div class="wrap narrow-wrap">
+          <form class="form-note feedback-form" data-activity-feedback-form>
+            <label>最喜欢的地方<textarea name="favorite" rows="5" placeholder="哪一刻让你觉得值得来？"></textarea></label>
+            <label>可以改进的地方<textarea name="improvement" rows="5" placeholder="如果下次再办，你希望哪里更好一点？"></textarea></label>
+            <label>其他想说的<textarea name="other" rows="4" placeholder="给发起人、给客厅、给未来参与者都可以。"></textarea></label>
+            <div class="form-actions">
+              <button class="button primary" type="submit">提交匿名反馈</button>
+              <a class="button ghost" data-feedback-back-link href="activities.html">回到活动</a>
+            </div>
+            <p class="form-message" data-feedback-form-message></p>
+          </form>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-grid">
-        <div><div class="footer-brand">有空客厅</div><div>治理不是封闭后台，而是社区信任的可解释记录。</div><div class="credit">网站制作人：海旭</div></div>
-        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-trust.html">社区信用</a><a href="admin-trust-policy.html">信用策略</a><a href="admin-badges.html">社区徽章</a><a href="admin-badge-policy.html">徽章展示</a></nav>
+        <div><div class="footer-brand">有空客厅</div><div>反馈会先经过安全分析，再决定是否公开展示。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="index.html">首页</a><a href="activities.html">近期活动</a><a href="me.html">我的</a></nav>
       </div>
     </footer>
     <script src="script.js?v=0.22.0"></script>

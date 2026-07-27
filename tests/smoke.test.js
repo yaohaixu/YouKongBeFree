@@ -143,6 +143,9 @@ async function createActivity(token, overrides = {}) {
   form.set("location", overrides.location || "有空客厅");
   form.set("capacity", overrides.capacity || "");
   form.set("showRegistrationNames", overrides.showRegistrationNames ? "yes" : "no");
+  form.set("showFeedbacks", overrides.showFeedbacks === false ? "no" : "yes");
+  form.set("sourceType", overrides.sourceType || "living_room");
+  form.set("friendId", overrides.friendId || "");
   form.set("minRegistrationEnabled", overrides.minRegistrationEnabled ? "yes" : "no");
   form.set("minRegistrationCount", overrides.minRegistrationCount || "");
   form.set("registrationDeadline", overrides.registrationDeadline || (overrides.minRegistrationEnabled ? (overrides.startsAt || localDateTimeFromNow(30)) : ""));
@@ -285,6 +288,22 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(modulesPage.modules.length, 2);
   assert.equal(modulesPage.pageInfo.pageSize, 2);
 
+  const friendForm = new FormData();
+  friendForm.set("name", "邻里小屋");
+  friendForm.set("description", "一个可以一起读书和交换旧物的朋友空间");
+  friendForm.set("address", "重庆江北朋友巷 1 号");
+  friendForm.set("contactName", "朋友主理人");
+  friendForm.set("contactInfo", "wechat-friend");
+  friendForm.set("enabled", "true");
+  const friendCreated = await request("/api/living-room-friends", {
+    method: "POST",
+    body: friendForm,
+  }, admin.token);
+  assert.equal(friendCreated.friend.name, "邻里小屋");
+  assert.equal(friendCreated.friend.enabled, true);
+  const friendList = await request("/api/living-room-friends?enabled=true&page=1&pageSize=10&q=邻里");
+  assert.ok(friendList.friends.some((friend) => friend.id === friendCreated.friend.id));
+
   const member = await login("13300002222");
   assert.equal(member.user.phone, "13300002222");
   const qrResponse = await fetch(`${baseUrl}/api/qr?text=${encodeURIComponent(`${baseUrl}/activity.html?id=demo`)}`);
@@ -351,16 +370,27 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.match(created.activity.description, /<strong>重点<\/strong>/);
   assert.doesNotMatch(created.activity.description, /script|alert/i);
 
+  const friendSourceActivity = await createActivity(member.token, {
+    title: "客厅朋友来源测试活动",
+    sourceType: "friend",
+    friendId: friendCreated.friend.id,
+  });
+  assert.equal(friendSourceActivity.activity.sourceType, "friend");
+  assert.equal(friendSourceActivity.activity.sourceName, "邻里小屋");
+  assert.equal(friendSourceActivity.activity.friend.id, friendCreated.friend.id);
+  const friendSourceList = await request("/api/activities?all=true&sourceType=friend&page=1&pageSize=10", {}, admin.token);
+  assert.ok(friendSourceList.activities.some((activity) => activity.id === friendSourceActivity.activity.id));
+
   const owned = await request("/api/activities?owner=me&page=1&pageSize=1", {}, member.token);
   assert.equal(owned.activities.length, 1);
   assert.equal(owned.pageInfo.pageSize, 1);
-  assert.equal(owned.pageInfo.total, 1);
+  assert.equal(owned.pageInfo.total, 2);
   const reviewingMine = await request("/api/activities?owner=me&status=reviewing&page=1&pageSize=10", {}, member.token);
   assert.ok(reviewingMine.activities.every((activity) => ["admin_review", "collaborator_review"].includes(activity.status)));
 
   const memberDashboard = await request("/api/dashboard/me", {}, member.token);
-  assert.equal(memberDashboard.summary.total, 1);
-  assert.equal(memberDashboard.summary.byStatus.published, 1);
+  assert.equal(memberDashboard.summary.total, 2);
+  assert.equal(memberDashboard.summary.byStatus.published, 2);
   assert.equal(memberDashboard.pending.total, 0);
 
   const reviewCandidate = await createActivity(member.token, {
@@ -793,6 +823,12 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     method: "POST",
     body: { token: cancellableRegistration.accessToken },
   });
+  const myActiveRegistrations = await request("/api/my/registrations?page=1&pageSize=10");
+  assert.ok(myActiveRegistrations.registrations.some((item) => item.id === registration.registration.id));
+  const myCancelledRegistrations = await request("/api/my/registrations?page=1&pageSize=10", {
+    headers: { "X-YK-Client-Id": `${testClientId}_cancel` },
+  });
+  assert.ok(!myCancelledRegistrations.registrations.some((item) => item.id === cancellableRegistration.registration.id));
 
   const registrations = await request(`/api/activities/${created.activity.id}/registrations`, {}, member.token);
   assert.equal(registrations.registrations.length, 1);
@@ -937,11 +973,23 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     startsAt: localDateTimeFromNow(-30, 18, 0),
   });
   assert.equal(expired.activity.status, "published");
+  const friendHistory = await createActivity(member.token, {
+    title: "客厅朋友历史测试活动",
+    sourceType: "friend",
+    friendId: friendCreated.friend.id,
+    startsAt: localDateTimeFromNow(-29, 18, 30),
+  });
+  assert.equal(friendHistory.activity.sourceType, "friend");
   const upcoming = await request("/api/activities?view=upcoming&page=1&pageSize=20");
   assert.ok(!upcoming.activities.some((activity) => activity.id === expired.activity.id));
   const history = await request("/api/activities?view=history&page=1&pageSize=20");
   const endedActivity = history.activities.find((activity) => activity.id === expired.activity.id);
   assert.equal(endedActivity?.status, "ended");
+  const friendHistoryList = await request("/api/activities?view=history&sourceType=friend&page=1&pageSize=20");
+  assert.ok(friendHistoryList.activities.some((activity) => activity.id === friendHistory.activity.id));
+  const livingRoomHistoryList = await request("/api/activities?view=history&sourceType=living_room&page=1&pageSize=50");
+  assert.ok(livingRoomHistoryList.activities.some((activity) => activity.id === expired.activity.id));
+  assert.ok(!livingRoomHistoryList.activities.some((activity) => activity.id === friendHistory.activity.id));
   const manualSweep = await request("/api/system/auto-end", {
     method: "POST",
     body: {},
@@ -958,6 +1006,137 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const ongoing = upcomingAfterCrossDay.activities.find((activity) => activity.id === crossDay.activity.id);
   assert.equal(ongoing?.status, "published");
   assert.equal(ongoing?.endsAt, localDateTimeFromNow(1, 10, 0));
+
+  await assert.rejects(
+    request(`/api/activities/${created.activity.id}/feedbacks`, {
+      method: "POST",
+      headers: { "X-YK-Client-Id": `${testClientId}_feedback_future` },
+      body: { favorite: "还没开始就不能写体验" },
+    }),
+    /400/
+  );
+  const approvedFeedbackStub = await startAiStub({
+    shouldDisplay: true,
+    feedbackWeight: 88,
+    summary: "反馈具体且适合展示",
+    displayReason: "反馈包含具体体验和建设性建议",
+    positiveSignals: ["提到饭桌氛围", "有路线建议"],
+  });
+  try {
+    await request("/api/ai/settings", {
+      method: "PUT",
+      body: {
+        enabled: "true",
+        provider: "openai-compatible",
+        baseUrl: approvedFeedbackStub.baseUrl,
+        model: "stub-model",
+        apiKey: "stub-key",
+        cacheTtlSeconds: 0,
+      },
+    }, admin.token);
+    const approvedFeedback = await request(`/api/activities/${expired.activity.id}/feedbacks`, {
+      method: "POST",
+      headers: { "X-YK-Client-Id": `${testClientId}_feedback_good` },
+      body: {
+        favorite: "饭桌很松弛，大家愿意慢慢听人说话。",
+        improvement: "下次可以提前发一张从轻轨站走过来的路线图。",
+        other: "还会再来。",
+      },
+    });
+    assert.equal(approvedFeedback.existing, false);
+    assert.equal(approvedFeedback.feedback.status, "approved");
+    assert.equal(approvedFeedback.feedback.feedbackWeight, 88);
+    assert.ok(approvedFeedbackStub.calls >= 1);
+    const duplicateFeedback = await request(`/api/activities/${expired.activity.id}/feedbacks`, {
+      method: "POST",
+      headers: { "X-YK-Client-Id": `${testClientId}_feedback_good` },
+      body: { favorite: "重复提交不会新增" },
+    });
+    assert.equal(duplicateFeedback.existing, true);
+    assert.equal(duplicateFeedback.feedback.id, approvedFeedback.feedback.id);
+    const myFeedbacks = await request("/api/my/feedbacks?page=1&pageSize=10", {
+      headers: { "X-YK-Client-Id": `${testClientId}_feedback_good` },
+    });
+    assert.ok(myFeedbacks.feedbacks.some((feedback) => feedback.id === approvedFeedback.feedback.id));
+    const managedFeedbacks = await request(`/api/activities/${expired.activity.id}/feedbacks?manage=true&page=1&pageSize=10`, {}, member.token);
+    assert.ok(managedFeedbacks.feedbacks.some((feedback) => feedback.id === approvedFeedback.feedback.id));
+    const publicFeedbackDetail = await request(`/api/activities/${expired.activity.id}`);
+    assert.ok(publicFeedbackDetail.activity.publicFeedbacks.some((feedback) => feedback.id === approvedFeedback.feedback.id));
+    const hiddenFeedbackActivity = await createActivity(member.token, {
+      title: "不展示反馈测试活动",
+      startsAt: localDateTimeFromNow(-2, 20, 0),
+      showFeedbacks: false,
+    });
+    await request(`/api/activities/${hiddenFeedbackActivity.activity.id}/feedbacks`, {
+      method: "POST",
+      headers: { "X-YK-Client-Id": `${testClientId}_feedback_hidden` },
+      body: { favorite: "这条反馈只给发起人看，不公开展示。" },
+    });
+    const hiddenFeedbackDetail = await request(`/api/activities/${hiddenFeedbackActivity.activity.id}`);
+    assert.equal(hiddenFeedbackDetail.activity.showFeedbacks, false);
+    assert.deepEqual(hiddenFeedbackDetail.activity.publicFeedbacks, []);
+  } finally {
+    await approvedFeedbackStub.close();
+  }
+
+  const riskyFeedbackStub = await startAiStub({
+    riskScore: 82,
+    riskLevel: "high",
+    shouldDisplay: false,
+    feedbackWeight: 12,
+    isSpam: true,
+    summary: "反馈含垃圾广告",
+    displayReason: "包含广告引流和无关内容，建议管理员审核",
+    riskReason: ["垃圾广告"],
+  });
+  try {
+    await request("/api/ai/settings", {
+      method: "PUT",
+      body: {
+        enabled: "true",
+        provider: "openai-compatible",
+        baseUrl: riskyFeedbackStub.baseUrl,
+        model: "stub-model",
+        apiKey: "stub-key",
+        cacheTtlSeconds: 0,
+      },
+    }, admin.token);
+    const riskyFeedback = await request(`/api/activities/${expired.activity.id}/feedbacks`, {
+      method: "POST",
+      headers: { "X-YK-Client-Id": `${testClientId}_feedback_bad` },
+      body: {
+        favorite: "垃圾反馈，加我领投资优惠。",
+        improvement: "返利返现。",
+      },
+    });
+    assert.equal(riskyFeedback.feedback.status, "admin_review");
+    assert.equal(riskyFeedback.feedback.feedbackWeight, 12);
+    const feedbackAdminList = await request("/api/feedbacks?status=admin_review&page=1&pageSize=10&q=垃圾反馈", {}, admin.token);
+    assert.ok(feedbackAdminList.feedbacks.some((feedback) => feedback.id === riskyFeedback.feedback.id));
+    const reviewedFeedback = await request(`/api/feedbacks/${riskyFeedback.feedback.id}/review`, {
+      method: "POST",
+      body: { action: "approve" },
+    }, admin.token);
+    assert.equal(reviewedFeedback.feedback.status, "approved");
+    const exportResponse = await fetch(`${baseUrl}/api/feedbacks/export?activityId=${encodeURIComponent(expired.activity.id)}`, {
+      headers: {
+        Authorization: `Bearer ${admin.token}`,
+        "X-YK-Client-Id": testClientId,
+        "X-YK-Fingerprint": "fp_smoke_test",
+      },
+    });
+    assert.equal(exportResponse.ok, true);
+    assert.match(exportResponse.headers.get("content-type") || "", /text\/csv/);
+    const exportText = await exportResponse.text();
+    assert.match(exportText, /活动标题/);
+    assert.match(exportText, /应自动结束的历史活动/);
+  } finally {
+    await riskyFeedbackStub.close();
+    await request("/api/ai/settings", {
+      method: "PUT",
+      body: { enabled: "false" },
+    }, admin.token);
+  }
 
   const coverBuffer = fs.readFileSync(path.join(__dirname, "..", "assets", "youkong-gathering.png"));
   const pending = await createActivity(member.token, {
@@ -1031,6 +1210,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-template-editor.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-logs.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-reports.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-friends.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-feedbacks.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-safety.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-ai.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-governance.html`);
@@ -1040,6 +1221,24 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-trust.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-activity-confidence.html?id=${created.activity.id}`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/registrations.html?id=${created.activity.id}`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/activity-feedback.html?id=${expired.activity.id}`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/feedback.html?id=${expired.activity.id}`);
+    await page.goto(`${baseUrl}/feedback.html?id=${expired.activity.id}`);
+    await page.waitForLoadState("networkidle");
+    const feedbackFormState = await page.evaluate(() => ({
+      hasFavorite: Boolean(document.querySelector('textarea[name="favorite"]')),
+      hasImprovement: Boolean(document.querySelector('textarea[name="improvement"]')),
+      hasOther: Boolean(document.querySelector('textarea[name="other"]')),
+      hasName: Boolean(document.querySelector('input[name="nickname"], input[name="name"]')),
+      hasRating: Boolean(document.querySelector('input[name="rating"], select[name="rating"], [data-rating]')),
+    }));
+    assert.deepEqual(feedbackFormState, {
+      hasFavorite: true,
+      hasImprovement: true,
+      hasOther: true,
+      hasName: false,
+      hasRating: false,
+    });
 
     await page.goto(`${baseUrl}/me.html`);
     await page.waitForLoadState("networkidle");
@@ -1063,6 +1262,9 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       hasTemplateSelect: Boolean(document.querySelector("[data-template-select]")),
       hasContactToggle: Boolean(document.querySelector("[data-initiator-contact-toggle]")),
       contactHidden: document.querySelector("[data-initiator-contact-field]")?.hidden,
+      hasSourceType: Boolean(document.querySelector("[data-source-type-toggle]")),
+      hasFriendField: Boolean(document.querySelector("[data-friend-field]")),
+      hasFeedbackDisplay: Boolean(document.querySelector('select[name="showFeedbacks"]')),
     }));
     assert.equal(editorState.hasEditor, true);
     assert.ok(editorState.toolCount >= 8);
@@ -1070,6 +1272,9 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.equal(editorState.hasTemplateSelect, true);
     assert.equal(editorState.hasContactToggle, true);
     assert.equal(editorState.contactHidden, true);
+    assert.equal(editorState.hasSourceType, true);
+    assert.equal(editorState.hasFriendField, true);
+    assert.equal(editorState.hasFeedbackDisplay, true);
     const richEditorCommandState = await page.evaluate(() => {
       const canvas = document.querySelector("[data-rich-canvas]");
       canvas.innerHTML = "<p>移动端标题</p>";
