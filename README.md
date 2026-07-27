@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.20.0`
+当前版本：`0.20.1`
 
-状态：`0.20.0` 重构活动发布安全工作流：活动提交先落库为「安全分析中」并立即返回工作台，后台异步执行规则引擎、AI 分析和策略流转；明确营销、垃圾、诈骗、违法、成人和政治敏感等 AI 强信号会提升风险下限并进入管理员兜底审核；新增独立社区举报后台，举报会触发活动重分析、举报历史留痕和必要时下架转管理员审核。
+状态：`0.20.1` 修复 CloudBase 线上活动可能长期停留「安全分析中」的问题；分析队列现在会恢复超时 `running` 任务，并为缺少任务记录的 `analysis_pending` 活动补建任务。活动置信度页「重新分析」改为强制调用 AI、跳过缓存、使用当前启用 / 配置的 Prompt，并重新应用完整策略流转。
 
 ## 访问地址
 
@@ -359,7 +359,7 @@ npm run deploy:cloudbase
 - YKadmin Community Badge 页面，支持新增、编辑、删除身份徽章、成就徽章和事件徽章；徽章获得规则通过 JSON Rule Builder 配置。
 - YKadmin Badge Policy 页面，支持配置徽章公开可见性、展示位置、图标 / 名称显示、悬停说明和排序。
 - YKadmin 社区信用度页面，支持查看匿名身份 Community Trust 列表、Community ID、社区等级、状态、徽章、脱敏 IP / UA、最近活动、信用度详情、Community Timeline、策略命中、徽章授予记录和关联活动。
-- YKadmin 活动置信度详情页，支持查看活动风险分、置信分、规则引擎明细、AI Analysis Report、社区举报历史和重新分析。
+- YKadmin 活动置信度详情页，支持查看活动风险分、置信分、规则引擎明细、AI Analysis Report、Prompt 版本、社区举报历史和强制重新分析。
 - YKadmin 可取消或结束活动。
 - 开放工作台入口卡片，工作台概览位于所有入口模块之后。
 - 发起活动独立编辑页。
@@ -379,7 +379,7 @@ npm run deploy:cloudbase
 - 工作台概览卡片可点击跳转：全部、草稿、审核中、已发布分别进入对应活动筛选页。
 - 发起人可撤回审核中、已发布、已满员活动，撤回后回到草稿。
 - 活动详情页和访客报名。
-- 活动提交异步分析队列：正式提交先进入 `analysis_pending` 并立即返回，后台任务完成后写入分析报告、风险快照、Community Event 和最终状态；撤回或重新编辑会递增 `analysisVersion`，旧分析任务不会覆盖新内容。
+- 活动提交异步分析队列：正式提交先进入 `analysis_pending` 并立即返回，后台任务完成后写入分析报告、风险快照、Community Event 和最终状态；撤回或重新编辑会递增 `analysisVersion`，旧分析任务不会覆盖新内容；CloudBase 线上队列支持恢复超时 `running` 任务和补建缺失任务。
 - AI 强信号策略：明确营销、垃圾、诈骗、违法、成人和政治敏感内容会设置风险下限并隐藏转管理员审核；疑似营销保留公开但进入管理员关注待办。
 - Community Report 复核：每条新举报都会触发活动重分析；举报成立或安全复核发现强风险时活动下架进入管理员审核，举报暂不成立只记录，达到多人举报阈值时展示中立风险提示。
 - 活动详情页分享能力：生成分享海报、复制报名链接、下载 `.ics` 日历文件。
@@ -407,6 +407,7 @@ npm run deploy:cloudbase
 
 ## 已验证
 
+- `0.20.1` 本地验证通过：`npm test` 通过，新增覆盖置信度页强制重新分析会绕过 AI 缓存、记录当前 Prompt 版本，以及 `analysis_pending` 活动在分析任务缺失时可被 sweep 恢复。
 - `0.20.0` 本地验证通过：`npm test` 通过，包含语法检查、API 冒烟和 Playwright 浏览器冒烟；新增覆盖异步活动安全分析、AI 明确营销强信号转隐藏管理员审核、社区举报后台列表、活动置信度页举报历史和新后台举报页面移动端无横向溢出。
 - `0.19.1` 本地验证通过：`npm run test:syntax` 和 `npm run test:smoke` 均通过；新增覆盖规则置信度阈值 100 触发真实 AI 请求、AI 关闭时中高风险活动进入管理员审核、AI 不可用兜底原因写入活动置信度详情、重点风险词命中规则。
 - `0.19.0` 本地验证通过：`npm run test:syntax` 和 `npm run test:smoke` 均通过；新增覆盖 Community Governance 默认策略、身份详情事件流、Trust Policy 增删改、Community Badge 增删、Badge Policy 保存，以及新后台页面移动端无横向溢出。
@@ -491,7 +492,7 @@ npm run deploy:cloudbase
 - 生产级身份验证：短信验证码、密码或微信登录，替代当前手机号白名单免密登录。
 - 生产启用 Turnstile：在 Cloudflare 获取 Site Key / Secret Key 后写入 CloudBase 环境变量，并在规则引擎页开启策略。
 - 生产启用 AI Analysis Engine：先配置 Provider、Base URL、Model、API Key、Prompt 和调用策略，再用后台「测试连接」灰度验证。
-- CloudBase 控制台建议补齐 `docs/cloudbase-indexes.md` 中 `0.20.0` 新增 / 更新的集合索引，尤其是 `yk_activityAnalysisJobs.status + createdAt`、`yk_communityReports.status + createdAt`、`yk_communityReports.activityId + createdAt`，以及 `0.19.0` 的 Community Governance 相关索引。
+- CloudBase 控制台建议补齐 `docs/cloudbase-indexes.md` 中 `0.20.x` 新增 / 更新的集合索引，尤其是 `yk_activityAnalysisJobs.status + createdAt`、`yk_activityAnalysisJobs.status + startedAt`、`yk_communityReports.status + createdAt`、`yk_communityReports.activityId + createdAt`，以及 `0.19.0` 的 Community Governance 相关索引。
 - 管理员仪表盘统计：增加风险分布、举报趋势、AI 调用量、信用度变化和活动发布转化概览。
 - CloudBase 恢复演练和权限策略文档。
 - 自定义域名和同源 API 路由，减少跨域 Cookie 运维复杂度。

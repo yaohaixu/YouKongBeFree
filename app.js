@@ -2372,7 +2372,7 @@ async function initAdminActivityConfidencePage() {
   await renderActivityConfidence(root, id);
   qs("[data-reanalyze-activity]", root)?.addEventListener("click", async () => {
     await api.post(`/api/activities/${id}/reanalyze`, {});
-    showToast("保存成功");
+    showToast("已重新分析");
     await renderActivityConfidence(root, id);
   });
 }
@@ -2398,7 +2398,7 @@ async function renderActivityConfidence(root, id) {
         <div><span>发起人</span><strong>${escapeHtml(activity.initiator)}</strong><p>社区信用度：${trustProfile ? Number(trustProfile.communityTrust || 0) : "无记录"}</p></div>
         <div><span>社区反馈</span><strong>${reports.length}</strong><p>达到阈值会触发再次分析。</p></div>
         <div><span>规则基准分</span><strong>${Number(sourceRiskScore || 0)}</strong><p>AI 调整：${Number(aiAdjustment || 0) > 0 ? "+" : ""}${Number(aiAdjustment || 0)}</p></div>
-        <div><span>AI 触发原因</span><strong>${escapeHtml(aiTriggerReason)}</strong><p>第 ${Number(aiMeta.activityNumber || 0) || "-"} 场 / 已有 ${Number(aiMeta.identityActivityCount || 0)} 场</p></div>
+        <div><span>AI 触发原因</span><strong>${escapeHtml(aiTriggerReason)}</strong><p>${aiMeta.forced ? "管理员强制调用" : "策略自动判断"} · Prompt：${escapeHtml(aiMeta.promptVersion || "-")}</p></div>
         <div><span>兜底策略</span><strong>${escapeHtml(activity.safetyFallbackReason || policy.safetyFallbackReason || "无")}</strong><p>${activity.safetyFallbackReason === "ai-unavailable" ? "AI 不可用时进入管理员审核" : "按当前策略分流"}</p></div>
       </div>
     </article>
@@ -2416,7 +2416,7 @@ async function renderActivityConfidence(root, id) {
 	    </section>
 	    <section class="panel-block">
 	      <h3>分析历史</h3>
-	      ${analyses.length ? analyses.map((item) => `<p>${formatDate(item.createdAt)} · 风险分 ${item.policy?.riskScore ?? item.ruleReport?.riskScore ?? 0} · ${escapeHtml(item.aiMeta?.reason || "rule")}</p>`).join("") : `<p class="muted-text">暂无分析历史。</p>`}
+		      ${analyses.length ? analyses.map((item) => `<p>${formatDate(item.createdAt)} · 风险分 ${item.policy?.riskScore ?? item.ruleReport?.riskScore ?? 0} · ${escapeHtml(item.aiMeta?.triggerReason || item.aiMeta?.reason || "rule")} · Prompt ${escapeHtml(item.aiMeta?.promptVersion || "-")}</p>`).join("") : `<p class="muted-text">暂无分析历史。</p>`}
 	    </section>
   `;
   revealDynamicContent(container);
@@ -2449,6 +2449,7 @@ function renderAiSkippedState(aiMeta = {}) {
     "strategy-skip": "当前调用策略未要求 AI 介入。",
     "low-rule-confidence": "系统判定需要 AI 介入，但本次未拿到分析报告。",
     "new-identity-first-activities": "新匿名身份活动需要 AI 介入，但本次未拿到分析报告。",
+    "manual-forced": "管理员已强制调用 AI，但本次未拿到分析报告。",
   }[reason] || `AI 未返回分析报告：${reason}`;
   return `<p class="muted-text">${escapeHtml(label)}</p>`;
 }

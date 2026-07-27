@@ -527,6 +527,64 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   } finally {
     await clearAdStub.close();
   }
+  const forceAiStub = await startAiStub({
+    riskScore: 16,
+    confidence: 0.91,
+    summary: "强制重新分析使用的新 Prompt 结果",
+  });
+  try {
+    const forcePrompt = await request("/api/ai/prompts", {
+      method: "POST",
+      body: {
+        type: "activity",
+        version: "activity-force-v2",
+        name: "强制重新分析 Prompt",
+        active: "false",
+        systemPrompt: "你是强制重新分析测试观察员，只输出 JSON。",
+        userPrompt: "请用新版 Prompt 分析活动内容。",
+      },
+    }, admin.token);
+    await request(`/api/ai/prompts/${forcePrompt.prompt.id}/activate`, {
+      method: "POST",
+      body: {},
+    }, admin.token);
+    await request("/api/ai/settings", {
+      method: "PUT",
+      body: {
+        enabled: "true",
+        provider: "openai-compatible",
+        baseUrl: forceAiStub.baseUrl,
+        model: "stub-model",
+        apiKey: "stub-key",
+        cacheTtlSeconds: 86400,
+        callStrategy: {
+          lowConfidenceOnly: true,
+          ruleConfidenceMax: 100,
+          firstActivitiesAlways: false,
+          mediumRiskOnly: false,
+          randomSampleRate: 0,
+        },
+      },
+    }, admin.token);
+    const cachedAiActivity = await createActivity("", {
+      title: "强制重新分析缓存测试活动",
+      initiator: "匿名发起人",
+      description: "普通社区活动，用于验证重新分析一定绕过缓存再次调用 AI。",
+    });
+    const callsAfterCreate = forceAiStub.calls;
+    assert.ok(callsAfterCreate >= 1);
+    await request(`/api/activities/${cachedAiActivity.activity.id}/reanalyze`, {
+      method: "POST",
+      body: {},
+    }, admin.token);
+    assert.ok(forceAiStub.calls > callsAfterCreate, "manual reanalysis should bypass AI cache and call provider again");
+    const forcedConfidence = await request(`/api/activities/${cachedAiActivity.activity.id}/confidence`, {}, admin.token);
+    assert.equal(forcedConfidence.latestAnalysis.aiMeta.triggerReason, "manual-forced");
+    assert.equal(forcedConfidence.latestAnalysis.aiMeta.forced, true);
+    assert.equal(forcedConfidence.latestAnalysis.aiMeta.promptVersion, "activity-force-v2");
+  } finally {
+    await forceAiStub.close();
+  }
   await request("/api/ai/settings", {
     method: "PUT",
     body: {
@@ -551,6 +609,27 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const fallbackConfidence = await request(`/api/activities/${aiClosedFallback.activity.id}/confidence`, {}, admin.token);
   assert.equal(fallbackConfidence.latestAnalysis.aiMeta.reason, "disabled");
   assert.ok(fallbackConfidence.latestAnalysis.ruleReport.findings.some((item) => item.ruleId === "regulated_sensitive_terms"));
+  const stuckPending = await createActivity("", {
+    title: "缺失分析任务恢复测试活动",
+    initiator: "匿名发起人",
+    description: "普通社区活动，用于验证 analysis_pending 活动在任务缺失时会被 sweep 恢复。",
+    waitForAnalysis: false,
+  });
+  await store.remove("activityAnalysisJobs", (item) => item.activityId === stuckPending.activity.id);
+  await store.update("activities", stuckPending.activity.id, {
+    status: "analysis_pending",
+    reviewStep: "analysis",
+    analysisStatus: "pending",
+    analysisVersion: Number(stuckPending.activity.analysisVersion || 1) + 1,
+    updatedAt: new Date().toISOString(),
+  });
+  const recoveredSweep = await request("/api/system/analysis-jobs/sweep", {
+    method: "POST",
+    body: {},
+  }, admin.token);
+  assert.ok(recoveredSweep.recovered >= 1 || recoveredSweep.processed >= 1);
+  const recoveredActivity = await request(`/api/activities/${stuckPending.activity.id}`, {}, admin.token);
+  assert.notEqual(recoveredActivity.activity.status, "analysis_pending");
   const confidenceDetail = await request(`/api/activities/${created.activity.id}/confidence`, {}, admin.token);
   assert.equal(confidenceDetail.activity.id, created.activity.id);
   assert.ok(confidenceDetail.latestAnalysis.ruleReport);

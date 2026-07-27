@@ -2642,3 +2642,64 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 给 CloudBase 增加 `yk_activityAnalysisJobs.status + createdAt`、`yk_communityReports.status + createdAt`、`yk_communityReports.activityId + createdAt` 索引，并在 `docs/cloudbase-indexes.md` 记录。
 2. 增加独立 Report Analysis Prompt，让 AI 同时分析举报文本与活动内容的匹配度，而不是只通过活动分析结果做启发式判断。
 3. 在管理员仪表盘增加举报趋势、分析队列积压数、AI 失败率和管理员关注任务数量。
+
+## 2026-07-27 - 0.20.1 强制重新分析与安全分析队列恢复
+
+### 任务目标
+
+修复两个线上问题：管理员在活动置信度详情页点击「重新分析」时，需要对活动重新执行完整规则引擎、AI Analysis Engine 和策略流转，并且强制调用 AI、跳过缓存、使用当前启用 / 配置的 Prompt；同时排查线上「年度粉丝交流见面会暨会员成长分享活动」长期停留在「安全分析中」的问题，避免 CloudBase 云函数结束后后台分析任务没有继续执行导致活动卡住。
+
+### 具体修改内容
+
+- `lib/ai-analysis/service.js`：新增 `forceAi` 调用路径，管理员手动重新分析会绕过调用策略与 AI 缓存，直接请求当前 Provider；AI 使用的 Prompt 版本写入使用日志和返回结果。
+- `lib/community-safety/service.js`：分析报告 `aiMeta` 新增 `forced`、`promptVersion`、`promptName`，方便置信度页和历史报告追溯。
+- `lib/app.js`：抽出统一的活动分析结果应用逻辑，后台队列和手动重新分析共用同一套状态流转；手动重新分析会重新套用最新策略，必要时从安全分析中流转到发布或管理员审核。
+- `lib/app.js`：分析队列 sweep 新增恢复能力，支持恢复超时 `running` 任务，并为没有任务记录的 `analysis_pending` 活动补建任务。
+- `lib/app.js`：我的活动、管理员活动、待办等管理视图会同步处理少量待分析任务，减少 CloudBase serverless 后台 `setTimeout` 不继续运行带来的滞留。
+- `app.js`：置信度页重新分析提示改为「已重新分析」，并展示 AI 触发原因、强制调用标记和 Prompt 版本。
+- `tests/smoke.test.js`：新增强制重新分析绕过缓存并记录 Prompt 版本的回归测试；新增缺失分析任务时 sweep 可恢复 `analysis_pending` 活动的回归测试。
+- `README.md`、`CHANGELOG.md`、`docs/security.md`、`docs/cloudbase-indexes.md`、`package.json`、`package-lock.json`、`*.html`：同步 `0.20.1` 版本、说明和静态资源版本号。
+
+### 涉及文件
+
+- `app.js`
+- `lib/app.js`
+- `lib/ai-analysis/service.js`
+- `lib/community-safety/service.js`
+- `tests/smoke.test.js`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/security.md`
+- `docs/cloudbase-indexes.md`
+- `docs/dev-log.md`
+- `package.json`
+- `package-lock.json`
+- `*.html`
+
+### 技术方案选择
+
+- 手动重新分析采用 `forceAi + bypassCache`，而不是只把调用策略改成 manual。这样管理员改 Prompt 文本或切换 Prompt 后，即使活动内容完全相同，也会得到一次新的 AI 分析结果。
+- 重新分析结果复用队列分析的状态流转函数，避免出现“风险分更新了，但活动仍卡在原状态”的割裂。
+- 队列恢复采用两层兜底：先恢复超时 `running` 任务，再扫描 `analysis_pending` 活动并补建缺失任务。这样可以覆盖 CloudBase 云函数生命周期中断和历史任务记录缺失两类情况。
+
+### 设计决策原因
+
+- CloudBase 云函数不适合依赖请求返回后的 `setTimeout` 保证后台任务完成；线上活动卡住时，手动 sweep 返回 `processed: 0`，但活动仍是 `analysis_pending`，说明只扫 `pending` 任务不够。
+- 强制重新分析是管理员治理动作，目标是得到新的可解释判断，因此应该跳过缓存；缓存仍保留给普通自动分析，以降低 Token 消耗。
+- 管理视图同步扫少量任务比首页同步扫更合适：不会拖慢公开首页，同时用户发起活动后通常会进入「我的活动」查看状态，可以自然唤醒队列。
+
+### 当前完成情况
+
+- 代码修复、文档更新和版本升级已完成。
+- `npm test` 已通过，包含语法检查、API 冒烟和 Playwright 浏览器冒烟。
+
+### 遗留问题
+
+- 生产上仍建议接入 CloudBase 定时触发器或独立任务队列，定期调用分析队列 sweep，这比依赖用户访问管理页更稳定。
+- CloudBase 控制台需新增 `yk_activityAnalysisJobs.status + startedAt` 索引，避免恢复超时 running 任务时随着数据增长变慢。
+
+### 下一步建议
+
+1. 部署后用管理员身份打开线上这条卡住的活动置信度页，或调用分析队列 sweep，确认它从「安全分析中」流转到发布或管理员审核。
+2. 在后台增加“分析队列积压数 / running 超时数 / 最近失败原因”卡片，管理员不需要看数据库也能发现队列异常。
+3. 接入 CloudBase 定时触发器，每 1-5 分钟自动调用一次队列 sweep。
