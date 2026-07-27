@@ -1,5 +1,6 @@
 const CLIENT_ID_KEY = "yk_client_id";
 const ACTIVITY_TOKEN_KEY = "yk_activity_tokens";
+const ACTIVITY_INTEREST_KEY = "yk_activity_interests";
 
 function randomToken() {
   const webCrypto = window.crypto || window.msCrypto;
@@ -49,6 +50,26 @@ function readActivityTokens() {
   } catch {
     return {};
   }
+}
+
+function readActivityInterests() {
+  try {
+    return JSON.parse(localStorage.getItem(ACTIVITY_INTEREST_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function rememberActivityInterest(activityId) {
+  if (!activityId) return;
+  const interests = readActivityInterests();
+  interests[activityId] = true;
+  localStorage.setItem(ACTIVITY_INTEREST_KEY, JSON.stringify(interests));
+}
+
+function hasActivityInterest(activity) {
+  if (!activity?.id) return false;
+  return Boolean(activity.interestedByMe || readActivityInterests()[activity.id]);
 }
 
 function writeActivityTokens(tokens = {}) {
@@ -200,6 +221,7 @@ const logActionOptions = [
   ["activity.review.return", "审核退回"],
   ["activity.review.reject", "审核拒绝"],
   ["activity.cancel", "取消活动"],
+  ["activity.not_formed_cancel", "未成团取消"],
   ["activity.end", "结束活动"],
   ["activity.auto_end", "自动结束活动"],
   ["registration.create", "新增报名"],
@@ -231,6 +253,7 @@ const statusOptions = [
   ["published", "活动发布"],
   ["full", "活动人满"],
   ["cancelled", "活动取消"],
+  ["not_formed_cancelled", "未成团取消"],
   ["ended", "活动结束"],
 ];
 
@@ -244,6 +267,7 @@ const statusTone = {
   published: "发布",
   full: "人满",
   cancelled: "取消",
+  not_formed_cancelled: "未成团",
   ended: "结束",
 };
 
@@ -408,7 +432,7 @@ function renderRiskNotice(activity = {}) {
 }
 
 function renderCommunityReportBox(activity = {}) {
-  if (!["published", "full", "ended"].includes(activity.status)) return "";
+  if (!["published", "full", "not_formed_cancelled", "ended"].includes(activity.status)) return "";
   return `
     <details class="report-box">
       <summary>向社区反馈这条活动</summary>
@@ -431,6 +455,40 @@ function renderCommunityReportBox(activity = {}) {
       </form>
     </details>
   `;
+}
+
+function renderActivityFormationPanel(activity = {}) {
+  if (!activity.minRegistrationEnabled || !Number(activity.minRegistrationCount || 0)) return "";
+  const deadline = activity.registrationDeadline ? formatDate(activity.registrationDeadline) : "活动开始前";
+  return `
+    <div class="formation-panel">
+      <strong>最低 ${Number(activity.minRegistrationCount || 0)} 人成团</strong>
+      <p>当前 ${Number(activity.registrationCount || 0)} 人报名 · 最后报名日期 ${escapeHtml(deadline)}</p>
+    </div>
+  `;
+}
+
+function renderPublicRegistrationNames(activity = {}) {
+  const registrations = Array.isArray(activity.publicRegistrations) ? activity.publicRegistrations : [];
+  if (!activity.showRegistrationNames || !registrations.length) return "";
+  return `
+    <section class="section tight public-registration-section">
+      <div class="wrap">
+        <p class="section-kicker">已报名的朋友</p>
+        <div class="name-wall">
+          ${registrations.map((item) => `<span>${escapeHtml(item.nickname)}</span>`).join("")}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function registrationClosedText(activity = {}) {
+  if (activity.status === "full") return "这个活动名额已经满了。";
+  if (activity.status === "not_formed_cancelled") return "这个活动没有达到最低报名人数，已自动取消。";
+  if (activity.status === "ended") return "这个活动已经结束。";
+  if (activity.registrationDeadlinePassed) return "这个活动报名已经截止。";
+  return `这个活动当前是「${escapeHtml(activity.statusLabel)}」状态，公开发布后才可以报名。`;
 }
 
 function hasMeaningfulRichText(value = "") {
@@ -605,6 +663,23 @@ function toDatetimeLocal(value) {
   return local.toISOString().slice(0, 16);
 }
 
+function renderFormationMeta(activity = {}) {
+  if (!activity.minRegistrationEnabled || !Number(activity.minRegistrationCount || 0)) return "";
+  const deadline = activity.registrationDeadline ? ` · 截止 ${formatDate(activity.registrationDeadline)}` : "";
+  return `<span>最低 ${Number(activity.minRegistrationCount || 0)} 人成团${deadline}</span>`;
+}
+
+function renderInterestButton(activity = {}) {
+  const interested = hasActivityInterest(activity);
+  const count = Number(activity.interestCount || 0);
+  return `
+    <button class="interest-button" type="button" data-interest-activity-id="${escapeHtml(activity.id)}" ${interested ? "disabled" : ""}>
+      <span>${interested ? "已感兴趣" : "感兴趣"}</span>
+      <strong data-interest-count="${escapeHtml(activity.id)}">${count}</strong>
+    </button>
+  `;
+}
+
 function renderActivityCard(activity) {
   const cover = activity.coverUrl
     ? `<img src="${escapeHtml(activity.coverUrl)}" alt="${escapeHtml(activity.title)}" />`
@@ -621,10 +696,43 @@ function renderActivityCard(activity) {
           <span>${escapeHtml(activity.statusLabel || "活动发布")}</span>
           <span>发起人：${escapeHtml(activity.initiator)}</span>
           <span>${capacity}</span>
+          ${renderFormationMeta(activity)}
         </div>
+        <div class="event-actions">${renderInterestButton(activity)}</div>
       </div>
     </article>
   `;
+}
+
+function bindActivityInterestActions(root = document) {
+  qsa("[data-interest-activity-id]", root).forEach((button) => {
+    if (button.dataset.bound === "true") return;
+    button.dataset.bound = "true";
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const activityId = button.dataset.interestActivityId;
+      if (!activityId || button.disabled) return;
+      const previousText = button.querySelector("span")?.textContent || "感兴趣";
+      button.disabled = true;
+      button.querySelector("span") && (button.querySelector("span").textContent = "记录中");
+      try {
+        const result = await api.post(`/api/activities/${encodeURIComponent(activityId)}/interests`, {});
+        rememberActivityInterest(activityId);
+        button.querySelector("span") && (button.querySelector("span").textContent = "已感兴趣");
+        qsa("[data-interest-count]").forEach((item) => {
+          if (item.dataset.interestCount === activityId) {
+            item.textContent = String(result.interestCount ?? item.textContent ?? 0);
+          }
+        });
+        showToast(result.existing ? "已经记录过感兴趣" : "已记录感兴趣");
+      } catch (error) {
+        button.disabled = false;
+        button.querySelector("span") && (button.querySelector("span").textContent = previousText);
+        showToast(error.message || "暂时不能记录感兴趣");
+      }
+    });
+  });
 }
 
 async function renderActivityLists() {
@@ -654,6 +762,7 @@ async function renderActivityLists() {
       return;
     }
     list.innerHTML = visible.map(renderActivityCard).join("");
+    bindActivityInterestActions(list);
     revealDynamicContent(list);
   }));
 }
@@ -789,6 +898,7 @@ async function initActivityEditorPage() {
   qs("[data-user-name]") && (qs("[data-user-name]").textContent = user?.nickname || "朋友");
   resetActivityForm(form);
   bindInitiatorContactToggle(form);
+  bindMinRegistrationToggle(form);
   mePageState.richEditor = window.youkongRichEditor ? window.youkongRichEditor.mount(form) : null;
   mePageState.modules = await fillModuleSelect(form.moduleId);
   mePageState.collaborators = await fillCollaboratorSelect(form.collaboratorId);
@@ -875,6 +985,39 @@ function bindInitiatorContactToggle(form) {
   sync();
 }
 
+function bindMinRegistrationToggle(form) {
+  const select = qs("[data-min-registration-toggle]", form);
+  if (!select) return;
+  const fields = qsa("[data-min-registration-field]", form);
+  const countInput = form.minRegistrationCount;
+  const deadlineInput = form.registrationDeadline;
+  const sync = () => {
+    const shouldShow = select.value === "yes";
+    fields.forEach((field) => {
+      field.hidden = !shouldShow;
+      const input = field.querySelector("input, select, textarea");
+      if (input) input.required = shouldShow;
+    });
+    if (shouldShow && deadlineInput && !deadlineInput.value && form.startsAt?.value) {
+      deadlineInput.value = form.startsAt.value;
+    }
+    if (!shouldShow) {
+      if (countInput) countInput.value = "";
+      if (deadlineInput) deadlineInput.value = form.startsAt?.value || "";
+    }
+  };
+  if (select.dataset.bound !== "true") {
+    select.addEventListener("change", sync);
+    form.startsAt?.addEventListener("change", () => {
+      if (select.value === "yes" && deadlineInput && !deadlineInput.value) {
+        deadlineInput.value = form.startsAt.value;
+      }
+    });
+    select.dataset.bound = "true";
+  }
+  sync();
+}
+
 function bindTemplateSelect(form) {
   const select = qs("[data-template-select]", form);
   if (!select) return;
@@ -955,7 +1098,13 @@ function resetActivityForm(form) {
   if (form.showInitiatorContact) form.showInitiatorContact.value = "no";
   if (form.initiatorContact) form.initiatorContact.value = mePageState.user?.phone || "";
   bindInitiatorContactToggle(form);
+  if (form.showRegistrationNames) form.showRegistrationNames.value = "no";
+  if (form.minRegistrationEnabled) form.minRegistrationEnabled.value = "no";
+  if (form.minRegistrationCount) form.minRegistrationCount.value = "";
+  if (form.registrationDeadline) form.registrationDeadline.value = "";
+  bindMinRegistrationToggle(form);
   qs("[data-initiator-contact-field]", form)?.setAttribute("hidden", "");
+  qsa("[data-min-registration-field]", form).forEach((field) => field.setAttribute("hidden", ""));
   if (form.collaboratorId) form.collaboratorId.value = "";
   const templateSelect = qs("[data-template-select]", form);
   if (templateSelect) templateSelect.value = "";
@@ -977,6 +1126,11 @@ function fillActivityForm(form, activity) {
   if (form.endsAt) form.endsAt.value = toDatetimeLocal(activity.endsAt);
   form.location.value = activity.location;
   form.capacity.value = activity.capacity || "";
+  if (form.showRegistrationNames) form.showRegistrationNames.value = activity.showRegistrationNames ? "yes" : "no";
+  if (form.minRegistrationEnabled) form.minRegistrationEnabled.value = activity.minRegistrationEnabled ? "yes" : "no";
+  if (form.minRegistrationCount) form.minRegistrationCount.value = activity.minRegistrationCount || "";
+  if (form.registrationDeadline) form.registrationDeadline.value = toDatetimeLocal(activity.registrationDeadline || activity.startsAt);
+  bindMinRegistrationToggle(form);
   form.collaboratorId.value = activity.collaboratorId || "";
   form.description.value = activity.description || "";
   window.youkongRichEditor?.setHtml(form, activity.description || "");
@@ -1063,6 +1217,7 @@ async function renderPublicActivities() {
     return;
   }
   list.innerHTML = loaded.map(renderActivityCard).join("");
+  bindActivityInterestActions(list);
   revealDynamicContent(list);
 }
 
@@ -1155,7 +1310,7 @@ async function renderMineActivities() {
 function canViewRegistrations(activity) {
   return Boolean(activity.publishedAt)
     || Number(activity.registrationCount || 0) > 0
-    || ["published", "full", "cancelled", "ended"].includes(activity.status);
+    || ["published", "full", "cancelled", "not_formed_cancelled", "ended"].includes(activity.status);
 }
 
 function queryFromForm(form, extra = {}) {
@@ -1216,7 +1371,7 @@ async function initReviewTasksPage() {
 }
 
 function canRegisterActivity(activity) {
-  return ["published", "full", "ended"].includes(activity.status);
+  return activity.status === "published" && !activity.registrationDeadlinePassed;
 }
 
 async function initRegistrationsPage() {
@@ -1259,14 +1414,13 @@ function renderRegistrationTable(container, activityId, registrations) {
   }
   container.innerHTML = `
     <table class="data-table">
-      <thead><tr><th>昵称</th><th>手机号</th><th>报名时间</th><th>操作</th></tr></thead>
+      <thead><tr><th>昵称</th><th>报名时间</th><th>操作</th></tr></thead>
       <tbody>
         ${registrations
           .map(
             (item) => `
               <tr>
                 <td>${escapeHtml(item.nickname)}</td>
-                <td>${escapeHtml(item.phone)}</td>
                 <td>${formatDate(item.createdAt)}</td>
                 <td><button class="table-action" type="button" data-delete-registration="${item.id}">删除</button></td>
               </tr>
@@ -1297,8 +1451,8 @@ function escapeCsv(value = "") {
 
 function downloadRegistrationsCsv(activity, registrations) {
   const rows = [
-    ["活动标题", "昵称", "手机号", "报名时间"],
-    ...registrations.map((item) => [activity.title, item.nickname, item.phone, item.createdAt]),
+    ["活动标题", "昵称", "报名时间"],
+    ...registrations.map((item) => [activity.title, item.nickname, item.createdAt]),
   ];
   const csv = `\uFEFF${rows.map((row) => row.map(escapeCsv).join(",")).join("\n")}`;
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -1322,7 +1476,6 @@ async function initActivityPage() {
   }
 
   const { activity } = await api.get(`/api/activities/${id}`);
-  const registrationLookupOnly = activity.status === "full" || activity.status === "ended";
   root.innerHTML = `
     <section class="activity-hero">
       <div>
@@ -1334,11 +1487,12 @@ async function initActivityPage() {
           <span>发起人：${escapeHtml(activity.initiator)}</span>
           <span>${activity.capacity ? `限额 ${activity.capacity} 人` : "人数无上限"}</span>
           <span>已报名 ${activity.registrationCount} 人</span>
+          ${renderFormationMeta(activity)}
         </div>
         ${renderRiskNotice(activity)}
         ${renderInitiatorContact(activity)}
         <div class="activity-share-actions" aria-label="活动分享操作">
-          <button class="button ghost" type="button" data-download-poster>分享海报</button>
+          <button class="button ghost" type="button" data-download-poster>下载活动邀请函</button>
           <button class="button outline" type="button" data-copy-registration-link>复制报名链接</button>
           <button class="button outline" type="button" data-download-calendar>加到日历</button>
         </div>
@@ -1355,30 +1509,26 @@ async function initActivityPage() {
         ${
           canRegisterActivity(activity)
             ? `<aside class="form-note">
-                <h3>${registrationLookupOnly ? "查看报名确认" : "报名这个活动"}</h3>
-                ${
-                  registrationLookupOnly
-                    ? `<p class="muted-text">这个活动当前不接受新报名。已经报名的人可以输入原手机号查看确认页。</p>`
-                    : ""
-                }
+                <h3>报名这个活动</h3>
+                ${renderActivityFormationPanel(activity)}
                 <form data-register-form>
                   <label for="nickname">昵称</label>
                   <input id="nickname" name="nickname" required />
-                  <label for="phone">手机号</label>
-                  <input id="phone" name="phone" inputmode="tel" required />
-                  <button class="button primary" type="submit">${registrationLookupOnly ? "查找报名" : "提交报名"}</button>
+                  <button class="button primary" type="submit">提交报名</button>
                   <p class="form-message" data-register-message></p>
                 </form>
                 ${renderCommunityReportBox(activity)}
               </aside>`
             : `<aside class="form-note">
                 <h3>暂不开放报名</h3>
-                <p class="muted-text">这个活动当前是「${escapeHtml(activity.statusLabel)}」状态，公开发布后才可以报名。</p>
+                ${renderActivityFormationPanel(activity)}
+                <p class="muted-text">${registrationClosedText(activity)}</p>
                 ${renderCommunityReportBox(activity)}
               </aside>`
         }
       </div>
     </section>
+    ${renderPublicRegistrationNames(activity)}
   `;
   revealDynamicContent(root);
   window.youkongActivityShare?.mount(root, activity, {
@@ -1388,7 +1538,6 @@ async function initActivityPage() {
       const form = qs("[data-register-form]", root);
       return {
         nickname: form?.nickname?.value || "",
-        phone: form?.phone?.value || "",
       };
     },
   });
@@ -1420,7 +1569,6 @@ async function initActivityPage() {
     try {
       const { registration, accessToken } = await api.post(`/api/activities/${id}/register`, {
         nickname: form.nickname.value,
-        phone: form.phone.value,
       });
       const token = accessToken || registration.accessToken || "";
       const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : "";
@@ -1460,12 +1608,12 @@ async function initSuccessPage() {
             <div>
               <span>报名人</span>
               <strong>${escapeHtml(registration.nickname)}</strong>
-              <p>${escapeHtml(registration.phone)}</p>
+              <p>已记录昵称</p>
             </div>
           </div>
           <div class="button-row">
             <a class="button primary" href="activity.html?id=${encodeURIComponent(activity.id)}">查看活动</a>
-            <button class="button ghost" type="button" data-download-poster>下载分享海报</button>
+            <button class="button ghost" type="button" data-download-poster>下载活动邀请函</button>
             <button class="button outline danger-soft" type="button" data-cancel-registration>取消报名</button>
             <a class="button ghost" href="participate.html">看看其他活动</a>
           </div>
@@ -2945,7 +3093,7 @@ async function renderAllActivities() {
 }
 
 function canAdminCancel(activity) {
-  return !["cancelled", "ended", "rejected"].includes(activity.status);
+  return !["cancelled", "not_formed_cancelled", "ended", "rejected"].includes(activity.status);
 }
 
 function canAdminEnd(activity) {

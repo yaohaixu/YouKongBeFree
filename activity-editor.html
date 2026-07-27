@@ -8,8 +8,8 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <script src="theme.js?v=0.20.2"></script>
-    <link rel="stylesheet" href="styles.css?v=0.20.2" />
+    <script src="theme.js?v=0.21.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.21.0" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -57,6 +57,20 @@
               <label>结束时间（可选）<input name="endsAt" type="datetime-local" /></label>
               <label>地点<input name="location" required placeholder="有空客厅 / 流动客厅地址" /></label>
               <label>人数限额<input name="capacity" type="number" min="1" max="99" placeholder="留空默认 99 人" /></label>
+              <label>是否公示报名人昵称
+                <select name="showRegistrationNames">
+                  <option value="no" selected>否</option>
+                  <option value="yes">是</option>
+                </select>
+              </label>
+              <label>是否设置最低报名限度
+                <select name="minRegistrationEnabled" data-min-registration-toggle>
+                  <option value="no" selected>否</option>
+                  <option value="yes">是</option>
+                </select>
+              </label>
+              <label data-min-registration-field hidden>最低报名人数<input name="minRegistrationCount" type="number" min="1" max="98" placeholder="比如 6 人" /></label>
+              <label data-min-registration-field hidden>最后报名日期<input name="registrationDeadline" type="datetime-local" /></label>
             </div>
             <label>上传首页图<input name="cover" type="file" accept="image/jpeg,image/png,image/webp,image/gif" /></label>
             <label>活动描述模板<select name="templateId" data-template-select></select></label>
@@ -89,8 +103,8 @@
         <nav class="footer-links"><a href="me.html">工作台</a><a href="my-activities.html">我的活动</a><a href="participate.html">活动与参与</a></nav>
       </div>
     </footer>
-    <script src="script.js?v=0.20.2"></script>
-    <script src="assets/js/rich-editor.js?v=0.20.2"></script>
-    <script src="app.js?v=0.20.2"></script>
+    <script src="script.js?v=0.21.0"></script>
+    <script src="assets/js/rich-editor.js?v=0.21.0"></script>
+    <script src="app.js?v=0.21.0"></script>
   </body>
 </html>

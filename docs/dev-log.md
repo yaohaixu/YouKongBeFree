@@ -2761,3 +2761,76 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 部署后在线上对 `/api/session`、`/api/dashboard/me`、`/api/activities?owner=me&page=1&pageSize=12` 做冷启动和热启动耗时对比。
 2. 为 `/api/dashboard/me` 增加后端分段 timing 日志，拆分 session、owner counts、pending preview 各自耗时。
 3. 如果「我的活动」未来超过千级数据，新增 `ownerKeys` 冗余数组字段并建立 `ownerKeys + status + createdAt` 索引，把双归属合并变成单查询。
+
+## 2026-07-27 - 0.21.0 开放报名、最低成团与感兴趣
+
+### 任务目标
+
+把公开活动参与链路从“昵称 + 手机号报名”调整为更轻、更少隐私沉淀的“昵称 + 匿名身份”模型；允许发起人选择是否公示报名昵称；增加最低报名限度和最后报名日期，让活动可以像“投票 + 报名”一样自动判断是否成团；并在近期 / 历史活动列表增加一次性的「感兴趣」表达。
+
+### 具体修改内容
+
+- `lib/app.js`：公开报名接口只校验昵称，使用综合匿名身份生成稳定报名 ID，重复报名刷新确认 token；报名响应、报名表和确认页均不再返回报名手机号。
+- `lib/app.js`：新增活动字段 `showRegistrationNames`、`minRegistrationEnabled`、`minRegistrationCount`、`registrationDeadline`、`interestCount`，创建 / 编辑活动时统一解析和校验。
+- `lib/app.js`：新增 `not_formed_cancelled` 状态；自动归档 sweep 同时处理结束活动和最低报名未达标活动；报名截止时仍低于最低人数会立即转为「未成团取消」。
+- `lib/app.js`：新增 `/api/activities/:id/interests`，按活动 ID + 匿名身份幂等写入 `activityInterests`，同一浏览器身份只能点一次。
+- `lib/store.js`：新增 `activityInterests` 集合初始化。
+- `lib/community-governance/service.js`：Community Profile 投影增加 `interestCount`，便于后续把兴趣回应接入信用策略。
+- `app.js`：活动编辑页支持报名昵称公示开关、最低报名限度开关、最低人数和最后报名日期；最后报名日期默认等于活动开始时间。
+- `app.js`：活动详情报名表只保留昵称；报名成功页只展示报名昵称并保留取消报名能力；活动详情按配置展示报名昵称墙。
+- `app.js`：近期 / 历史活动卡片展示最低成团信息和「感兴趣」按钮，点击后本地记录并禁用按钮。
+- `assets/js/activity-share.js`：分享能力调整为「下载活动邀请函」，邀请函不再包含报名手机号，诚邀昵称字号加大。
+- `activity-editor.html`、`styles.css`：补充新表单字段和公开昵称墙、成团信息、感兴趣按钮的样式。
+- `tests/smoke.test.js`：新增昵称报名、匿名身份重复报名、报名昵称公示、感兴趣去重、最低报名未成团取消、邀请函不含手机号等覆盖。
+- `README.md`、`CHANGELOG.md`、`docs/security.md`、`docs/cloudbase-indexes.md`、`package.json`、`package-lock.json`、`*.html`：同步版本、变更说明、安全口径和索引建议。
+
+### 涉及文件
+
+- `lib/app.js`
+- `lib/store.js`
+- `lib/community-governance/service.js`
+- `app.js`
+- `activity-editor.html`
+- `styles.css`
+- `assets/js/activity-share.js`
+- `tests/smoke.test.js`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/security.md`
+- `docs/cloudbase-indexes.md`
+- `docs/dev-log.md`
+- `package.json`
+- `package-lock.json`
+- `*.html`
+
+### 技术方案选择
+
+- 报名去重改用匿名身份，而不是手机号，是为了满足“报名只录入昵称”的体验，同时减少公开活动系统保存手机号的必要性。
+- 报名确认和取消报名继续依赖一次性确认 token；重复报名会刷新 token，避免单纯知道报名 ID 就能访问确认页。
+- 最低报名限度设计为可选开关：不开启时完全沿用普通报名流程；开启时要求填写最低人数和报名截止时间，并校验人数限额必须大于最低报名人数。
+- 「感兴趣」只记录一次且不可取消，使用匿名身份幂等写入，降低刷数和误触反复波动。
+- 「未成团取消」归入历史活动，而不是删除活动，保留公共记录和后续复盘线索。
+
+### 设计决策原因
+
+- 有空客厅的开放活动发布不适合把报名手机号作为默认必填项；昵称报名更符合低门槛参与，同时确认 token 能维持基本的个人确认页访问保护。
+- 最低报名限度本质上是发起人对活动启动条件的声明，不应影响不需要成团判断的普通活动，所以放在显式开关之后。
+- 公示报名人昵称需要由发起人主动选择，默认不公开，避免把报名者参与信息意外公开。
+- 感兴趣数据未来可以进入推荐、Community Trust 或活动组织判断，但当前只做轻量表达，不引入取消、排行榜或复杂互动。
+
+### 当前完成情况
+
+- 功能开发和文档同步已完成。
+- 本地 `npm run test:syntax` 和 `npm run test:smoke` 已通过；最终提交前继续执行完整 `npm test` 和 `npm run deploy:dry-run`。
+
+### 遗留问题
+
+- CloudBase 生产环境仍需补充 `yk_activityInterests`、`yk_registrations.activityId + identityId` 和 `yk_activities.status + minRegistrationEnabled + registrationDeadline` 等新索引。
+- 匿名身份依赖浏览器本地 UUID、指纹和请求信息；用户更换浏览器或清理本地存储后仍可能重复报名或再次点击感兴趣，这是开放优先架构下的可接受边界。
+- 当前最低成团自动取消依赖请求兜底 sweep / 服务端定时轮询；CloudBase 上更稳的方式仍是增加定时触发器。
+
+### 下一步建议
+
+1. 在 CloudBase 控制台补齐 `0.21.0` 新增索引，并观察 `yk_activityInterests` 写入量。
+2. 为最低报名活动增加前端倒计时或“距离报名截止”提示，让参与者更容易理解成团状态。
+3. 后续如引入微信登录，可把匿名报名记录与实名联系方式做可选绑定，而不是重新把手机号作为公开报名必填项。

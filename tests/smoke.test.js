@@ -142,6 +142,10 @@ async function createActivity(token, overrides = {}) {
   form.set("endsAt", overrides.endsAt || "");
   form.set("location", overrides.location || "有空客厅");
   form.set("capacity", overrides.capacity || "");
+  form.set("showRegistrationNames", overrides.showRegistrationNames ? "yes" : "no");
+  form.set("minRegistrationEnabled", overrides.minRegistrationEnabled ? "yes" : "no");
+  form.set("minRegistrationCount", overrides.minRegistrationCount || "");
+  form.set("registrationDeadline", overrides.registrationDeadline || (overrides.minRegistrationEnabled ? (overrides.startsAt || localDateTimeFromNow(30)) : ""));
   form.set("showInitiatorContact", overrides.showInitiatorContact ? "yes" : "no");
   form.set("initiatorContact", overrides.initiatorContact || "");
   const highRiskText = "诈骗 洗钱 博彩 办证 www.example.com https://spam.example.com https://spam2.example.com !!!!!!!!!! 加我加我加我加我";
@@ -751,17 +755,18 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 
   const registration = await request(`/api/activities/${created.activity.id}/register`, {
     method: "POST",
-    body: { nickname: "报名者", phone: "18800001111" },
+    body: { nickname: "报名者" },
   });
   const duplicate = await request(`/api/activities/${created.activity.id}/register`, {
     method: "POST",
-    body: { nickname: "报名者", phone: "18800001111" },
+    body: { nickname: "报名者" },
   });
   assert.equal(duplicate.existing, true);
   assert.equal(duplicate.registration.id, registration.registration.id);
   assert.ok(registration.registration.id.startsWith("reg_"));
   assert.ok(registration.accessToken);
   assert.equal(registration.registration.accessToken, registration.accessToken);
+  assert.equal(registration.registration.phone, undefined);
   assert.equal(registration.registration.phoneHash, undefined);
   assert.ok(duplicate.accessToken);
   assert.notEqual(duplicate.accessToken, registration.accessToken);
@@ -771,7 +776,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(staleTokenConfirm.status, 403);
   const publicConfirm = await request(`/api/activities/${created.activity.id}/registrations/${registration.registration.id}?token=${encodeURIComponent(duplicate.accessToken)}`);
   assert.equal(publicConfirm.registration.nickname, "报名者");
-  assert.equal(publicConfirm.registration.phone, "18800001111");
+  assert.equal(publicConfirm.registration.phone, undefined);
   assert.equal(publicConfirm.registration.phoneHash, undefined);
   const noTokenCancel = await fetch(`${baseUrl}/api/activities/${created.activity.id}/registrations/${registration.registration.id}/cancel`, {
     method: "POST",
@@ -781,7 +786,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(noTokenCancel.status, 403);
   const cancellableRegistration = await request(`/api/activities/${created.activity.id}/register`, {
     method: "POST",
-    body: { nickname: "临时取消", phone: "18800004444" },
+    headers: { "X-YK-Client-Id": `${testClientId}_cancel` },
+    body: { nickname: "临时取消" },
   });
   await request(`/api/activities/${created.activity.id}/registrations/${cancellableRegistration.registration.id}/cancel`, {
     method: "POST",
@@ -790,11 +796,44 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 
   const registrations = await request(`/api/activities/${created.activity.id}/registrations`, {}, member.token);
   assert.equal(registrations.registrations.length, 1);
+  assert.equal(registrations.registrations[0].phone, undefined);
   assert.equal(registrations.registrations[0].phoneHash, undefined);
 
   const byRegistrations = await request("/api/activities?all=true&sort=registrations-desc&page=1&pageSize=1", {}, admin.token);
   assert.equal(byRegistrations.activities[0].id, created.activity.id);
   assert.equal(byRegistrations.activities[0].registrationCount, 1);
+
+  const interest = await request(`/api/activities/${created.activity.id}/interests`, {
+    method: "POST",
+    headers: { "X-YK-Client-Id": `${testClientId}_interest` },
+    body: {},
+  });
+  const duplicateInterest = await request(`/api/activities/${created.activity.id}/interests`, {
+    method: "POST",
+    headers: { "X-YK-Client-Id": `${testClientId}_interest` },
+    body: {},
+  });
+  assert.equal(interest.existing, false);
+  assert.equal(duplicateInterest.existing, true);
+  assert.equal(duplicateInterest.interestCount, 1);
+  const interestedActivity = await request(`/api/activities/${created.activity.id}`, {
+    headers: { "X-YK-Client-Id": `${testClientId}_interest` },
+  });
+  assert.equal(interestedActivity.activity.interestedByMe, true);
+  assert.equal(interestedActivity.activity.interestCount, 1);
+
+  const publicNamesActivity = await createActivity(member.token, {
+    title: "报名昵称公示测试活动",
+    showRegistrationNames: true,
+  });
+  await request(`/api/activities/${publicNamesActivity.activity.id}/register`, {
+    method: "POST",
+    headers: { "X-YK-Client-Id": `${testClientId}_public_name` },
+    body: { nickname: "愿意公示昵称" },
+  });
+  const publicNamesDetail = await request(`/api/activities/${publicNamesActivity.activity.id}`);
+  assert.equal(publicNamesDetail.activity.showRegistrationNames, true);
+  assert.deepEqual(publicNamesDetail.activity.publicRegistrations.map((item) => item.nickname), ["愿意公示昵称"]);
 
   const logs = await request("/api/logs?page=1&pageSize=5&q=测试活动", {}, admin.token);
   assert.ok(logs.logs.length >= 1);
@@ -804,8 +843,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.ok(submitLogs.logs.every((log) => log.action === "activity.create_submit"));
   assert.ok(submitLogs.logs.every((log) => log.actorId === member.user.id));
   const registrationLogs = await request("/api/logs?page=1&pageSize=10&q=报名活动", {}, admin.token);
-  assert.ok(registrationLogs.logs.some((log) => log.actorPhone.includes("****")));
-  assert.ok(registrationLogs.logs.every((log) => log.actorPhone !== "18800001111"));
+  assert.ok(registrationLogs.logs.some((log) => log.action === "registration.create"));
+  assert.ok(registrationLogs.logs.every((log) => !log.actorPhone));
   await store.insert("logs", {
     id: "log_old_retention",
     action: "test.old",
@@ -832,11 +871,13 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const limitedAttempts = await Promise.allSettled([
     request(`/api/activities/${limited.activity.id}/register`, {
       method: "POST",
-      body: { nickname: "报名甲", phone: "18800002222" },
+      headers: { "X-YK-Client-Id": `${testClientId}_limited_a` },
+      body: { nickname: "报名甲" },
     }),
     request(`/api/activities/${limited.activity.id}/register`, {
       method: "POST",
-      body: { nickname: "报名乙", phone: "18800003333" },
+      headers: { "X-YK-Client-Id": `${testClientId}_limited_b` },
+      body: { nickname: "报名乙" },
     }),
   ]);
   assert.equal(limitedAttempts.filter((item) => item.status === "fulfilled").length, 1);
@@ -855,6 +896,20 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(reopenedActivity.activity.registrationCount, 0);
   const deleteRegistrationLogs = await request(`/api/logs?page=1&pageSize=10&action=registration.delete&q=${encodeURIComponent(deletedRegistration.nickname)}`, {}, admin.token);
   assert.ok(deleteRegistrationLogs.logs.some((log) => log.detail.includes(deletedRegistration.nickname)));
+
+  const notFormed = await createActivity(member.token, {
+    title: "未成团自动取消测试活动",
+    capacity: "5",
+    minRegistrationEnabled: true,
+    minRegistrationCount: "3",
+    registrationDeadline: localDateTimeFromNow(-1),
+    startsAt: localDateTimeFromNow(10),
+  });
+  assert.equal(notFormed.activity.minRegistrationEnabled, true);
+  assert.equal(notFormed.activity.minRegistrationCount, 3);
+  await request("/api/system/auto-end", { method: "POST", body: {} }, admin.token);
+  const notFormedClosed = await request(`/api/activities/${notFormed.activity.id}`, {}, member.token);
+  assert.equal(notFormedClosed.activity.status, "not_formed_cancelled");
 
   const temporaryUser = await request("/api/users", {
     method: "POST",
@@ -1073,21 +1128,27 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await page.goto(`${baseUrl}/activity.html?id=${created.activity.id}`);
     await page.waitForLoadState("networkidle");
     await page.evaluate(() => window.youkongTheme?.setMode("light"));
-    const shareState = await page.evaluate(() => ({
-      poster: Boolean(document.querySelector("[data-download-poster]")),
-      copy: Boolean(document.querySelector("[data-copy-registration-link]")),
-      calendar: Boolean(document.querySelector("[data-download-calendar]")),
-      richHeading: Boolean(document.querySelector(".article-content h1")),
-      richImage: Boolean(document.querySelector(".article-content img")),
-      contact: document.querySelector(".initiator-contact")?.textContent || "",
+	    const shareState = await page.evaluate(() => ({
+	      poster: Boolean(document.querySelector("[data-download-poster]")),
+	      posterText: document.querySelector("[data-download-poster]")?.textContent.trim() || "",
+	      copy: Boolean(document.querySelector("[data-copy-registration-link]")),
+	      calendar: Boolean(document.querySelector("[data-download-calendar]")),
+	      phoneField: Boolean(document.querySelector('[data-register-form] input[name="phone"]')),
+	      nicknameField: Boolean(document.querySelector('[data-register-form] input[name="nickname"]')),
+	      richHeading: Boolean(document.querySelector(".article-content h1")),
+	      richImage: Boolean(document.querySelector(".article-content img")),
+	      contact: document.querySelector(".initiator-contact")?.textContent || "",
       contactMarginTop: parseFloat(getComputedStyle(document.querySelector(".activity-hero .initiator-contact")).marginTop || "0"),
       detailLineColor: getComputedStyle(document.querySelector(".activity-hero > div:first-child > p")).color,
       detailLineWeight: Number(getComputedStyle(document.querySelector(".activity-hero > div:first-child > p")).fontWeight),
-    }));
-    assert.equal(shareState.poster, true);
-    assert.equal(shareState.copy, true);
-    assert.equal(shareState.calendar, true);
-    assert.equal(shareState.richHeading, true);
+	    }));
+	    assert.equal(shareState.poster, true);
+	    assert.equal(shareState.posterText, "下载活动邀请函");
+	    assert.equal(shareState.copy, true);
+	    assert.equal(shareState.calendar, true);
+	    assert.equal(shareState.phoneField, false);
+	    assert.equal(shareState.nicknameField, true);
+	    assert.equal(shareState.richHeading, true);
     assert.equal(shareState.richImage, true);
     assert.match(shareState.contact, /13300002222/);
     assert.ok(shareState.contactMarginTop >= 24);
@@ -1113,34 +1174,32 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     });
     const csvEscaped = await page.evaluate(() => window.escapeCsv("=HYPERLINK(\"https://example.com\")"));
     assert.equal(csvEscaped, "\"'=HYPERLINK(\"\"https://example.com\"\")\"");
-    const posterTextPreview = await page.evaluate(() => window.youkongActivityShare.posterTextPreview({
+	    const posterTextPreview = await page.evaluate(() => window.youkongActivityShare.posterTextPreview({
       title: "鹳鸟踟蹰",
       moduleName: "有空放映",
       initiator: "发起人甲",
       location: "有空客厅",
       startsAt: "2026-07-12T20:00",
       endsAt: "2026-07-12T23:00",
-    }, {
-      registration: {
-        nickname: "报名者",
-        phone: "18800001111",
-      },
-    }));
-    assert.deepEqual(posterTextPreview, {
-      title: "有空放映丨鹳鸟踟蹰",
-      initiator: "发起人甲",
-      invitee: "报名者",
-      phone: "18800001111",
-      address: "有空客厅",
-      date: "2026年7月12日20:00-2026年7月12日23:00",
+	    }, {
+	      registration: {
+	        nickname: "报名者",
+	      },
+	    }));
+	    assert.deepEqual(posterTextPreview, {
+	      title: "有空放映丨鹳鸟踟蹰",
+	      initiator: "发起人甲",
+	      invitee: "报名者",
+	      address: "有空客厅",
+	      date: "2026年7月12日20:00-2026年7月12日23:00",
       qrLabel: "活动二维码",
       showUrlText: false,
-    });
-    assert.doesNotMatch(JSON.stringify(posterTextPreview), /【|】/);
-    const posterDownload = page.waitForEvent("download");
-    await page.getByRole("button", { name: "下载分享海报" }).click();
-    const posterFile = await posterDownload;
-    assert.match(posterFile.suggestedFilename(), /分享海报\.png$/);
+	    });
+	    assert.doesNotMatch(JSON.stringify(posterTextPreview), /【|】/);
+	    const posterDownload = page.waitForEvent("download");
+	    await page.getByRole("button", { name: "下载活动邀请函" }).click();
+	    const posterFile = await posterDownload;
+	    assert.match(posterFile.suggestedFilename(), /活动邀请函\.png$/);
 
     await page.goto(`${baseUrl}/review-tasks.html`);
     await page.waitForLoadState("networkidle");

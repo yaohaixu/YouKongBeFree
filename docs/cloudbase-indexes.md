@@ -1,10 +1,10 @@
 # CloudBase 查询与索引建议
 
-本项目 `0.7.0` 起，活动、协作员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。`0.8.0` 起，活动自动结束任务也会按 `status + startsAt` 查询过期待归档活动。`0.9.0` 起，跨天活动可填写 `endsAt`，但 sweep 仍用 `status + startsAt` 缩小候选，再用 `endsAt` 做最终判断，暂不要求新增 `endsAt` 索引。`0.10.0` 起，报名记录新增 `phoneHash` 用于重复报名识别，操作日志手机号改为脱敏保存。`0.13.4` 起，登录态、手机号登录和工作台 dashboard 也使用字段查询与计数接口，建议同步补齐对应索引。`0.13.5` 起，API 慢请求会写入 CloudBase 云函数日志，可用日志中的 `path` 对照本文档补索引。`0.14.0` 起，操作日志页支持操作类型、操作人、角色和日期范围组合筛选，建议补充 `yk_logs` 组合索引。`0.15.0` 起新增活动描述模板集合 `yk_templates`，发起活动时会读取模板列表，管理员模板管理页会按更新时间分页和关键词搜索。`0.18.0` 起新增 Community OS 安全架构集合，规则引擎、匿名身份、Community Trust、社区反馈、活动置信度和 AI Analysis Engine 均建议按本文补充索引。`0.19.0` 起新增 Community Governance 集合，Trust Policy、Community Badge、Badge Policy 和统一 Community Event 时间线建议按本文补齐索引。`0.20.0` 起活动发布改为异步安全分析，并新增社区举报后台，建议补齐 `yk_activityAnalysisJobs` 和 `yk_communityReports.status + createdAt` 相关索引。`0.20.1` 起分析队列会恢复超时 `running` 任务，建议补齐 `yk_activityAnalysisJobs.status + startedAt` 索引。`0.20.2` 已通过 CloudBase CLI 在生产环境补齐本文档核心推荐索引，并额外补充常用业务 `id` 字段索引。
+本项目 `0.7.0` 起，活动、协作员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。`0.8.0` 起，活动自动结束任务也会按 `status + startsAt` 查询过期待归档活动。`0.9.0` 起，跨天活动可填写 `endsAt`，但 sweep 仍用 `status + startsAt` 缩小候选，再用 `endsAt` 做最终判断，暂不要求新增 `endsAt` 索引。`0.10.0` 起，报名记录新增 `phoneHash` 用于重复报名识别，操作日志手机号改为脱敏保存。`0.13.4` 起，登录态、手机号登录和工作台 dashboard 也使用字段查询与计数接口，建议同步补齐对应索引。`0.13.5` 起，API 慢请求会写入 CloudBase 云函数日志，可用日志中的 `path` 对照本文档补索引。`0.14.0` 起，操作日志页支持操作类型、操作人、角色和日期范围组合筛选，建议补充 `yk_logs` 组合索引。`0.15.0` 起新增活动描述模板集合 `yk_templates`，发起活动时会读取模板列表，管理员模板管理页会按更新时间分页和关键词搜索。`0.18.0` 起新增 Community OS 安全架构集合，规则引擎、匿名身份、Community Trust、社区反馈、活动置信度和 AI Analysis Engine 均建议按本文补充索引。`0.19.0` 起新增 Community Governance 集合，Trust Policy、Community Badge、Badge Policy 和统一 Community Event 时间线建议按本文补齐索引。`0.20.0` 起活动发布改为异步安全分析，并新增社区举报后台，建议补齐 `yk_activityAnalysisJobs` 和 `yk_communityReports.status + createdAt` 相关索引。`0.20.1` 起分析队列会恢复超时 `running` 任务，建议补齐 `yk_activityAnalysisJobs.status + startedAt` 索引。`0.20.2` 已通过 CloudBase CLI 在生产环境补齐本文档核心推荐索引，并额外补充常用业务 `id` 字段索引。`0.21.0` 起公开报名改为匿名身份去重，并新增最低报名成团、报名截止和「感兴趣」集合，建议补齐 `yk_activities.status + minRegistrationEnabled + registrationDeadline`、`yk_registrations.activityId + identityId` 和 `yk_activityInterests` 相关索引。
 
 ## 推荐索引
 
-建议在 CloudBase 控制台或 CloudBase CLI 为以下集合建立索引，避免数据量增长后列表筛选变慢。`0.20.2` 已在环境 `youkong-d5gh4x0ayc29a2187` 创建并抽样验证；后续新增字段筛选时继续按本清单补充。
+建议在 CloudBase 控制台或 CloudBase CLI 为以下集合建立索引，避免数据量增长后列表筛选变慢。`0.20.2` 已在环境 `youkong-d5gh4x0ayc29a2187` 创建并抽样验证；`0.21.0` 新增字段和集合需要继续补充下方新增索引。
 
 ### `yk_activities`
 
@@ -20,6 +20,8 @@
 - `status + reviewFlag + createdAt`：管理员待办中公开但需要关注的活动。
 - `moduleId + startsAt`：按模块和活动时间筛选。
 - `status + moduleId + startsAt`：公开活动列表按状态、模块和活动时间组合筛选。
+- `status + minRegistrationEnabled + registrationDeadline`：最低报名限度活动到期后自动「未成团取消」 sweep。
+- `status + interestCount + createdAt`：后续按感兴趣热度推荐或排查公开活动时复用。
 - `analysisReportId + createdAt`：活动置信度详情和重新分析追踪。
 - `riskScore + createdAt`：后台按风险分排查活动，后续做低置信活动队列时可复用。
 - `registrationCount + createdAt`：按报名人数排序。
@@ -62,8 +64,16 @@
 ### `yk_registrations`
 
 - `activityId + createdAt`：活动报名表。
-- `activityId + phone`：重复报名识别。
-- `activityId + phoneHash`：`0.10.0` 之后新增报名记录的重复报名识别，建议优先使用。
+- `activityId + identityId`：`0.21.0` 起匿名身份报名去重和重复报名确认页刷新，建议优先使用。
+- `identityId + createdAt`：后续匿名身份报名历史和 Community Governance 事件排查。
+- `activityId + phoneHash`：仅用于兼容 `0.21.0` 之前的历史报名记录，不再作为新报名主路径。
+
+### `yk_activityInterests`
+
+- `id`：同一活动 + 同一匿名身份的幂等感兴趣记录。
+- `activityId + identityId`：活动卡片判断当前匿名身份是否已经点过「感兴趣」。
+- `activityId + createdAt`：统计单个活动的感兴趣数量和历史明细。
+- `identityId + createdAt`：后续匿名身份兴趣历史、推荐和 Community Governance 事件排查。
 
 ### `yk_safetyRules`
 
@@ -178,5 +188,5 @@
 
 - 当前关键词搜索使用正则匹配，适合 MVP 阶段；日志排查应优先使用操作类型、操作人、角色和时间范围等明确筛选条件，再用关键词缩小范围。
 - 活动列表里的模块名、发起人名、协作员名和匿名身份摘要仍由 API 聚合补齐；如需完全基于索引搜索这些派生字段，可在活动记录中增加冗余字段并在对应对象更新时同步维护。
-- 旧报名记录可能没有 `phoneHash` 字段；代码仍兼容 `phone` 判断。后续如做数据整理，可批量回填 `phoneHash`。
+- 旧报名记录可能没有 `identityId` 字段；代码仍保留旧 `phoneHash` 查询兼容，但新报名主路径已经切换为匿名身份。后续如做数据整理，可按需要保留历史记录或迁移为只读旧数据。
 - CloudBase 控制台 / CLI 中的索引变更属于线上数据配置，不提交 Git；每次新增筛选字段后都应同步更新本文档。

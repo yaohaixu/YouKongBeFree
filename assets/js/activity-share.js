@@ -170,7 +170,6 @@
     const fromGetter = typeof options.getInvitee === "function" ? options.getInvitee() || {} : {};
     return {
       nickname: String(fromRegistration.nickname || fromGetter.nickname || "有空的朋友").trim(),
-      phone: String(fromRegistration.phone || fromGetter.phone || "报名后填写手机号").trim(),
     };
   }
 
@@ -209,7 +208,6 @@
       title: posterTitle(activity),
       initiator: activity.initiator || "有空伙伴",
       invitee: invitee.nickname,
-      phone: invitee.phone,
       address: posterAddress(activity),
       date: posterDateRange(activity),
       qrLabel: "活动二维码",
@@ -270,8 +268,12 @@
 
     const invitee = inviteeDetails(options);
     y = drawKeyValue(ctx, "发起人", activity.initiator || "有空伙伴", 96, y, 760);
-    y = drawKeyValue(ctx, "诚邀", invitee.nickname, 96, y + 12, 760);
-    y = drawKeyValue(ctx, "报名手机号", invitee.phone, 96, y + 12, 760);
+    ctx.fillStyle = "#7e3b2c";
+    ctx.font = "700 38px -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.fillText("诚邀：", 96, y + 18);
+    ctx.fillStyle = "#17231f";
+    ctx.font = "780 48px -apple-system, BlinkMacSystemFont, sans-serif";
+    y = wrapText(ctx, invitee.nickname || "有空的朋友", 226, y + 18, 720, 62, 2);
     y = drawInlineValue(ctx, "地址", posterAddress(activity), 96, y + 28, 860);
     y = drawInlineValue(ctx, "日期", posterDateRange(activity) || formatActivityTime(activity), 96, y + 18, 860);
 
@@ -309,7 +311,7 @@
     wrapText(ctx, "来客厅坐坐，也可以把这个活动分享给朋友。", 96, footerY + 54, 620, 44, 2);
 
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png", 0.94));
-    if (blob) triggerDownload(blob, `${safeFileName(activity.title)}-分享海报.png`);
+    if (blob) triggerDownload(blob, `${safeFileName(activity.title)}-活动邀请函.png`);
   }
 
   function mount(root, activity, options = {}) {
@@ -333,7 +335,7 @@
     root.querySelector("[data-download-poster]")?.addEventListener("click", async () => {
       try {
         await downloadPoster(activity, url, formatActivityTime, options);
-        showToast("分享海报已生成");
+        showToast("活动邀请函已生成");
       } catch {
         showToast("海报生成失败，请稍后再试");
       }
