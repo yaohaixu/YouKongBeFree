@@ -2963,3 +2963,44 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 线上部署后用一个已开始活动验证反馈二维码 JPG 在微信内置浏览器和手机相册里的可保存性。
 2. 后续把活动反馈分析改为异步队列，避免反馈提交时等待 AI。
 3. 继续拆分 `app.js` 的 admin dashboard、feedbacks、activity share 模块，让前端主文件更轻。
+
+## 2026-07-28 - 0.23.1 motion-design 图标与状态反馈增强
+
+### 任务目标
+
+使用已安装的 `lottiefiles/motion-design-skill` 优化网站图标动效，并顺手审查系统中适合补充动效的区域。目标不是增加装饰动画，而是让状态切换、按钮点击、保存成功、感兴趣、后台入口 hover 等交互更有反馈。
+
+### 具体修改
+
+- `script.js`：主题切换点击时增加 `is-cycling` 短时状态；新增全局 `mountMotionFeedback()`，为按钮、主题切换、一键回首页、工作台卡片、活动卡片和感兴趣按钮添加短时按压反馈类。
+- `app.js`：`showToast()`、`setMessage()` 和感兴趣成功后触发短时 confirmation / update / error motion class。
+- `styles.css`：覆盖主题切换早期伪元素图标，统一使用 SVG 图标；新增主题切换、工作台图标、一键回首页、按钮按压、活动封面 hover、状态 tag、感兴趣计数、toast 和表单消息的 motion 动效；补齐 `prefers-reduced-motion` 降级。
+- `tests/smoke.test.js`：新增主题切换 cycling 状态、后台分组数量、后台入口 SVG 图标数量和图标 transition 挂载断言。
+- `README.md`、`CHANGELOG.md`、`package.json`、`package-lock.json`、`*.html`：同步版本与静态资源缓存参数到 `0.23.1`。
+
+### 技术方案选择
+
+- 本项目后台属于产品界面，因此选择 Corporate / Premium 动效：150-360ms、低幅度、无夸张弹跳。
+- 图标动效只发生在 hover、focus、click 或状态切换时，不做常驻循环，避免后台页面分散注意力。
+- 优先使用 transform、opacity、filter 和 box-shadow，不动画布局属性，降低移动端和微信内置浏览器掉帧风险。
+- 主题切换使用 SVG 动画层，是因为之前 CSS 伪元素图标历史包袱较重，继续叠加会导致图标不稳定。
+
+### 本次评估出的适合动效区域
+
+- 已完成：主题切换图标、后台入口图标、一键回首页、感兴趣按钮、活动卡片封面、toast、表单成功 / 错误消息。
+- 适合后续做：活动安全分析队列可以增加轻量进度状态；活动反馈二维码生成可以增加局部 skeleton；管理员表格批量操作可以增加完成确认；AI 测试连接可以增加连接中状态。
+- 暂不建议做：后台列表整页复杂转场、长时间循环装饰动画、活动审核页大幅度动画，因为这些会影响任务型页面效率。
+
+### 当前完成情况
+
+- 功能开发、文档同步和版本号更新已完成。
+- 本地 `npm test` 和 `npm run deploy:dry-run` 已通过。
+
+### 遗留问题
+
+- 目前动效仍在 `styles.css` 末尾覆盖层维护；后续拆 CSS 时建议把 motion tokens、product motion 和 public motion 拆成独立文件。
+
+### 下一步建议
+
+1. 后续可以把按钮图标体系做成统一组件，让“下载 / 保存 / 删除 / 审核 / 复制”都有一致图标和动效。
+2. 如果继续做高级视觉，可优先补活动安全分析、AI 连接测试、二维码生成这三类加载状态。

@@ -1199,13 +1199,33 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       return {
         mode: switcher?.dataset.themeMode,
         label: switcher?.getAttribute("aria-label") || "",
+        cycling: switcher?.classList.contains("is-cycling") || false,
       };
     });
     assert.equal(themeSwitchAfterClick.mode, "dark");
     assert.match(themeSwitchAfterClick.label, /黑夜模式/);
+    assert.equal(themeSwitchAfterClick.cycling, true);
     await page.getByLabel("手机号").fill("18800000000");
     await page.getByRole("button", { name: "进入有空" }).click();
     await page.waitForURL("**/admin.html");
+    await page.waitForSelector(".admin-module-group .workspace-icon svg");
+    const adminMotionState = await page.evaluate(() => {
+      const icon = document.querySelector(".admin-module-group .workspace-icon");
+      const svg = icon?.querySelector("svg");
+      const group = document.querySelector(".admin-module-groups");
+      return {
+        groupCount: document.querySelectorAll(".admin-module-group").length,
+        iconCount: document.querySelectorAll(".admin-module-group .workspace-icon svg").length,
+        hasGroupedSurface: Boolean(group),
+        iconTransition: getComputedStyle(icon).transitionProperty,
+        svgStroke: getComputedStyle(svg).stroke,
+      };
+    });
+    assert.ok(adminMotionState.groupCount >= 5);
+    assert.ok(adminMotionState.iconCount >= 10);
+    assert.equal(adminMotionState.hasGroupedSurface, true);
+    assert.match(adminMotionState.iconTransition, /transform/);
+    assert.notEqual(adminMotionState.svgStroke, "none");
     await assertNoHorizontalOverflow(page, `${baseUrl}/index.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/whitepaper.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/about.html`);

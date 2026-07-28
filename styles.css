@@ -7933,3 +7933,431 @@ html[data-theme="light"] body.product-surface .form-note p {
     transition: none;
   }
 }
+
+/* 0.23.1 motion-design polish: icon state, button press and meaningful feedback */
+.theme-switch-icon::before,
+.theme-switch-icon::after {
+  content: none !important;
+}
+
+.theme-switch-icon svg,
+.workspace-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  transform-origin: 50% 50%;
+}
+
+.theme-switch-icon svg {
+  stroke-width: 1.9;
+  transition:
+    opacity 160ms var(--ease-out),
+    transform 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.theme-switch.is-cycling .theme-switch-ring {
+  animation: theme-cycle-pulse 360ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.theme-switch[data-theme-mode="light"].is-cycling .theme-switch-icon.sun svg {
+  animation: icon-sun-arrive 340ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.theme-switch[data-theme-mode="dark"].is-cycling .theme-switch-icon.moon svg {
+  animation: icon-moon-arrive 340ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.theme-switch[data-theme-mode="system"].is-cycling .theme-switch-icon.system svg {
+  animation: icon-system-arrive 340ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.quick-home-icon {
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.quick-home-icon::before,
+.quick-home-icon::after {
+  transition:
+    transform 180ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 180ms ease;
+}
+
+.quick-home:hover .quick-home-icon,
+.quick-home:focus-visible .quick-home-icon {
+  transform: translateY(-1px);
+}
+
+.quick-home:hover .quick-home-icon::before,
+.quick-home:focus-visible .quick-home-icon::before {
+  transform: translateY(1px);
+}
+
+.quick-home:hover .quick-home-icon::after,
+.quick-home:focus-visible .quick-home-icon::after {
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.motion-press {
+  animation: motion-press-feedback 180ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.button.motion-press::after {
+  display: block;
+  transform: translateX(120%);
+}
+
+.workspace-icon {
+  position: relative;
+  overflow: hidden;
+}
+
+.workspace-icon::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 180ms ease,
+    transform 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.workspace-card:hover .workspace-icon::after,
+.workspace-card:focus-visible .workspace-icon::after {
+  opacity: 0.08;
+  transform: scale(1.6);
+}
+
+.workspace-card:hover .workspace-icon svg,
+.workspace-card:focus-visible .workspace-icon svg {
+  animation: workspace-icon-lift 220ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.workspace-card[href*="admin-ai"]:hover .workspace-icon svg,
+.workspace-card[href*="admin-ai"]:focus-visible .workspace-icon svg {
+  animation-name: workspace-icon-spark;
+}
+
+.workspace-card[href*="review-tasks"]:hover .workspace-icon svg,
+.workspace-card[href*="review-tasks"]:focus-visible .workspace-icon svg {
+  animation-name: workspace-icon-check;
+}
+
+.workspace-card[href*="admin-reports"]:hover .workspace-icon svg,
+.workspace-card[href*="admin-reports"]:focus-visible .workspace-icon svg {
+  animation-name: workspace-icon-flag;
+}
+
+.admin-module-group:hover .admin-module-group-head > span {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 26%, var(--line) 74%);
+}
+
+.admin-module-group-head > span,
+.tag,
+.activity-card .tag {
+  transition:
+    transform 160ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.event-card:hover .event-cover img,
+.event-card:focus-within .event-cover img {
+  transform: scale(1.025);
+}
+
+.event-cover {
+  overflow: hidden;
+}
+
+.event-cover img {
+  transition: transform 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.event-card:hover .tag:first-child,
+.event-row:hover .tag:first-child {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line) 70%);
+}
+
+.interest-button.is-recorded {
+  animation: interest-confirm 520ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.interest-button.is-recorded strong {
+  animation: count-confirm 420ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.toast::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #7dd87d;
+  transform: scale(0.8);
+}
+
+.toast.motion-confirm::before {
+  animation: toast-dot-confirm 420ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.form-message.motion-confirm,
+.form-message.motion-update,
+.form-message.motion-error {
+  transform-origin: left center;
+}
+
+.form-message.motion-confirm[data-type="success"] {
+  animation: message-confirm 420ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.form-message.motion-update {
+  animation: message-update 300ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.form-message.motion-error[data-type="error"] {
+  animation: message-error-shake 340ms ease-in-out both;
+}
+
+@keyframes motion-press-feedback {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+
+  45% {
+    transform: translateY(1px) scale(0.985);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes theme-cycle-pulse {
+  0% {
+    transform: scale(0.96);
+    filter: saturate(0.9);
+  }
+
+  100% {
+    transform: scale(1);
+    filter: saturate(1.08);
+  }
+}
+
+@keyframes icon-sun-arrive {
+  0% {
+    transform: rotate(-22deg) scale(0.72);
+    opacity: 0;
+  }
+
+  100% {
+    transform: rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes icon-moon-arrive {
+  0% {
+    transform: translateX(5px) scale(0.76);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes icon-system-arrive {
+  0% {
+    transform: translateY(4px) scale(0.76);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes workspace-icon-lift {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+
+  55% {
+    transform: translateY(-2px) scale(1.06);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes workspace-icon-spark {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  60% {
+    transform: rotate(5deg) scale(1.08);
+  }
+
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes workspace-icon-check {
+  0% {
+    transform: translateX(-1px) scale(1);
+  }
+
+  60% {
+    transform: translateX(2px) scale(1.05);
+  }
+
+  100% {
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes workspace-icon-flag {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(-4deg) translateY(-1px);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes interest-confirm {
+  0% {
+    transform: scale(1);
+  }
+
+  40% {
+    transform: scale(1.025);
+    border-color: color-mix(in srgb, var(--accent) 58%, var(--line) 42%);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes count-confirm {
+  0% {
+    transform: scale(0.9);
+  }
+
+  60% {
+    transform: scale(1.08);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes toast-dot-confirm {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.3;
+  }
+
+  60% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes message-confirm {
+  0% {
+    transform: translateY(4px);
+    opacity: 0.72;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes message-update {
+  0% {
+    transform: translateY(3px);
+    opacity: 0.72;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes message-error-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-5px);
+  }
+
+  55% {
+    transform: translateX(4px);
+  }
+
+  80% {
+    transform: translateX(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-press,
+  .theme-switch.is-cycling .theme-switch-ring,
+  .theme-switch[data-theme-mode] .theme-switch-icon svg,
+  .workspace-card:hover .workspace-icon svg,
+  .workspace-card:focus-visible .workspace-icon svg,
+  .interest-button.is-recorded,
+  .interest-button.is-recorded strong,
+  .toast.motion-confirm::before,
+  .form-message.motion-confirm,
+  .form-message.motion-update,
+  .form-message.motion-error {
+    animation: none !important;
+  }
+
+  .theme-switch-icon svg,
+  .workspace-icon,
+  .workspace-icon svg,
+  .quick-home-icon,
+  .quick-home-icon::before,
+  .quick-home-icon::after,
+  .event-cover img,
+  .tag,
+  .activity-card .tag {
+    transition: none !important;
+  }
+}

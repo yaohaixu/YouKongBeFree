@@ -65,6 +65,11 @@ function mountThemeSwitch() {
   switcher.addEventListener("click", () => {
     const mode = window.youkongTheme.getMode ? window.youkongTheme.getMode() : "system";
     const nextMode = mode === "dark" ? "light" : mode === "light" ? "system" : "dark";
+    switcher.classList.remove("is-cycling");
+    void switcher.offsetWidth;
+    switcher.classList.add("is-cycling");
+    clearTimeout(switcher.motionTimer);
+    switcher.motionTimer = setTimeout(() => switcher.classList.remove("is-cycling"), 360);
     window.youkongTheme.setMode(nextMode);
   });
 
@@ -131,6 +136,27 @@ function mountAdminLoginFooterLink() {
 }
 
 mountAdminLoginFooterLink();
+
+function mountMotionFeedback() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const pressableSelector = ".button, .nav-button, .theme-switch, .quick-home, .workspace-card, .event-card, .interest-button, .table-action";
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (!(event.target instanceof Element)) return;
+      const target = event.target.closest(pressableSelector);
+      if (!target || target.matches(":disabled, [aria-disabled='true']")) return;
+      target.classList.remove("motion-press");
+      void target.offsetWidth;
+      target.classList.add("motion-press");
+      clearTimeout(target.motionPressTimer);
+      target.motionPressTimer = setTimeout(() => target.classList.remove("motion-press"), 220);
+    },
+    { passive: true }
+  );
+}
+
+mountMotionFeedback();
 
 if (menuToggle && navLinks) {
   menuToggle.addEventListener("click", () => {

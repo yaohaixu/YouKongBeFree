@@ -325,6 +325,7 @@ function showToast(text = "保存成功") {
     document.body.append(toast);
   }
   toast.textContent = text;
+  addTransientMotion(toast, "motion-confirm", 520);
   toast.classList.add("show");
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
@@ -347,6 +348,15 @@ function revealDynamicContent(root) {
   });
 }
 
+function addTransientMotion(element, className = "motion-confirm", duration = 420) {
+  if (!element || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  element.classList.remove(className);
+  void element.offsetWidth;
+  element.classList.add(className);
+  clearTimeout(element.motionTimer);
+  element.motionTimer = setTimeout(() => element.classList.remove(className), duration);
+}
+
 function qs(selector, root = document) {
   return root.querySelector(selector);
 }
@@ -359,6 +369,7 @@ function setMessage(element, text, type = "muted") {
   if (!element) return;
   element.textContent = text;
   element.dataset.type = type;
+  addTransientMotion(element, type === "error" ? "motion-error" : type === "success" ? "motion-confirm" : "motion-update", 520);
 }
 
 function userHome(user) {
@@ -823,6 +834,7 @@ function bindActivityInterestActions(root = document) {
         const result = await api.post(`/api/activities/${encodeURIComponent(activityId)}/interests`, {});
         rememberActivityInterest(activityId);
         button.querySelector("span") && (button.querySelector("span").textContent = "已感兴趣");
+        addTransientMotion(button, "is-recorded", 620);
         qsa("[data-interest-count]").forEach((item) => {
           if (item.dataset.interestCount === activityId) {
             item.textContent = String(result.interestCount ?? item.textContent ?? 0);
