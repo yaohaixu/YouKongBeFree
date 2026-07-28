@@ -270,14 +270,50 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(unsafeLogin.status, 403, "non-GET API without intent header should be blocked");
 
   const admin = await login("18800000000");
+  const roleCatalog = await request("/api/roles", {}, admin.token);
+  assert.ok(roleCatalog.roles.some((role) => role.key === "admin"));
+  assert.ok(roleCatalog.roles.some((role) => role.key === "collaborator"));
+  assert.ok(roleCatalog.modules.some((module) => module.key === "logs"));
+  assert.ok(roleCatalog.actions.some((action) => action.key === "view"));
+  const logViewerRole = await request("/api/roles", {
+    method: "POST",
+    body: {
+      key: "log_viewer",
+      name: "日志查看",
+      description: "只能进入工作台并查看操作日志的测试角色",
+      permissions: {
+        dashboard: ["view"],
+        logs: ["view"],
+      },
+    },
+  }, admin.token);
+  assert.equal(logViewerRole.role.key, "log_viewer");
+  assert.deepEqual(logViewerRole.role.permissions.logs, ["view"]);
   await request("/api/users", {
     method: "POST",
     body: { nickname: "协作员A", phone: "13300001111", role: "collaborator" },
   }, admin.token);
   await request("/api/users", {
     method: "POST",
+    body: { nickname: "日志查看者", phone: "13300003333", role: "log_viewer" },
+  }, admin.token);
+  await request("/api/users", {
+    method: "POST",
     body: { nickname: "成员A", phone: "13300002222", role: "member" },
   }, admin.token);
+
+  const logViewer = await login("13300003333");
+  assert.equal(logViewer.user.role, "log_viewer");
+  assert.deepEqual(logViewer.user.permissions.logs, ["view"]);
+  await request("/api/logs?page=1&pageSize=1", {}, logViewer.token);
+  const forbiddenUsers = await fetch(`${baseUrl}/api/users`, {
+    headers: {
+      Authorization: `Bearer ${logViewer.token}`,
+      "X-YK-Client-Id": testClientId,
+      "X-YK-Fingerprint": "fp_smoke_test",
+    },
+  });
+  assert.equal(forbiddenUsers.status, 403);
 
   const usersPage = await request("/api/users?page=1&pageSize=1&q=成员", {}, admin.token);
   assert.equal(usersPage.users.length, 1);
@@ -949,7 +985,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 
   const temporaryUser = await request("/api/users", {
     method: "POST",
-    body: { nickname: "待删除成员", phone: "13300003333", role: "member" },
+    body: { nickname: "待删除成员", phone: "13300004444", role: "collaborator" },
   }, admin.token);
   await request(`/api/users/${temporaryUser.user.id}`, { method: "DELETE" }, admin.token);
   const deleteUserLogs = await request(`/api/logs?page=1&pageSize=10&action=user.delete&actorId=admin&q=${encodeURIComponent("待删除成员")}`, {}, admin.token);
@@ -1290,6 +1326,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertMobileActionStack(memberActionPage, `${baseUrl}/my-activities.html`, 2);
     await memberActionContext.close();
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-members.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-roles.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-templates.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-template-editor.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-logs.html`);

@@ -2020,6 +2020,13 @@ input[type="datetime-local"] {
   cursor: not-allowed;
 }
 
+.button.is-disabled,
+.button[aria-disabled="true"] {
+  opacity: 0.42;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -7876,6 +7883,100 @@ html[data-theme="light"] body.product-surface .form-note p {
   letter-spacing: 0;
 }
 
+.role-manager-layout {
+  grid-template-columns: minmax(0, 0.9fr) minmax(360px, 0.48fr);
+}
+
+.role-edit-panel textarea {
+  min-height: 92px;
+  line-height: 1.65;
+  resize: vertical;
+}
+
+.permission-matrix {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.permission-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.42fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 16px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--bg) 12%);
+}
+
+.permission-row strong {
+  display: block;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.permission-row p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.permission-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.permission-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: color-mix(in srgb, var(--panel) 92%, var(--bg) 8%);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 760;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.permission-chip:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line) 62%);
+}
+
+.permission-chip input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.permission-chip:has(input:checked) {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line) 58%);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel) 88%);
+  color: var(--ink);
+}
+
+.permission-chip:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.role-row .row-actions .button {
+  min-width: 88px;
+}
+
 .config-editor textarea {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -7919,6 +8020,14 @@ html[data-theme="light"] body.product-surface .form-note p {
 
   .pending-task-head {
     align-items: start;
+  }
+
+  .role-manager-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .permission-row {
+    grid-template-columns: 1fr;
   }
 }
 

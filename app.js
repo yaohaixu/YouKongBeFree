@@ -177,6 +177,7 @@ let mePageState = {
   collaborators: [],
   editingActivity: null,
   editingTemplate: null,
+  editingRole: null,
   richEditor: null,
   submitIntent: "submit",
   pageSize: 12,
@@ -195,6 +196,9 @@ let mePageState = {
   adminActivities: [],
   publicActivities: [],
   users: [],
+  roles: [],
+  permissionModules: [],
+  permissionActions: [],
   modulesPageItems: [],
   templates: [],
   logs: [],
@@ -374,7 +378,32 @@ function setMessage(element, text, type = "muted") {
 
 function userHome(user) {
   if (!user) return "me.html";
-  return user.roles && user.roles.includes("admin") ? "admin.html" : "me.html";
+  return firstManagedPage(user) || "me.html";
+}
+
+function firstManagedPage(user) {
+  if (!hasAnyManagedPermission(user)) return "";
+  const routes = [
+    ["dashboard", "view", "admin.html"],
+    ["reviewTasks", "view", "review-tasks.html"],
+    ["activities", "view", "admin-activities.html"],
+    ["modules", "view", "admin-modules.html"],
+    ["templates", "view", "admin-templates.html"],
+    ["friends", "view", "admin-friends.html"],
+    ["feedbacks", "view", "admin-feedbacks.html"],
+    ["reports", "view", "admin-reports.html"],
+    ["trust", "view", "admin-trust.html"],
+    ["trustPolicy", "view", "admin-trust-policy.html"],
+    ["badges", "view", "admin-badges.html"],
+    ["badgePolicy", "view", "admin-badge-policy.html"],
+    ["safety", "view", "admin-safety.html"],
+    ["ai", "view", "admin-ai.html"],
+    ["users", "view", "admin-members.html"],
+    ["roles", "view", "admin-roles.html"],
+    ["logs", "view", "admin-logs.html"],
+  ];
+  const match = routes.find(([moduleKey, action]) => hasPermission(user, moduleKey, action));
+  return match ? match[2] : "";
 }
 
 function currentPageName() {
@@ -586,6 +615,17 @@ function hasRole(user, role) {
   return Array.isArray(user?.roles) ? user.roles.includes(role) : user?.role === role;
 }
 
+function hasPermission(user, moduleKey, action = "view") {
+  if (hasRole(user, "admin")) return true;
+  const permissions = user?.permissions || {};
+  return Array.isArray(permissions[moduleKey]) && permissions[moduleKey].includes(action);
+}
+
+function hasAnyManagedPermission(user) {
+  if (hasRole(user, "admin")) return true;
+  return Object.values(user?.permissions || {}).some((actions) => Array.isArray(actions) && actions.includes("view"));
+}
+
 async function initSessionNav() {
   const navLinks = qs(".nav-links");
   const brandMarks = qsa(".brand-mark");
@@ -670,6 +710,7 @@ function renderMainNav(navLinks, baseLinks, pageName, user) {
     "admin-friends.html",
     "admin-feedbacks.html",
     "admin-members.html",
+    "admin-roles.html",
     "admin-modules.html",
     "admin-templates.html",
     "admin-template-editor.html",
@@ -679,6 +720,9 @@ function renderMainNav(navLinks, baseLinks, pageName, user) {
     "admin-ai.html",
     "admin-trust.html",
     "admin-trust-detail.html",
+    "admin-trust-policy.html",
+    "admin-badges.html",
+    "admin-badge-policy.html",
     "admin-activity-confidence.html",
   ];
   const myActive = workspacePages.includes(pageName);
@@ -919,9 +963,10 @@ async function initMeDashboardPage() {
 
   const pendingPreview = qs("[data-my-pending]", root);
   const pendingSection = qs("[data-my-pending-section]", root);
-  if (pendingSection && (!user || (!hasRole(user, "collaborator") && !hasRole(user, "admin")))) {
+  const canSeePending = hasPermission(user, "reviewTasks", "view") || hasPermission(user, "activities", "review") || hasPermission(user, "feedbacks", "view");
+  if (pendingSection && !canSeePending) {
     pendingSection.hidden = true;
-  } else if (hasRole(user, "admin")) {
+  } else if (hasPermission(user, "activities", "review") || hasPermission(user, "feedbacks", "view")) {
     await renderMyPendingTasks();
   } else {
     renderPendingTasks(pendingPreview, (dashboard.pending?.activities || []).slice(0, 3), { compact: true });
@@ -1054,25 +1099,26 @@ function renderWorkspaceCards(root, user, summary, pendingSummary) {
       tone: "purple",
     },
   ];
-  if (hasRole(user, "collaborator")) {
+  if (hasPermission(user, "reviewTasks", "view") || hasPermission(user, "activities", "review")) {
     cards.push({
       href: "review-tasks.html",
       label: "审核待办",
       title: "处理需要你审核的活动",
       body: "查看活动详情、封面、描述和审核历史。",
-      meta: "协作员入口",
+      meta: "协作入口",
       count: pendingTotal,
       icon: "todo",
       tone: "urgent",
     });
   }
-  if (hasRole(user, "admin")) {
+  const managedPage = firstManagedPage(user);
+  if (managedPage) {
     cards.push({
-      href: "admin.html",
+      href: managedPage,
       label: "管理后台",
-      title: "进入 YKadmin 工作台",
-      body: "活动、成员、模块分页面管理。",
-      meta: "管理员入口",
+      title: "进入后台工作台",
+      body: "按权限进入活动、用户、规则、AI 和社区治理模块。",
+      meta: hasPermission(user, "dashboard", "view") ? "工作台入口" : "权限入口",
       count: "Admin",
       icon: "admin",
       tone: "indigo",
@@ -1095,6 +1141,11 @@ function renderWorkspaceCard(card) {
     logs: "gray",
     mine: "purple",
     people: "indigo",
+    trust: "teal",
+    policy: "emerald",
+    badge: "amber",
+    eye: "slate",
+    key: "indigo",
     registration: "green",
     report: "rose",
     rules: "emerald",
@@ -1123,16 +1174,21 @@ function workspaceIconSvg(name = "circle") {
     ai: { viewBox: "0 0 24 24", body: `<path d="M19.375 8.5a3.25 3.25 0 1 1-3.163 4h-3a3.252 3.252 0 0 1-4.443 2.509L7.214 17.76a3.25 3.25 0 1 1-1.342-.674l1.672-2.957A3.238 3.238 0 0 1 6.75 12c0-.907.371-1.727.97-2.316L6.117 6.846A3.253 3.253 0 0 1 1.875 3.75a3.25 3.25 0 1 1 5.526 2.32l1.603 2.836A3.25 3.25 0 0 1 13.093 11h3.119a3.252 3.252 0 0 1 3.163-2.5ZM10 10.25a1.75 1.75 0 1 0-.001 3.499A1.75 1.75 0 0 0 10 10.25ZM5.125 2a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5Zm12.5 9.75a1.75 1.75 0 1 0 3.5 0 1.75 1.75 0 0 0-3.5 0Zm-14.25 8.5a1.75 1.75 0 1 0 3.501-.001 1.75 1.75 0 0 0-3.501.001Z"></path>` },
     create: { viewBox: "0 0 24 24", body: `<path d="M1.513 1.96a1.374 1.374 0 0 1 1.499-.21l19.335 9.215a1.147 1.147 0 0 1 0 2.07L3.012 22.25a1.374 1.374 0 0 1-1.947-1.46L2.49 12 1.065 3.21a1.375 1.375 0 0 1 .448-1.25Zm2.375 10.79-1.304 8.042L21.031 12 2.584 3.208l1.304 8.042h7.362a.75.75 0 0 1 0 1.5Z"></path>` },
     feedback: { viewBox: "0 0 24 24", body: `<path d="M1.75 1h12.5c.966 0 1.75.784 1.75 1.75v9.5A1.75 1.75 0 0 1 14.25 14H8.061l-2.574 2.573A1.458 1.458 0 0 1 3 15.543V14H1.75A1.75 1.75 0 0 1 0 12.25v-9.5C0 1.784.784 1 1.75 1ZM1.5 2.75v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25H1.75a.25.25 0 0 0-.25.25Z"></path><path d="M22.5 8.75a.25.25 0 0 0-.25-.25h-3.5a.75.75 0 0 1 0-1.5h3.5c.966 0 1.75.784 1.75 1.75v9.5A1.75 1.75 0 0 1 22.25 20H21v1.543a1.457 1.457 0 0 1-2.487 1.03L15.939 20H10.75A1.75 1.75 0 0 1 9 18.25v-1.465a.75.75 0 0 1 1.5 0v1.465c0 .138.112.25.25.25h5.5a.75.75 0 0 1 .53.22l2.72 2.72v-2.19a.75.75 0 0 1 .75-.75h2a.25.25 0 0 0 .25-.25v-9.5Z"></path>` },
+    badge: { viewBox: "0 0 24 24", body: `<path d="M12 1.5a5.25 5.25 0 0 0-3.408 9.244l-1.456 7.28a.75.75 0 0 0 1.04.83L12 17.066l3.824 1.788a.75.75 0 0 0 1.04-.83l-1.456-7.28A5.25 5.25 0 0 0 12 1.5Zm0 1.5a3.75 3.75 0 1 1 0 7.5 3.75 3.75 0 0 1 0-7.5Zm-2.17 8.63a5.236 5.236 0 0 0 4.34 0l1.034 5.17-2.886-1.35a.75.75 0 0 0-.636 0l-2.886 1.35 1.034-5.17Z"></path>` },
+    eye: { viewBox: "0 0 24 24", body: `<path d="M12 4.25c-4.175 0-7.603 2.267-10.287 6.163a2.75 2.75 0 0 0 0 3.174C4.397 17.483 7.825 19.75 12 19.75s7.603-2.267 10.287-6.163a2.75 2.75 0 0 0 0-3.174C19.603 6.517 16.175 4.25 12 4.25Zm0 1.5c3.54 0 6.54 1.94 9.052 5.514.342.488.342 1.0 0 1.472C18.54 16.31 15.54 18.25 12 18.25s-6.54-1.94-9.052-5.514a1.25 1.25 0 0 1 0-1.472C5.46 7.69 8.46 5.75 12 5.75Zm0 3a3.25 3.25 0 1 0 0 6.5 3.25 3.25 0 0 0 0-6.5Zm0 1.5a1.75 1.75 0 1 1 0 3.5 1.75 1.75 0 0 1 0-3.5Z"></path>` },
     friend: { viewBox: "0 0 24 24", body: `<path d="M11.03 2.59a1.501 1.501 0 0 1 1.94 0l7.5 6.363a1.5 1.5 0 0 1 .53 1.144V19.5a1.5 1.5 0 0 1-1.5 1.5h-5.75a.75.75 0 0 1-.75-.75V14h-2v6.25a.75.75 0 0 1-.75.75H4.5A1.5 1.5 0 0 1 3 19.5v-9.403c0-.44.194-.859.53-1.144ZM12 3.734l-7.5 6.363V19.5h5v-6.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v6.25h5v-9.403Z"></path>` },
     grid: { viewBox: "0 0 24 24", body: `<path d="M5.5 2.75A2.75 2.75 0 0 0 2.75 5.5v3a2.75 2.75 0 0 0 2.75 2.75h3a2.75 2.75 0 0 0 2.75-2.75v-3A2.75 2.75 0 0 0 8.5 2.75h-3ZM4.25 5.5c0-.69.56-1.25 1.25-1.25h3c.69 0 1.25.56 1.25 1.25v3c0 .69-.56 1.25-1.25 1.25h-3c-.69 0-1.25-.56-1.25-1.25v-3Zm1.25 7.25a2.75 2.75 0 0 0-2.75 2.75v3a2.75 2.75 0 0 0 2.75 2.75h3a2.75 2.75 0 0 0 2.75-2.75v-3a2.75 2.75 0 0 0-2.75-2.75h-3ZM4.25 15.5c0-.69.56-1.25 1.25-1.25h3c.69 0 1.25.56 1.25 1.25v3c0 .69-.56 1.25-1.25 1.25h-3c-.69 0-1.25-.56-1.25-1.25v-3Zm8.5-10a2.75 2.75 0 0 1 2.75-2.75h3a2.75 2.75 0 0 1 2.75 2.75v3a2.75 2.75 0 0 1-2.75 2.75h-3a2.75 2.75 0 0 1-2.75-2.75v-3Zm2.75-1.25c-.69 0-1.25.56-1.25 1.25v3c0 .69.56 1.25 1.25 1.25h3c.69 0 1.25-.56 1.25-1.25v-3c0-.69-.56-1.25-1.25-1.25h-3Zm0 8.5a2.75 2.75 0 0 0-2.75 2.75v3a2.75 2.75 0 0 0 2.75 2.75h3a2.75 2.75 0 0 0 2.75-2.75v-3a2.75 2.75 0 0 0-2.75-2.75h-3Zm-1.25 2.75c0-.69.56-1.25 1.25-1.25h3c.69 0 1.25.56 1.25 1.25v3c0 .69-.56 1.25-1.25 1.25h-3c-.69 0-1.25-.56-1.25-1.25v-3Z"></path>` },
     governance: { viewBox: "0 0 24 24", body: `<path d="M8.75 7a.75.75 0 0 0 0 1.5h7.5a.75.75 0 0 0 0-1.5h-7.5ZM7 11.75a.75.75 0 0 1 .75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5a.75.75 0 0 1-.75-.75ZM9.75 15a.75.75 0 0 0 0 1.5h6.5a.75.75 0 0 0 0-1.5h-6.5Z"></path><path d="M2 3.75C2 2.784 2.784 2 3.75 2h16.5c.966 0 1.75.784 1.75 1.75v16.5A1.75 1.75 0 0 1 20.25 22H3.75A1.75 1.75 0 0 1 2 20.25Zm1.75-.25a.25.25 0 0 0-.25.25v16.5c0 .138.112.25.25.25h16.5a.25.25 0 0 0 .25-.25V3.75a.25.25 0 0 0-.25-.25Z"></path>` },
+    key: { viewBox: "0 0 24 24", body: `<path d="M15.5 7.25a5.75 5.75 0 1 0-6.487 5.704l-6.293 6.293a.75.75 0 0 0-.22.53V22a.75.75 0 0 0 .75.75h2.25a.75.75 0 0 0 .75-.75v-1.25H7.5a.75.75 0 0 0 .75-.75v-1.25H9.5a.75.75 0 0 0 .53-.22l.97-.97v-1.31h1.31l1.737-1.737A5.75 5.75 0 0 0 15.5 7.25Zm-5.75 0a4.25 4.25 0 1 1 8.5 0 4.25 4.25 0 0 1-8.5 0Zm6-1.5a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z"></path>` },
     logs: { viewBox: "0 0 24 24", body: `<path d="M11.998 2.5A9.503 9.503 0 0 0 3.378 8H5.75a.75.75 0 0 1 0 1.5H2a1 1 0 0 1-1-1V4.75a.75.75 0 0 1 1.5 0v1.697A10.997 10.997 0 0 1 11.998 1C18.074 1 23 5.925 23 12s-4.926 11-11.002 11C6.014 23 1.146 18.223 1 12.275a.75.75 0 0 1 1.5-.037 9.5 9.5 0 0 0 9.498 9.262c5.248 0 9.502-4.253 9.502-9.5s-4.254-9.5-9.502-9.5Z"></path><path d="M12.5 7.25a.75.75 0 0 0-1.5 0v5.5c0 .27.144.518.378.651l3.5 2a.75.75 0 0 0 .744-1.302L12.5 12.315V7.25Z"></path>` },
     mine: { viewBox: "0 0 24 24", body: `<path d="M7.25 6a.75.75 0 0 0-.75.75v7.5a.75.75 0 0 0 1.5 0v-7.5A.75.75 0 0 0 7.25 6ZM12 6a.75.75 0 0 0-.75.75v4.5a.75.75 0 0 0 1.5 0v-4.5A.75.75 0 0 0 12 6Zm4 .75a.75.75 0 0 1 1.5 0v9.5a.75.75 0 0 1-1.5 0v-9.5Z"></path><path d="M3.75 2h16.5c.966 0 1.75.784 1.75 1.75v16.5A1.75 1.75 0 0 1 20.25 22H3.75A1.75 1.75 0 0 1 2 20.25V3.75C2 2.784 2.784 2 3.75 2ZM3.5 3.75v16.5c0 .138.112.25.25.25h16.5a.25.25 0 0 0 .25-.25V3.75a.25.25 0 0 0-.25-.25H3.75a.25.25 0 0 0-.25.25Z"></path>` },
     people: { viewBox: "0 0 24 24", body: `<path d="M3.5 8a5.5 5.5 0 1 1 8.596 4.547 9.005 9.005 0 0 1 5.9 8.18.751.751 0 0 1-1.5.045 7.5 7.5 0 0 0-14.993 0 .75.75 0 0 1-1.499-.044 9.005 9.005 0 0 1 5.9-8.181A5.496 5.496 0 0 1 3.5 8ZM9 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8.29 4c-.148 0-.292.01-.434.03a.75.75 0 1 1-.212-1.484 4.53 4.53 0 0 1 3.38 8.097 6.69 6.69 0 0 1 3.956 6.107.75.75 0 0 1-1.5 0 5.193 5.193 0 0 0-3.696-4.972l-.534-.16v-1.676l.41-.209A3.03 3.03 0 0 0 17.29 8Z"></path>` },
+    policy: { viewBox: "0 0 24 24", body: `<path d="M4.75 3.5a.75.75 0 0 0 0 1.5h14.5a.75.75 0 0 0 0-1.5H4.75ZM3 8.75A.75.75 0 0 1 3.75 8h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 8.75Zm1.75 4.25a.75.75 0 0 0 0 1.5h9.5a.75.75 0 0 0 0-1.5h-9.5Zm0 5a.75.75 0 0 0 0 1.5h6.5a.75.75 0 0 0 0-1.5h-6.5Z"></path><path d="M18.78 13.72a.75.75 0 0 0-1.06 0l-4.25 4.25a.75.75 0 0 0-.22.53v1.75c0 .414.336.75.75.75h1.75a.75.75 0 0 0 .53-.22l4.25-4.25a.75.75 0 0 0 0-1.06l-1.75-1.75Zm-4.03 4.97 3.5-3.5.69.69-3.5 3.5h-.69v-.69Z"></path>` },
     registration: { viewBox: "0 0 24 24", body: `<path d="M5 3.75C5 2.784 5.784 2 6.75 2h10.5c.966 0 1.75.784 1.75 1.75v17.5a.75.75 0 0 1-1.218.586L12 17.21l-5.781 4.625A.75.75 0 0 1 5 21.25Zm1.75-.25a.25.25 0 0 0-.25.25v15.94l5.031-4.026a.749.749 0 0 1 .938 0L17.5 19.69V3.75a.25.25 0 0 0-.25-.25Z"></path>` },
     report: { viewBox: "0 0 24 24", body: `<path d="M1.5 4.25c0-.966.784-1.75 1.75-1.75h17.5c.966 0 1.75.784 1.75 1.75v12.5a1.75 1.75 0 0 1-1.75 1.75h-9.586a.25.25 0 0 0-.177.073l-3.5 3.5A1.458 1.458 0 0 1 5 21.043V18.5H3.25a1.75 1.75 0 0 1-1.75-1.75ZM3.25 4a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 .75.75v3.19l3.427-3.427A1.75 1.75 0 0 1 11.164 17h9.586a.25.25 0 0 0 .25-.25V4.25a.25.25 0 0 0-.25-.25ZM12 6a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 12 6Zm0 9a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path>` },
     rules: { viewBox: "0 0 24 24", body: `<path d="M16.53 9.78a.75.75 0 0 0-1.06-1.06L11 13.19l-1.97-1.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5-5Z"></path><path d="m12.54.637 8.25 2.675A1.75 1.75 0 0 1 22 4.976V10c0 6.19-3.771 10.704-9.401 12.83a1.704 1.704 0 0 1-1.198 0C5.77 20.705 2 16.19 2 10V4.976c0-.758.489-1.43 1.21-1.664L11.46.637a1.748 1.748 0 0 1 1.08 0Zm-.617 1.426-8.25 2.676a.249.249 0 0 0-.173.237V10c0 5.46 3.28 9.483 8.43 11.426a.199.199 0 0 0 .14 0C17.22 19.483 20.5 15.461 20.5 10V4.976a.25.25 0 0 0-.173-.237l-8.25-2.676a.253.253 0 0 0-.154 0Z"></path>` },
     template: { viewBox: "0 0 24 24", body: `<path d="M3.75 3.5a.25.25 0 0 0-.25.25v2.062a.75.75 0 1 1-1.5 0V3.75C2 2.783 2.783 2 3.75 2h2.062a.75.75 0 1 1 0 1.5Zm13.688-.75a.75.75 0 0 1 .75-.75h2.062c.966 0 1.75.783 1.75 1.75v2.062a.75.75 0 1 1-1.5 0V3.75a.25.25 0 0 0-.25-.25h-2.062a.75.75 0 0 1-.75-.75ZM2.75 17.438a.75.75 0 0 1 .75.75v2.062c0 .138.112.25.25.25h2.062a.75.75 0 1 1 0 1.5H3.75A1.75 1.75 0 0 1 2 20.25v-2.062a.75.75 0 0 1 .75-.75Zm18.5 0a.75.75 0 0 1 .75.75v2.062A1.75 1.75 0 0 1 20.25 22h-2.062a.75.75 0 1 1 0-1.5h2.062a.25.25 0 0 0 .25-.25v-2.062a.75.75 0 0 1 .75-.75Zm-18.5-8.25a.75.75 0 0 1 .75.75v4.124a.75.75 0 1 1-1.5 0V9.938a.75.75 0 0 1 .75-.75ZM9.188 2.75a.75.75 0 0 1 .75-.75h4.124a.75.75 0 1 1 0 1.5H9.938a.75.75 0 0 1-.75-.75Zm0 18.5a.75.75 0 0 1 .75-.75h4.124a.75.75 0 1 1 0 1.5H9.938a.75.75 0 0 1-.75-.75ZM21.25 9.188a.75.75 0 0 1 .75.75v4.124a.75.75 0 1 1-1.5 0V9.938a.75.75 0 0 1 .75-.75ZM3.75 8.25a.75.75 0 0 1 .75-.75h2a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1-.75-.75Zm5.5 0A.75.75 0 0 1 10 7.5h2A.75.75 0 0 1 12 9h-2a.75.75 0 0 1-.75-.75Zm-1-4.5A.75.75 0 0 1 9 4.5v2a.75.75 0 0 1-1.5 0v-2a.75.75 0 0 1 .75-.75Zm0 5.5A.75.75 0 0 1 9 10v2a.75.75 0 0 1-1.5 0v-2a.75.75 0 0 1 .75-.75Zm0 4.75a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4a.75.75 0 0 1 .75-.75ZM14 8.25a.75.75 0 0 1 .75-.75h4a.75.75 0 0 1 0 1.5h-4a.75.75 0 0 1-.75-.75Z"></path>` },
+    trust: { viewBox: "0 0 24 24", body: `<path d="M12 2.25a.75.75 0 0 1 .53.22l2.72 2.72 3.806.552a.75.75 0 0 1 .416 1.279l-2.754 2.684.65 3.79a.75.75 0 0 1-1.088.79L12 12.036l-3.404 1.79a.75.75 0 0 1-1.088-.79l.65-3.79-2.754-2.684a.75.75 0 0 1 .416-1.279l3.806-.552 2.72-2.72a.75.75 0 0 1 .53-.22Zm0 1.812-1.812 1.812a.75.75 0 0 1-.422.212l-2.536.368 1.836 1.79a.75.75 0 0 1 .216.664l-.433 2.526 2.269-1.193a.75.75 0 0 1 .698 0l2.269 1.193-.433-2.526a.75.75 0 0 1 .216-.664l1.836-1.79-2.536-.368a.75.75 0 0 1-.422-.212L12 4.062Z"></path><path d="M4.75 17a.75.75 0 0 0 0 1.5h14.5a.75.75 0 0 0 0-1.5H4.75Zm2.5 3.5a.75.75 0 0 0 0 1.5h9.5a.75.75 0 0 0 0-1.5h-9.5Z"></path>` },
     todo: { viewBox: "0 0 24 24", body: `<path d="M3.5 3.75a.25.25 0 0 1 .25-.25h13.5a.25.25 0 0 1 .25.25v10a.75.75 0 0 0 1.5 0v-10A1.75 1.75 0 0 0 17.25 2H3.75A1.75 1.75 0 0 0 2 3.75v16.5c0 .966.784 1.75 1.75 1.75h7a.75.75 0 0 0 0-1.5h-7a.25.25 0 0 1-.25-.25V3.75Z"></path><path d="M6.25 7a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm-.75 4.75a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75Zm16.28 4.53a.75.75 0 1 0-1.06-1.06l-4.97 4.97-1.97-1.97a.75.75 0 1 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5.5-5.5Z"></path>` },
   };
   const icon = icons[name] || { viewBox: "0 0 24 24", body: `<path d="M12.5 1.25a.75.75 0 0 0-1.5 0v8.69L6.447 5.385a.75.75 0 1 0-1.061 1.06L9.94 11H1.25a.75.75 0 0 0 0 1.5h8.69l-4.554 4.553a.75.75 0 0 0 1.06 1.061L11 13.561v8.689a.75.75 0 0 0 1.5 0v-8.69l4.553 4.554a.75.75 0 0 0 1.061-1.06L13.561 12.5h8.689a.75.75 0 0 0 0-1.5h-8.69l4.554-4.553a.75.75 0 1 0-1.06-1.061L12.5 9.939V1.25Z"></path>` };
@@ -1635,7 +1691,7 @@ async function renderMyPendingTasks() {
   const user = mePageState.user || await getOptionalUser();
   const [{ activities }, feedbackResult] = await Promise.all([
     api.get("/api/activities?pending=me"),
-    hasRole(user, "admin")
+    hasPermission(user, "feedbacks", "view")
       ? api.get("/api/feedbacks?status=admin_review&page=1&pageSize=12")
       : Promise.resolve({ feedbacks: [] }),
   ]);
@@ -1651,8 +1707,8 @@ async function initReviewTasksPage() {
   const user = await requireCurrentUser();
   if (!user) return;
   mePageState.user = user;
-  if (!hasRole(user, "collaborator") && !hasRole(user, "admin")) {
-    root.innerHTML = `<section class="section"><div class="wrap"><div class="empty-state"><strong>暂无审核权限</strong><p>只有协作员或管理员可以查看审核待办。</p></div></div></section>`;
+  if (!hasPermission(user, "reviewTasks", "view") && !hasPermission(user, "activities", "review") && !hasPermission(user, "feedbacks", "view")) {
+    root.innerHTML = `<section class="section"><div class="wrap"><div class="empty-state"><strong>暂无审核权限</strong><p>当前角色没有待办查看或复核权限。</p></div></div></section>`;
     return;
   }
   await renderMyPendingTasks();
@@ -1956,38 +2012,47 @@ async function initSuccessPage() {
 async function initAdminPage() {
   const adminRoot = qs("[data-admin-dashboard]");
   if (!adminRoot) return;
-  const user = await requireAdminUser(adminRoot);
+  const user = await requireAdminUser(adminRoot, "dashboard", "view");
   if (!user) return;
 
   const dashboard = await api.get("/api/dashboard/admin");
-  renderAdminDashboardCards(adminRoot, dashboard.activities, dashboard.users, dashboard.modules, dashboard.templates, dashboard.pending, dashboard.friends, dashboard.feedbacks);
-  renderPendingTasks(qs("[data-admin-pending]", adminRoot), (dashboard.pending?.activities || []).slice(0, 4), {
-    compact: true,
-    feedbacks: (dashboard.pending?.feedbacks || []).slice(0, 4),
-    onRefresh: initAdminPage,
-  });
+  renderAdminDashboardCards(adminRoot, dashboard.activities, dashboard.users, dashboard.modules, dashboard.templates, dashboard.pending, dashboard.friends, dashboard.feedbacks, dashboard.roles);
+  const canSeePending = hasPermission(user, "reviewTasks", "view") || hasPermission(user, "activities", "review") || hasPermission(user, "feedbacks", "view");
+  const pendingPanel = qs("[data-admin-pending]", adminRoot);
+  const pendingSection = pendingPanel?.closest(".section");
+  if (pendingSection) pendingSection.hidden = !canSeePending;
+  if (canSeePending) {
+    renderPendingTasks(pendingPanel, (dashboard.pending?.activities || []).slice(0, 4), {
+      compact: true,
+      feedbacks: (dashboard.pending?.feedbacks || []).slice(0, 4),
+      onRefresh: initAdminPage,
+    });
+  }
 }
 
-async function requireAdminUser(root) {
+async function requireAdminUser(root, moduleKey = "dashboard", action = "view") {
   const user = await requireCurrentUser();
   if (!user) return null;
-  if (!hasRole(user, "admin")) {
+  if (!hasPermission(user, moduleKey, action)) {
     if (root) {
-      root.innerHTML = `<section class="section"><div class="wrap"><div class="empty-state"><strong>你还不是管理员</strong><p>只有 YKadmin 可以进入后台。</p></div></div></section>`;
+      root.innerHTML = `<section class="section"><div class="wrap"><div class="empty-state"><strong>当前角色暂无权限</strong><p>请联系有空管理员调整角色权限后再进入这个模块。</p></div></div></section>`;
     }
-    return;
+    return null;
   }
+  mePageState.user = user;
   return user;
 }
 
-function renderAdminDashboardCards(root, activitiesSummary, usersSummary, modulesSummary, templatesSummary, pendingSummary, friendsSummary, feedbackSummary) {
+function renderAdminDashboardCards(root, activitiesSummary, usersSummary, modulesSummary, templatesSummary, pendingSummary, friendsSummary, feedbackSummary, rolesSummary) {
   const container = qs("[data-admin-dashboard-cards]", root);
   if (!container) return;
   container.classList.add("admin-module-groups");
+  const user = mePageState.user || getCachedUser();
   const counts = activitiesSummary?.byStatus || {};
   const reviewing = Number(activitiesSummary?.reviewing ?? ((counts.admin_review || 0) + (counts.collaborator_review || 0)));
   const activityTotal = Number(activitiesSummary?.total || 0);
   const userTotal = Number(usersSummary?.total || 0);
+  const roleTotal = Number(rolesSummary?.total || 0);
   const moduleTotal = Number(modulesSummary?.total || 0);
   const templateTotal = Number(templatesSummary?.total || 0);
   const friendTotal = Number(friendsSummary?.total || 0);
@@ -2006,6 +2071,7 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           meta: `活动 ${pendingSummary?.activityTotal ?? pendingTotal - feedbackPending} / 反馈 ${feedbackPending}`,
           count: pendingTotal,
           icon: "todo",
+          permissionAny: [["reviewTasks", "view"], ["activities", "review"], ["feedbacks", "view"]],
         },
       ],
     },
@@ -2021,6 +2087,7 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           meta: `${reviewing} 个审核中`,
           count: activityTotal,
           icon: "activity",
+          permission: ["activities", "view"],
         },
         {
           href: "admin-modules.html",
@@ -2030,6 +2097,7 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           meta: "活动分类",
           count: moduleTotal,
           icon: "grid",
+          permission: ["modules", "view"],
         },
         {
           href: "admin-templates.html",
@@ -2039,6 +2107,7 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           meta: "描述模板",
           count: templateTotal,
           icon: "template",
+          permission: ["templates", "view"],
         },
         {
           href: "admin-friends.html",
@@ -2048,6 +2117,7 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           meta: "活动来源",
           count: friendTotal,
           icon: "friend",
+          permission: ["friends", "view"],
         },
         {
           href: "admin-feedbacks.html",
@@ -2057,6 +2127,7 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           meta: "待审核反馈",
           count: feedbackPending,
           icon: "feedback",
+          permission: ["feedbacks", "view"],
         },
       ],
     },
@@ -2072,15 +2143,47 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           meta: "Community Report",
           count: "Report",
           icon: "report",
+          permission: ["reports", "view"],
         },
         {
-          href: "admin-governance.html",
-          label: "社区治理",
-          title: "管理信用策略、徽章和身份时间线",
-          body: "Community Trust、Trust Policy、Community Badge 和展示策略集中管理。",
+          href: "admin-trust.html",
+          label: "社区信用",
+          title: "查看匿名身份信用时间线",
+          body: "观察 Community Trust、社区等级、身份状态和事件来源。",
           meta: "Community Trust",
           count: "Trust",
-          icon: "governance",
+          icon: "trust",
+          permission: ["trust", "view"],
+        },
+        {
+          href: "admin-trust-policy.html",
+          label: "信用策略",
+          title: "配置社区信用变动规则",
+          body: "用策略定义活动置信度、报名、反馈和举报如何影响信用。",
+          meta: "Trust Policy",
+          count: "Policy",
+          icon: "policy",
+          permission: ["trustPolicy", "view"],
+        },
+        {
+          href: "admin-badges.html",
+          label: "社区徽章",
+          title: "维护社区贡献的可视表达",
+          body: "管理身份徽章、成就徽章和事件徽章。",
+          meta: "Community Badge",
+          count: "Badge",
+          icon: "badge",
+          permission: ["badges", "view"],
+        },
+        {
+          href: "admin-badge-policy.html",
+          label: "徽章展示",
+          title: "配置徽章展示策略",
+          body: "决定徽章是否公开，以及展示在哪些页面和位置。",
+          meta: "Display Policy",
+          count: "Show",
+          icon: "eye",
+          permission: ["badgePolicy", "view"],
         },
       ],
     },
@@ -2096,6 +2199,7 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           meta: "Rule Engine",
           count: "OS",
           icon: "rules",
+          permission: ["safety", "view"],
         },
         {
           href: "admin-ai.html",
@@ -2105,22 +2209,40 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           meta: "Observer",
           count: "AI",
           icon: "ai",
+          permission: ["ai", "view"],
+        },
+      ],
+    },
+    {
+      title: "用户与权限",
+      body: "谁能进入后台，以及每个角色能访问哪些模块。",
+      cards: [
+        {
+          href: "admin-members.html",
+          label: "用户管理",
+          title: "管理用户和登录手机号",
+          body: "添加、搜索、修改、删除可登录后台的人，并给每个人选择一个角色。",
+          meta: "用户角色",
+          count: userTotal,
+          icon: "people",
+          permission: ["users", "view"],
+        },
+        {
+          href: "admin-roles.html",
+          label: "角色权限",
+          title: "配置角色能做什么",
+          body: "新增角色，并按模块和动作配置查看、新增、编辑、删除、审核、导出等权限。",
+          meta: "RBAC",
+          count: roleTotal,
+          icon: "key",
+          permission: ["roles", "view"],
         },
       ],
     },
     {
       title: "系统维护",
-      body: "协作员、权限和操作记录等基础维护入口。",
+      body: "操作记录和系统留痕集中查看。",
       cards: [
-        {
-          href: "admin-members.html",
-          label: "协作员管理",
-          title: "管理协作员和手机号",
-          body: "添加、搜索、修改、删除可登录治理后台的人。",
-          meta: "管理员 / 协作员",
-          count: userTotal,
-          icon: "people",
-        },
         {
           href: "admin-logs.html",
           label: "操作日志",
@@ -2129,11 +2251,24 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           meta: "审计记录",
           count: "Log",
           icon: "logs",
+          permission: ["logs", "view"],
         },
       ],
     },
   ];
-  container.innerHTML = groups.map((group) => `
+  const visibleGroups = groups
+    .map((group) => ({
+      ...group,
+      cards: group.cards.filter((card) => {
+        if (Array.isArray(card.permissionAny)) {
+          return card.permissionAny.some(([moduleKey, action = "view"]) => hasPermission(user, moduleKey, action));
+        }
+        const [moduleKey, action = "view"] = card.permission || [];
+        return !moduleKey || hasPermission(user, moduleKey, action);
+      }),
+    }))
+    .filter((group) => group.cards.length);
+  container.innerHTML = visibleGroups.map((group) => `
     <section class="admin-module-group">
       <div class="admin-module-group-head">
         <div>
@@ -2169,7 +2304,7 @@ function parseAdminJsonField(value, fallback) {
 async function initAdminGovernancePage() {
   const root = qs("[data-admin-governance-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "trust", "view");
   if (!user) return;
   const { overview } = await api.get("/api/governance/overview");
   const cards = [
@@ -2265,10 +2400,11 @@ function fillTrustPolicyForm(form, policy) {
 async function initAdminTrustPolicyPage() {
   const root = qs("[data-admin-trust-policy-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "trustPolicy", "view");
   if (!user) return;
   const form = qs("[data-trust-policy-form]", root);
   const message = qs("[data-trust-policy-message]", root);
+  if (form?.closest(".form-note")) form.closest(".form-note").hidden = !hasPermission(user, "trustPolicy", "create") && !hasPermission(user, "trustPolicy", "edit");
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
@@ -2300,6 +2436,7 @@ async function renderTrustPolicies() {
     revealDynamicContent(list);
     return;
   }
+  const user = mePageState.user || getCachedUser();
   list.innerHTML = policies.map((policy) => `
     <article class="event-row" data-trust-policy-id="${policy.id}">
       <div>
@@ -2310,8 +2447,8 @@ async function renderTrustPolicies() {
         <details class="review-detail"><summary>查看条件</summary><pre>${escapeHtml(jsonText(policy.conditions || [], []))}</pre></details>
       </div>
       <div class="row-actions">
-        <button class="button outline" type="button" data-edit-trust-policy>编辑</button>
-        <button class="button outline danger-soft" type="button" data-delete-trust-policy>删除</button>
+        <button class="button outline" type="button" data-edit-trust-policy ${hasPermission(user, "trustPolicy", "edit") ? "" : "disabled"}>编辑</button>
+        <button class="button outline danger-soft" type="button" data-delete-trust-policy ${hasPermission(user, "trustPolicy", "delete") ? "" : "disabled"}>删除</button>
       </div>
     </article>
   `).join("");
@@ -2366,10 +2503,11 @@ function fillBadgeForm(form, badge) {
 async function initAdminBadgesPage() {
   const root = qs("[data-admin-badges-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "badges", "view");
   if (!user) return;
   const form = qs("[data-badge-form]", root);
   const message = qs("[data-badge-message]", root);
+  if (form?.closest(".form-note")) form.closest(".form-note").hidden = !hasPermission(user, "badges", "create") && !hasPermission(user, "badges", "edit");
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
@@ -2401,6 +2539,7 @@ async function renderBadges() {
     revealDynamicContent(list);
     return;
   }
+  const user = mePageState.user || getCachedUser();
   list.innerHTML = badges.map((badge) => `
     <article class="event-row" data-badge-id="${badge.id}">
       <div>
@@ -2411,8 +2550,8 @@ async function renderBadges() {
         <details class="review-detail"><summary>查看获得规则</summary><pre>${escapeHtml(jsonText(badge.rule || {}, {}))}</pre></details>
       </div>
       <div class="row-actions">
-        <button class="button outline" type="button" data-edit-badge>编辑</button>
-        <button class="button outline danger-soft" type="button" data-delete-badge>删除</button>
+        <button class="button outline" type="button" data-edit-badge ${hasPermission(user, "badges", "edit") ? "" : "disabled"}>编辑</button>
+        <button class="button outline danger-soft" type="button" data-delete-badge ${hasPermission(user, "badges", "delete") ? "" : "disabled"}>删除</button>
       </div>
     </article>
   `).join("");
@@ -2432,7 +2571,7 @@ async function renderBadges() {
 async function initAdminBadgePolicyPage() {
   const root = qs("[data-admin-badge-policy-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "badgePolicy", "view");
   if (!user) return;
   await renderBadgePolicies();
 }
@@ -2448,6 +2587,7 @@ async function renderBadgePolicies() {
     revealDynamicContent(list);
     return;
   }
+  const user = mePageState.user || getCachedUser();
   list.innerHTML = policies.map((policy) => `
     <article class="event-row badge-policy-row" data-badge-policy-id="${policy.id}">
       <div>
@@ -2463,7 +2603,7 @@ async function renderBadgePolicies() {
         <label>显示名称<select name="showName"><option value="true" ${policy.showName === false ? "" : "selected"}>显示</option><option value="false" ${policy.showName === false ? "selected" : ""}>隐藏</option></select></label>
         <input name="tooltip" value="${escapeHtml(policy.tooltip || "")}" placeholder="悬停说明" />
         <input name="order" type="number" value="${Number(policy.order || 100)}" />
-        <button class="button outline" type="button" data-save-badge-policy>保存</button>
+        <button class="button outline" type="button" data-save-badge-policy ${hasPermission(user, "badgePolicy", "edit") ? "" : "disabled"}>保存</button>
       </div>
     </article>
   `).join("");
@@ -2488,7 +2628,7 @@ async function renderBadgePolicies() {
 async function initAdminActivitiesPage() {
   const root = qs("[data-admin-activities-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "activities", "view");
   if (!user) return;
   const filters = qs("[data-admin-activity-filters]", root);
   await fillModuleFilterSelect(filters?.moduleId);
@@ -2508,8 +2648,9 @@ async function initAdminActivitiesPage() {
 async function initAdminMembersPage() {
   const root = qs("[data-admin-members-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "users", "view");
   if (!user) return;
+  await loadRoleOptions(root);
   const filters = qs("[data-member-filters]", root);
   filters?.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -2521,13 +2662,39 @@ async function initAdminMembersPage() {
     renderUsers();
   });
   bindAdminForms();
+  const userPanel = qs("[data-user-create-panel]", root);
+  if (userPanel) userPanel.hidden = !hasPermission(user, "users", "create");
   await renderUsers();
+}
+
+async function initAdminRolesPage() {
+  const root = qs("[data-admin-roles-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root, "roles", "view");
+  if (!user) return;
+  await loadRoleOptions(root);
+  const filters = qs("[data-role-filters]", root);
+  filters?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    renderRoles();
+  });
+  const form = qs("[data-role-form]", root);
+  resetRoleForm(form);
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await saveRole(form);
+  });
+  qs("[data-role-reset]", form)?.addEventListener("click", () => resetRoleForm(form));
+  const canWrite = hasPermission(user, "roles", "create") || hasPermission(user, "roles", "edit");
+  const rolePanel = qs("[data-role-edit-panel]", root);
+  if (rolePanel) rolePanel.hidden = !canWrite;
+  await renderRoles();
 }
 
 async function initAdminModulesPage() {
   const root = qs("[data-admin-modules-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "modules", "view");
   if (!user) return;
   const filters = qs("[data-module-filters]", root);
   filters?.addEventListener("submit", (event) => {
@@ -2540,13 +2707,15 @@ async function initAdminModulesPage() {
     renderModules();
   });
   bindAdminForms();
+  const moduleForm = qs("[data-module-form]", root);
+  if (moduleForm?.closest(".form-note")) moduleForm.closest(".form-note").hidden = !hasPermission(user, "modules", "create");
   await renderModules();
 }
 
 async function initAdminTemplatesPage() {
   const root = qs("[data-admin-templates-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "templates", "view");
   if (!user) return;
   const filters = qs("[data-template-filters]", root);
   filters?.addEventListener("submit", (event) => {
@@ -2558,17 +2727,20 @@ async function initAdminTemplatesPage() {
     mePageState.templatePage += 1;
     renderTemplates();
   });
+  qsa('a[href="admin-template-editor.html"]', root).forEach((link) => {
+    link.hidden = !hasPermission(user, "templates", "create");
+  });
   await renderTemplates();
 }
 
 async function initAdminTemplateEditorPage() {
   const root = qs("[data-admin-template-editor-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const editingId = new URLSearchParams(location.search).get("id");
+  const user = await requireAdminUser(root, "templates", editingId ? "edit" : "create");
   if (!user) return;
   const form = qs("[data-template-form]", root);
   bindTemplateForm(form);
-  const editingId = new URLSearchParams(location.search).get("id");
   if (!editingId) return;
   try {
     const { template } = await api.get(`/api/templates/${encodeURIComponent(editingId)}`);
@@ -2581,7 +2753,7 @@ async function initAdminTemplateEditorPage() {
 async function initAdminLogsPage() {
   const root = qs("[data-admin-logs-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "logs", "view");
   if (!user) return;
   const filters = qs("[data-log-filters]", root);
   await fillLogFilters(filters);
@@ -2600,7 +2772,7 @@ async function initAdminLogsPage() {
 async function initAdminReportsPage() {
   const root = qs("[data-admin-reports-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "reports", "view");
   if (!user) return;
   const filters = qs("[data-report-filters]", root);
   filters?.addEventListener("submit", (event) => {
@@ -2618,11 +2790,15 @@ async function initAdminReportsPage() {
 async function initAdminSafetyPage() {
   const root = qs("[data-admin-safety-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "safety", "view");
   if (!user) return;
   const configForm = qs("[data-safety-config-form]", root);
   const ruleForm = qs("[data-safety-rule-form]", root);
   const message = qs("[data-safety-message]", root);
+  qsa("button", configForm).forEach((button) => {
+    button.disabled = !hasPermission(user, "safety", "configure");
+  });
+  if (ruleForm?.closest(".form-note")) ruleForm.closest(".form-note").hidden = !hasPermission(user, "safety", "create");
   try {
     const [{ config }, { rules }] = await Promise.all([
       api.get("/api/safety/config"),
@@ -2675,6 +2851,7 @@ function renderSafetyRules(container, rules = []) {
     container.innerHTML = `<div class="empty-state"><strong>还没有规则</strong><p>默认规则会在系统初始化时自动补齐。</p></div>`;
     return;
   }
+  const user = mePageState.user || getCachedUser();
   container.innerHTML = rules.map((rule) => `
     <article class="manage-row safety-rule-row" data-rule-id="${rule.id}">
       <input name="name" value="${escapeHtml(rule.name)}" aria-label="规则名称" />
@@ -2686,8 +2863,8 @@ function renderSafetyRules(container, rules = []) {
       </select>
       <textarea name="description" aria-label="规则说明">${escapeHtml(rule.description || "")}</textarea>
       <textarea name="params" aria-label="规则参数 JSON">${escapeHtml(JSON.stringify(rule.params || {}, null, 2))}</textarea>
-      <button class="button outline" type="button" data-save-rule>保存</button>
-      <button class="button outline danger-soft" type="button" data-delete-rule>删除</button>
+      <button class="button outline" type="button" data-save-rule ${hasPermission(user, "safety", "edit") ? "" : "disabled"}>保存</button>
+      <button class="button outline danger-soft" type="button" data-delete-rule ${hasPermission(user, "safety", "delete") ? "" : "disabled"}>删除</button>
     </article>
   `).join("");
   revealDynamicContent(container);
@@ -2720,11 +2897,15 @@ function renderSafetyRules(container, rules = []) {
 async function initAdminAiPage() {
   const root = qs("[data-admin-ai-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "ai", "view");
   if (!user) return;
   const settingsForm = qs("[data-ai-settings-form]", root);
   const promptForm = qs("[data-ai-prompt-form]", root);
   const message = qs("[data-ai-message]", root);
+  qsa("button", settingsForm).forEach((button) => {
+    button.disabled = !hasPermission(user, "ai", "configure");
+  });
+  if (promptForm?.closest(".form-note")) promptForm.closest(".form-note").hidden = !hasPermission(user, "ai", "create");
   try {
     const [{ settings }, { prompts }] = await Promise.all([
       api.get("/api/ai/settings"),
@@ -2840,6 +3021,7 @@ function renderAiPrompts(container, prompts = []) {
     container.innerHTML = `<div class="empty-state"><strong>还没有 Prompt</strong><p>系统初始化后会自动补一个活动分析默认版本。</p></div>`;
     return;
   }
+  const user = mePageState.user || getCachedUser();
   container.innerHTML = prompts.map((prompt) => `
     <article class="event-row" data-prompt-id="${prompt.id}">
       <div>
@@ -2853,8 +3035,8 @@ function renderAiPrompts(container, prompts = []) {
         </details>
       </div>
       <div class="row-actions">
-        <button class="button outline" type="button" data-activate-prompt ${prompt.active ? "disabled" : ""}>启用</button>
-        <button class="button outline danger-soft" type="button" data-delete-prompt>删除</button>
+        <button class="button outline" type="button" data-activate-prompt ${prompt.active || !hasPermission(user, "ai", "configure") ? "disabled" : ""}>启用</button>
+        <button class="button outline danger-soft" type="button" data-delete-prompt ${hasPermission(user, "ai", "delete") ? "" : "disabled"}>删除</button>
       </div>
     </article>
   `).join("");
@@ -2877,7 +3059,7 @@ function renderAiPrompts(container, prompts = []) {
 async function initAdminActivityConfidencePage() {
   const root = qs("[data-admin-activity-confidence-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "activities", "view");
   if (!user) return;
   const id = new URLSearchParams(location.search).get("id");
   const container = qs("[data-confidence-detail]", root);
@@ -2886,7 +3068,9 @@ async function initAdminActivityConfidencePage() {
     return;
   }
   await renderActivityConfidence(root, id);
-  qs("[data-reanalyze-activity]", root)?.addEventListener("click", async () => {
+  const reanalyzeButton = qs("[data-reanalyze-activity]", root);
+  if (reanalyzeButton) reanalyzeButton.hidden = !hasPermission(user, "activities", "reanalyze");
+  reanalyzeButton?.addEventListener("click", async () => {
     await api.post(`/api/activities/${id}/reanalyze`, {});
     showToast("已重新分析");
     await renderActivityConfidence(root, id);
@@ -3012,7 +3196,7 @@ function renderAiReport(report = {}) {
 async function initAdminTrustPage() {
   const root = qs("[data-admin-trust-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "trust", "view");
   if (!user) return;
   const filters = qs("[data-trust-filters]", root);
   filters?.addEventListener("submit", (event) => {
@@ -3066,7 +3250,7 @@ function renderBadgeNames(badges = []) {
 async function initAdminTrustDetailPage() {
   const root = qs("[data-admin-trust-detail-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "trust", "view");
   if (!user) return;
   const id = new URLSearchParams(location.search).get("id");
   const container = qs("[data-trust-detail]", root);
@@ -3162,7 +3346,7 @@ function bindAdminForms() {
         role: selectedRole(userForm),
       });
       userForm.reset();
-      setMessage(userMessage, "协作员已添加。", "success");
+      setMessage(userMessage, "用户已添加。", "success");
       showToast("保存成功");
       resetPagedState("users");
       await renderUsers();
@@ -3191,6 +3375,139 @@ function bindAdminForms() {
 
 function selectedRole(root) {
   return qs('[name="role"]', root)?.value || "collaborator";
+}
+
+function selectedPermissions(root) {
+  const permissions = {};
+  qsa("[data-permission-module][data-permission-action]", root).forEach((input) => {
+    if (!input.checked) return;
+    const moduleKey = input.dataset.permissionModule;
+    const action = input.dataset.permissionAction;
+    permissions[moduleKey] = permissions[moduleKey] || [];
+    permissions[moduleKey].push(action);
+  });
+  return permissions;
+}
+
+function assignableRolesFrom(roles = []) {
+  const source = roles.length ? roles : [{ key: "collaborator", name: "协作员" }];
+  return source.filter((role) => role.key !== "admin");
+}
+
+function assignableRoles() {
+  return assignableRolesFrom(mePageState.roles || []);
+}
+
+function roleDisplayName(roleKey = "") {
+  const key = roleKey || "collaborator";
+  return (mePageState.roles || []).find((role) => role.key === key)?.name || (key === "admin" ? "有空管理员" : key);
+}
+
+function fillRoleFilterSelect(select, roles = []) {
+  if (!select) return;
+  select.innerHTML = [
+    `<option value="">全部角色</option>`,
+    ...roles.map((role) => `<option value="${escapeHtml(role.key)}">${escapeHtml(role.name)}</option>`),
+  ].join("");
+}
+
+function fillAssignableRoleSelect(select, roles = []) {
+  if (!select) return;
+  select.innerHTML = assignableRolesFrom(roles)
+    .map((role) => `<option value="${escapeHtml(role.key)}">${escapeHtml(role.name)}</option>`)
+    .join("");
+}
+
+async function loadRoleOptions(root = document) {
+  const { roles, modules, actions } = await api.get("/api/roles?page=1&pageSize=100");
+  mePageState.roles = roles || [];
+  mePageState.permissionModules = modules || [];
+  mePageState.permissionActions = actions || [];
+  fillRoleFilterSelect(qs("[data-role-filter]", root), mePageState.roles);
+  fillAssignableRoleSelect(qs("[data-user-role-select]", root), mePageState.roles);
+  renderPermissionMatrix(qs("[data-permission-matrix]", root), {});
+  return mePageState.roles;
+}
+
+function renderPermissionMatrix(container, permissions = {}, role = {}) {
+  if (!container) return;
+  const modules = mePageState.permissionModules || [];
+  if (!modules.length) {
+    container.innerHTML = `<p class="muted-text">正在读取权限模块...</p>`;
+    return;
+  }
+  const locked = role.locked === true || role.key === "admin";
+  container.innerHTML = modules.map((module) => `
+    <section class="permission-row">
+      <div>
+        <strong>${escapeHtml(module.label)}</strong>
+        <p>${escapeHtml(module.description || "")}</p>
+      </div>
+      <div class="permission-actions">
+        ${(module.actions || []).map((action) => {
+          const checked = Array.isArray(permissions[module.key]) && permissions[module.key].includes(action);
+          const actionLabel = (mePageState.permissionActions || []).find((item) => item.key === action)?.label || action;
+          return `
+            <label class="permission-chip">
+              <input type="checkbox" data-permission-module="${escapeHtml(module.key)}" data-permission-action="${escapeHtml(action)}" ${checked ? "checked" : ""} ${locked ? "disabled" : ""} />
+              <span>${escapeHtml(actionLabel)}</span>
+            </label>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `).join("");
+}
+
+function resetRoleForm(form = qs("[data-role-form]")) {
+  if (!form) return;
+  mePageState.editingRole = null;
+  form.reset();
+  if (form.key) {
+    form.key.disabled = false;
+    form.key.value = "";
+  }
+  renderPermissionMatrix(qs("[data-permission-matrix]", form), {});
+  qs("[data-role-form-title]", form)?.replaceChildren(document.createTextNode("新增角色"));
+  qs("[data-role-submit]", form) && (qs("[data-role-submit]", form).textContent = "保存角色");
+  qs("[data-role-reset]", form) && (qs("[data-role-reset]", form).hidden = true);
+}
+
+function fillRoleForm(form, role = {}) {
+  if (!form) return;
+  mePageState.editingRole = role;
+  form.key.value = role.key || "";
+  form.key.disabled = true;
+  form.name.value = role.name || "";
+  form.description.value = role.description || "";
+  renderPermissionMatrix(qs("[data-permission-matrix]", form), role.permissions || {}, role);
+  qs("[data-role-form-title]", form)?.replaceChildren(document.createTextNode(`编辑 ${role.name || role.key}`));
+  qs("[data-role-submit]", form) && (qs("[data-role-submit]", form).textContent = "保存修改");
+  qs("[data-role-reset]", form) && (qs("[data-role-reset]", form).hidden = false);
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function saveRole(form) {
+  const message = qs("[data-role-message]");
+  const editing = mePageState.editingRole;
+  const payload = {
+    key: form.key.value,
+    name: form.name.value,
+    description: form.description.value,
+    permissions: selectedPermissions(form),
+  };
+  try {
+    editing
+      ? await api.put(`/api/roles/${encodeURIComponent(editing.id)}`, payload)
+      : await api.post("/api/roles", payload);
+    showToast("保存成功");
+    setMessage(message, "角色权限已保存。", "success");
+    resetRoleForm(form);
+    await loadRoleOptions(document);
+    await renderRoles();
+  } catch (error) {
+    setMessage(message, error.message, "error");
+  }
 }
 
 function bindTemplateForm(form = qs("[data-template-form]")) {
@@ -3244,15 +3561,71 @@ function fillTemplateForm(form, template) {
 }
 
 function renderRoleControls(user = {}) {
-  const roles = user.roles || [user.role || "collaborator"];
-  if (roles.includes("admin")) {
+  const role = user.role || (user.roles || [])[0] || "collaborator";
+  if (role === "admin") {
     return `<span class="tag">有空管理员</span>`;
   }
+  const roles = assignableRoles();
   return `
     <select name="role" aria-label="角色">
-      <option value="collaborator" ${roles.includes("collaborator") ? "selected" : ""}>协作员</option>
+      ${roles.map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === role ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}
     </select>
   `;
+}
+
+async function renderRoles() {
+  const list = qs("[data-role-list]");
+  if (!list) return;
+  const query = queryFromForm(qs("[data-role-filters]"), {
+    page: 1,
+    pageSize: 100,
+  });
+  const { roles, pageInfo, modules, actions } = await api.get(`/api/roles${query}`);
+  mePageState.roles = roles || [];
+  mePageState.permissionModules = modules || mePageState.permissionModules || [];
+  mePageState.permissionActions = actions || mePageState.permissionActions || [];
+  updatePagedCount(qs("[data-role-count]"), roles.length, pageInfo);
+  if (!roles.length) {
+    list.innerHTML = `<div class="empty-state"><strong>没有找到角色</strong><p>换一个关键词试试。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  const user = mePageState.user || getCachedUser();
+  list.innerHTML = roles.map((role) => {
+    const permissionCount = Object.values(role.permissions || {}).reduce((total, actions) => total + (Array.isArray(actions) ? actions.length : 0), 0);
+    const canEdit = !role.locked && hasPermission(user, "roles", "edit");
+    const canDelete = !role.builtIn && !role.locked && role.key !== "admin" && role.key !== "collaborator" && hasPermission(user, "roles", "delete");
+    return `
+      <article class="event-row role-row" data-role-id="${escapeHtml(role.id)}">
+        <div>
+          <div class="tag-row">
+            <span class="tag">${role.locked ? "系统锁定" : role.builtIn ? "内置角色" : "自定义角色"}</span>
+            <span class="tag soft">${escapeHtml(role.key)}</span>
+          </div>
+          <h3>${escapeHtml(role.name)}</h3>
+          <p>${escapeHtml(role.description || "暂无说明")}</p>
+          <p>${permissionCount} 个动作权限 · ${formatDate(role.updatedAt || role.createdAt)}</p>
+        </div>
+        <div class="row-actions">
+          <button class="button outline" type="button" data-edit-role ${canEdit ? "" : "disabled"}>编辑</button>
+          <button class="button outline danger-soft" type="button" data-delete-role ${canDelete ? "" : "disabled"}>删除</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+  revealDynamicContent(list);
+  qsa("[data-role-id]", list).forEach((row) => {
+    const role = roles.find((item) => item.id === row.dataset.roleId);
+    qs("[data-edit-role]", row)?.addEventListener("click", () => fillRoleForm(qs("[data-role-form]"), role));
+    qs("[data-delete-role]", row)?.addEventListener("click", async () => {
+      if (!confirm("确定删除这个角色吗？仍有用户使用时无法删除。")) return;
+      await api.delete(`/api/roles/${encodeURIComponent(role.id)}`);
+      showToast("删除成功");
+      resetRoleForm(qs("[data-role-form]"));
+      await loadRoleOptions(document);
+      await renderRoles();
+    });
+  });
 }
 
 async function renderUsers() {
@@ -3268,7 +3641,7 @@ async function renderUsers() {
   updatePagedCount(qs("[data-member-count]"), loaded.length, pageInfo);
   updateLoadMore(qs("[data-load-more-users]"), loaded.length, pageInfo?.total || loaded.length);
   if (!loaded.length) {
-    list.innerHTML = `<div class="empty-state"><strong>没有找到协作员</strong><p>换一个关键词或角色筛选试试。</p></div>`;
+    list.innerHTML = `<div class="empty-state"><strong>没有找到用户</strong><p>换一个关键词或角色筛选试试。</p></div>`;
     revealDynamicContent(list);
     return;
   }
@@ -3279,8 +3652,8 @@ async function renderUsers() {
           <input name="nickname" value="${escapeHtml(user.nickname)}" />
           <input name="phone" value="${escapeHtml(user.phone)}" inputmode="tel" />
           <div class="role-control">${renderRoleControls(user)}</div>
-          <button class="button outline" type="button" data-save-user>保存</button>
-          <button class="button outline" type="button" data-delete-user ${user.id === "admin" ? "disabled" : ""}>删除</button>
+          <button class="button outline" type="button" data-save-user ${hasPermission(mePageState.user, "users", "edit") ? "" : "disabled"}>保存</button>
+          <button class="button outline danger-soft" type="button" data-delete-user ${user.id === "admin" || !hasPermission(mePageState.user, "users", "delete") ? "disabled" : ""}>删除</button>
         </article>
       `
     )
@@ -3299,7 +3672,7 @@ async function renderUsers() {
       await renderUsers();
     });
     qs("[data-delete-user]", row).addEventListener("click", async () => {
-      if (!confirm("确定删除这个成员吗？")) return;
+      if (!confirm("确定删除这个用户吗？")) return;
       await api.delete(`/api/users/${row.dataset.userId}`);
       showToast("删除成功");
       resetPagedState("users");
@@ -3429,6 +3802,7 @@ async function renderAdminPendingTasks() {
 async function renderAllActivities() {
   const list = qs("[data-all-activities]");
   if (!list) return;
+  const currentUser = mePageState.user || getCachedUser();
   const filters = qs("[data-admin-activity-filters]");
   const query = queryFromForm(filters, {
     all: "true",
@@ -3459,8 +3833,8 @@ async function renderAllActivities() {
             <a class="button outline" href="admin-activity-confidence.html?id=${encodeURIComponent(activity.id)}">置信度</a>
             ${canViewRegistrations(activity) ? `<a class="button outline" href="registrations.html?id=${encodeURIComponent(activity.id)}">报名表</a>` : ""}
             <a class="button outline" href="activity-feedback.html?id=${encodeURIComponent(activity.id)}">反馈</a>
-            ${canAdminCancel(activity) ? `<button class="button outline danger-soft" type="button" data-admin-cancel-activity-id="${activity.id}">取消</button>` : ""}
-            ${canAdminEnd(activity) ? `<button class="button outline" type="button" data-admin-end-activity-id="${activity.id}">结束</button>` : ""}
+            ${canAdminCancel(activity) && hasPermission(currentUser, "activities", "cancel") ? `<button class="button outline danger-soft" type="button" data-admin-cancel-activity-id="${activity.id}">取消</button>` : ""}
+            ${canAdminEnd(activity) && hasPermission(currentUser, "activities", "end") ? `<button class="button outline" type="button" data-admin-end-activity-id="${activity.id}">结束</button>` : ""}
           </div>
         </article>
       `
@@ -3514,14 +3888,15 @@ async function renderModules() {
     revealDynamicContent(list);
     return;
   }
+  const user = mePageState.user || getCachedUser();
   list.innerHTML = loaded
     .map(
       (module) => `
         <article class="manage-row" data-module-id="${module.id}">
           <input name="name" value="${escapeHtml(module.name)}" />
           <input name="description" value="${escapeHtml(module.description || "")}" />
-          <button class="button outline" type="button" data-save-module>保存</button>
-          <button class="button outline" type="button" data-delete-module>删除</button>
+          <button class="button outline" type="button" data-save-module ${hasPermission(user, "modules", "edit") ? "" : "disabled"}>保存</button>
+          <button class="button outline danger-soft" type="button" data-delete-module ${hasPermission(user, "modules", "delete") ? "" : "disabled"}>删除</button>
         </article>
       `
     )
@@ -3569,6 +3944,7 @@ async function renderTemplates() {
     revealDynamicContent(list);
     return;
   }
+  const user = mePageState.user || getCachedUser();
   list.innerHTML = loaded
     .map(
       (template) => `
@@ -3580,8 +3956,8 @@ async function renderTemplates() {
             <p>${formatDate(template.updatedAt || template.createdAt)}</p>
           </div>
           <div class="row-actions">
-            <a class="button outline" href="admin-template-editor.html?id=${encodeURIComponent(template.id)}">编辑</a>
-            <button class="button outline danger-soft" type="button" data-delete-template>删除</button>
+            <a class="button outline${hasPermission(user, "templates", "edit") ? "" : " is-disabled"}" ${hasPermission(user, "templates", "edit") ? `href="admin-template-editor.html?id=${encodeURIComponent(template.id)}"` : `aria-disabled="true"`}>编辑</a>
+            <button class="button outline danger-soft" type="button" data-delete-template ${hasPermission(user, "templates", "delete") ? "" : "disabled"}>删除</button>
           </div>
         </article>
       `
@@ -3684,11 +4060,12 @@ async function renderReports() {
 async function initAdminFriendsPage() {
   const root = qs("[data-admin-friends-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "friends", "view");
   if (!user) return;
   const form = qs("[data-friend-form]", root);
   const filters = qs("[data-friend-filters]", root);
   const message = qs("[data-friend-message]", root);
+  if (form?.closest(".form-note")) form.closest(".form-note").hidden = !hasPermission(user, "friends", "create") && !hasPermission(user, "friends", "edit");
   filters?.addEventListener("submit", (event) => {
     event.preventDefault();
     resetPagedState("friends");
@@ -3747,6 +4124,7 @@ async function renderFriends() {
     revealDynamicContent(list);
     return;
   }
+  const user = mePageState.user || getCachedUser();
   list.innerHTML = loaded.map((friend) => `
     <article class="event-row" data-friend-id="${escapeHtml(friend.id)}">
       <div>
@@ -3756,8 +4134,8 @@ async function renderFriends() {
         <p>${escapeHtml(friend.contactName || "联系人待补")} · ${escapeHtml(friend.contactInfo || "联系方式待补")}</p>
       </div>
       <div class="row-actions">
-        <button class="button outline" type="button" data-edit-friend>编辑</button>
-        <button class="button outline danger-soft" type="button" data-delete-friend>删除</button>
+        <button class="button outline" type="button" data-edit-friend ${hasPermission(user, "friends", "edit") ? "" : "disabled"}>编辑</button>
+        <button class="button outline danger-soft" type="button" data-delete-friend ${hasPermission(user, "friends", "delete") ? "" : "disabled"}>删除</button>
       </div>
     </article>
   `).join("");
@@ -3795,7 +4173,7 @@ function fillFriendForm(friend = {}) {
 async function initAdminFeedbacksPage() {
   const root = qs("[data-admin-feedbacks-page]");
   if (!root) return;
-  const user = await requireAdminUser(root);
+  const user = await requireAdminUser(root, "feedbacks", "view");
   if (!user) return;
   const filters = qs("[data-feedback-filters]", root);
   filters?.addEventListener("submit", (event) => {
@@ -3807,7 +4185,9 @@ async function initAdminFeedbacksPage() {
     mePageState.feedbackPage += 1;
     renderFeedbacks();
   });
-  qs("[data-export-feedbacks]", root)?.addEventListener("click", downloadFeedbacksCsv);
+  const exportButton = qs("[data-export-feedbacks]", root);
+  if (exportButton) exportButton.hidden = !hasPermission(user, "feedbacks", "export");
+  exportButton?.addEventListener("click", downloadFeedbacksCsv);
   await renderFeedbacks();
 }
 
@@ -3843,6 +4223,7 @@ function renderFeedbackText(feedback = {}) {
 
 function renderFeedbackReviewButtons(feedback = {}, options = {}) {
   if (!options.reviewActions) return "";
+  if (!hasPermission(mePageState.user || getCachedUser(), "feedbacks", "review")) return "";
   if (feedback.status === "approved") {
     return `<button class="button outline danger-soft" type="button" data-reject-feedback data-feedback-action-label="隐藏">隐藏</button>`;
   }
@@ -4111,6 +4492,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(initAdminPage),
     safeInit(initAdminActivitiesPage),
     safeInit(initAdminMembersPage),
+    safeInit(initAdminRolesPage),
     safeInit(initAdminModulesPage),
     safeInit(initAdminTemplatesPage),
     safeInit(initAdminTemplateEditorPage),

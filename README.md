@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.23.4`
+当前版本：`0.24.0`
 
-状态：`0.23.4` 将普通用户、活动参与者和活动发起人的「我的」开放工作台同步升级为与管理员工作台一致的 Primer / Geist inspired command surface：我的报名、我的反馈、发起活动、我发起的活动入口拥有 Octicon 风格图标、语义 tone、右侧箭头、指针高光和短时 hover / focus 动效。
+状态：`0.24.0` 完成后台 RBAC 权限体系一期：原「协作员管理」拆分为「用户管理」和「角色权限管理」，后台用户采用单角色模型，角色可配置模块访问权限和动作权限；后台工作台移除 Community Governance 总入口，把社区治理子模块直接归入对应分组。
 
 ## 访问地址
 
@@ -22,7 +22,8 @@ CloudBase 动态线上站点：
 - 我的活动：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/my-activities.html
 - 审核待办：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/review-tasks.html
 - 全部活动管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-activities.html
-- 协作员管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-members.html
+- 用户管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-members.html
+- 角色权限管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-roles.html
 - 模块管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-modules.html
 - 活动模板：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-templates.html
 - 新增活动模板：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-template-editor.html
@@ -33,7 +34,6 @@ CloudBase 动态线上站点：
 - 社区举报：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-reports.html
 - 规则引擎：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-safety.html
 - AI 分析：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-ai.html
-- 社区治理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-governance.html
 - 社区信用度：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-trust.html
 - 社区信用策略：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-trust-policy.html
 - 社区徽章：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-badges.html
@@ -50,7 +50,8 @@ GitHub Pages 静态展示：
 
 - 中文响应式官网：首页、社区共识、活动与参与、捐赠支持、关于与联系。
 - 开放活动发布：任何人无需注册、无需登录即可发起活动；同一浏览器使用本地匿名 UUID 和活动管理 token 继续编辑、撤回、查看报名表。
-- 管理员 / 协作员登录：手机号白名单只用于后台治理权限；管理员录入协作员昵称和手机号后，对方可登录处理兜底复核。
+- 管理员 / 协作员登录：手机号白名单只用于后台治理权限；管理员在用户管理中录入昵称、手机号并选择一个角色后，对方可登录处理被授权的后台模块。
+- 角色权限管理：后台采用单角色 RBAC。`admin` 是内置锁定超级管理员；`collaborator` 是内置协作角色；管理员可新增自定义角色，并按模块访问层和动作层配置 `view/create/edit/delete/review/export/configure/reanalyze/cancel/end` 等权限。
 - Community OS 安全架构：Rule Engine、Community Trust、AI Analysis Engine、Community Report、Risk Notice、Rate Limit、Turnstile 彼此解耦，所有阈值和策略配置化。
 - Rule Engine：支持敏感词、重点风险词、URL、HTML 标签、Script 注入、Markdown 危险语法、Unicode 混淆、Emoji 比例、重复字符、超长文本、重复内容、异常格式和活动完整度等规则，输出风险分和规则明细，不单条直接拒绝；重点风险词覆盖赌场、发票、投资、成人等明显不适合开放活动发布的内容，并按命中数量加重风险。
 - Community Governance：新增统一 Community Event、Trust Policy、Community Badge 和 Badge Policy。Community Trust 不再只是直接分数，而是由活动发布、活动置信度、社区反馈和报名里程碑等事件按策略投影出来；活动置信度评价单次活动，Community Trust 评价长期匿名身份，两者通过可配置策略映射。
@@ -59,8 +60,8 @@ GitHub Pages 静态展示：
 - AI Analysis Engine：AI 是社区观察员，不是审核员；支持开关、Provider、Base URL、Model、加密 API Key、Prompt 版本、调用策略、能力开关、缓存、重试、用量日志和测试连接；AI 介入条件可配置为规则置信度低于 / 等于阈值、匿名身份前 N 场必调 AI、举报后重分析、手动重分析、低信用度、随机抽检或全部分析；规则置信度阈值设为 100 时会覆盖全部活动；AI 关闭、缺少 Key 或不可用时，中高风险活动会进入管理员兜底审核；AI 明确识别营销、垃圾、诈骗、违法、成人和政治敏感内容时，策略引擎会提升风险下限并把高风险活动隐藏后转入管理员审核，疑似营销则保留公开但进入管理员关注待办。
 - Community Report：活动详情页支持社区反馈；每条新举报都会记录并触发活动重分析。举报理由与规则 / AI 分析相符时活动会下架并转入管理员审核，管理员通过后重新公开；举报暂不成立时只留痕不下架；多人举报会给活动增加中立风险提醒。
 - Risk Notice：低风险活动默认不展示“可信”标签；存在营销或较高风险时显示中立提示，帮助参与者自行判断。
-- YKadmin 后台：入口型工作台按待办、活动运营、社区治理、安全与智能、系统维护分组；全部活动、协作员管理、模块管理、活动模板、社区举报、操作日志、规则引擎、AI 分析、Community Governance 拆分为独立子页面。
-- YKadmin 子页面：协作员新增、编辑、删除；活动模块新增、编辑、删除；活动描述模板新增、编辑、删除；「客厅的朋友们」新增、编辑、停用和删除；活动反馈检索、展示 / 隐藏 / 恢复展示和 CSV 导出；管理员待办审核；按关键词、模块、状态、时间、报名数筛选全部活动。
+- YKadmin 后台：入口型工作台按待办、活动运营、社区治理、安全与智能、用户与权限、系统维护分组；社区举报、社区信用、信用策略、社区徽章和徽章展示策略直接出现在社区治理分组下，AI 分析仍在安全与智能分组下。
+- YKadmin 子页面：用户新增、编辑、删除和角色分配；角色权限新增、编辑、删除和权限矩阵配置；活动模块新增、编辑、删除；活动描述模板新增、编辑、删除；「客厅的朋友们」新增、编辑、停用和删除；活动反馈检索、展示 / 隐藏 / 恢复展示和 CSV 导出；管理员待办审核；按关键词、模块、状态、时间、报名数筛选全部活动。
 - YKadmin 活动管理：可查看全部状态活动，可取消或结束活动，可进入独立报名表页面。
 - YKadmin 操作日志：记录登录、退出、新增、保存、删除、提交、审核、退回、拒绝、撤回、报名、取消报名、删除报名、取消活动、结束活动和自动归档等关键动作，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载；日志手机号脱敏保存，仅保留最近 30 天。
 - 「我的」开放工作台：无需登录即可进入发起活动、我的活动、当前设备报名记录和当前设备匿名反馈记录；取消报名后的活动不会继续显示在我的报名里；协作员 / 管理员登录后额外看到审核待办和后台入口；入口卡片与管理员工作台共享 Octicon 风格图标、语义 tone、右侧箭头、指针高光和短时状态动效。
@@ -142,7 +143,8 @@ GitHub Pages 静态展示：
 ├── review-tasks.html       # 管理员 / 协作员审核待办
 ├── admin.html              # YKadmin 工作台：管理入口
 ├── admin-activities.html   # 全部活动管理与筛选
-├── admin-members.html      # 协作员管理
+├── admin-members.html      # 用户管理
+├── admin-roles.html        # 角色权限管理
 ├── admin-modules.html      # 活动模块管理
 ├── admin-templates.html    # 活动描述模板管理
 ├── admin-template-editor.html # 新增 / 编辑活动描述模板
@@ -152,7 +154,7 @@ GitHub Pages 静态展示：
 ├── admin-reports.html      # 社区举报列表与复核结论
 ├── admin-safety.html       # 规则引擎和策略配置
 ├── admin-ai.html           # AI Analysis Engine 设置和 Prompt
-├── admin-governance.html   # Community Governance 总入口
+├── admin-governance.html   # Community Governance 兼容旧入口
 ├── admin-trust.html        # Community Trust 列表
 ├── admin-trust-detail.html # Community Trust 详情
 ├── admin-trust-policy.html # Trust Policy 配置
@@ -167,6 +169,7 @@ GitHub Pages 静态展示：
 ├── server.js               # 本地 Express 启动入口
 ├── lib/
 │   ├── app.js              # Express 应用与 API 路由
+│   ├── permissions.js      # RBAC 权限模块、动作和默认角色定义
 │   ├── rich-text.js        # 活动富文本服务端白名单清洗
 │   ├── community-safety/   # 身份、限流、规则、信任、举报、策略和 Turnstile
 │   ├── community-governance/ # Community Event、Trust Policy、Badge 和策略服务
@@ -358,11 +361,12 @@ npm run deploy:cloudbase
 
 - 官网五个公开页面及艺术化社区公共客厅风格响应式视觉设计。
 - 登录入口：右上角「有空」和左上角圆形「有空」均可进入登录/我的入口。
-- 管理员登录后自动进入后台，协作员登录后进入「我的」。
+- 管理员和具备后台权限的角色登录后会进入第一个可访问的后台页面；普通协作员仍进入「我的」并看到自己的审核待办。
 - YKadmin 工作台入口卡片。
 - YKadmin / 开放工作台性能优化：入口卡片使用轻量 dashboard API 返回计数和待办预览；`0.20.2` 起「我的」工作台改为数据库计数聚合，避免首屏拉取完整活动列表。
 - YKadmin 全部活动独立管理页，支持关键词、模块、状态、时间和排序筛选。
-- YKadmin 协作员管理独立页。
+- YKadmin 用户管理独立页，支持关键词 / 角色筛选、新增用户、编辑昵称 / 手机号、分配单一角色和删除用户。
+- YKadmin 角色权限管理独立页，支持新增自定义角色、编辑内置协作员权限、删除未被使用的自定义角色，并通过权限矩阵配置模块访问和动作权限。
 - YKadmin 活动模块管理独立页。
 - YKadmin 活动描述模板管理独立页，支持模板搜索、新增、编辑、删除和富文本正文维护。
 - YKadmin 客厅的朋友们独立页，支持维护名称、简介、Logo、地址、联系人、联系方式和启用状态。
@@ -371,7 +375,7 @@ npm run deploy:cloudbase
 - YKadmin 社区举报独立页，支持关键词、处理状态、举报原因和日期范围筛选，列表展示举报理由、活动状态、复核结论并可跳转活动和置信度详情。
 - YKadmin 规则引擎页面，支持查看、新增、保存、删除风险规则，并通过 JSON 调整限流、Turnstile、举报阈值、风险分流策略和 Community Trust 权重。
 - YKadmin AI 分析页面，支持配置 AI 总开关、Provider、Base URL、Model、加密 API Key、超时、温度、Token、重试、缓存、调用策略、能力开关、Prompt 版本和连接测试。
-- YKadmin Community Governance 总入口，集中进入 Community Trust、Trust Policy、Community Badge、Badge Policy、AI Analysis 和 Rule Engine。
+- YKadmin Community Governance 旧总入口保留为兼容页面；正式工作台已取消总入口，把 Community Trust、Trust Policy、Community Badge 和 Badge Policy 直接放入社区治理分组，AI Analysis 和 Rule Engine 放入安全与智能分组。
 - YKadmin Trust Policy 页面，支持新增、编辑、删除事件驱动信用策略；策略由事件类型、条件 JSON、条件模式和 `trustDelta` 组成。
 - YKadmin Community Badge 页面，支持新增、编辑、删除身份徽章、成就徽章和事件徽章；徽章获得规则通过 JSON Rule Builder 配置。
 - YKadmin Badge Policy 页面，支持配置徽章公开可见性、展示位置、图标 / 名称显示、悬停说明和排序。
@@ -428,6 +432,7 @@ npm run deploy:cloudbase
 
 ## 已验证
 
+- `0.24.0` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖角色权限 API、自定义角色分配、日志查看角色越权拦截、后台卡片权限过滤和 `admin-roles.html` 移动端无横向溢出。
 - `0.23.4` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖未登录「我的」开放工作台 4 个基础入口、Octicon 风格图标、语义 tone、右侧箭头、锚点入口和待办区隐藏状态。
 - `0.23.3` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖管理员工作台 Octicon 风格图标、语义 tone、右侧箭头和图标动效挂载。
 - `0.23.2` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖主题按钮外圈尺寸保持、内部 SVG 图标不超过 16px，避免图标再次被后续覆盖层放大。
