@@ -2,6 +2,23 @@
 
 所有重要变更都会记录在此文件中。格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循语义化版本思路。
 
+## [0.23.3] - 2026-07-28
+
+### Added
+
+- 引入 GitHub `@primer/octicons` MIT 图标包作为管理员工作台图标体系参考源。
+- 管理员工作台入口卡片新增语义 tone、右侧轻箭头和 Octicon 风格实心图标。
+- 冒烟测试新增后台入口 Octicon、tone 和箭头挂载断言。
+
+### Changed
+
+- 管理员工作台卡片升级为 Primer / Geist inspired command surface：更克制的卡片半径、局部指针高光、轻微 sheen、实心图标底座和 150-250ms 产品动效。
+- 后台图标 hover 动效按业务语义区分：AI 连线轻旋、审核 / 规则确认位移、举报提醒、日志时钟、活动 / 模块 / 模板抬升。
+
+### Fixed
+
+- 修复管理员工作台入口图标和动效偏普通、缺少高级产品后台质感的问题。
+
 ## [0.23.2] - 2026-07-28
 
 ### Changed

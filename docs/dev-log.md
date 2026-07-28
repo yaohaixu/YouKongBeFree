@@ -3036,3 +3036,40 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 
 1. 后续如果继续精修导航，可把主题按钮、一键回首页和移动端菜单统一沉淀成独立 navigation 样式分区。
 2. 部署后用无痕窗口检查首页、登录页和后台页的主题按钮，确认 CDN 缓存已刷新到 `v=0.23.2`。
+
+## 2026-07-28 - 0.23.3 管理员工作台图标与动效升级
+
+### 任务目标
+
+根据反馈，管理员工作台的图标和动效仍不够高级。本次使用 `motion-design`、`impeccable` 的产品 UI / 动效原则，并参考 Vercel Geist 的克制 product surface、GitHub Primer / Octicons 的图标体系，重新打磨后台入口卡片。
+
+### 具体修改
+
+- `package.json`、`package-lock.json`：新增 `@primer/octicons` 依赖，作为 MIT 授权的 GitHub Octicons 图标参考源。
+- `app.js`：`renderWorkspaceCard()` 增加 `data-card-tone`、`data-workspace-icon` 和右侧 cue arrow；`workspaceIconSvg()` 替换为 Octicon 风格实心 SVG，并按业务模块映射不同图标。
+- `styles.css`：管理员工作台入口升级为 Primer / Geist inspired command surface：语义 tone、局部指针高光、轻微 sheen、实心图标底座、右侧箭头渐入和分业务图标动效。
+- `tests/smoke.test.js`：新增后台入口 Octicon 风格 SVG、tone、右侧箭头和 motion 挂载断言。
+- `README.md`、`CHANGELOG.md`、`*.html`：同步版本、文档和静态缓存参数到 `0.23.3`。
+
+### 技术方案选择
+
+- Vercel Geist 作为视觉参考，不直接复制其专有实现；项目仍保持 Vanilla JS + CSS 的低依赖结构。
+- GitHub Octicons 以 npm 依赖形式引入，保证图标来源和授权清晰；前端最终仍输出内联 SVG，避免后台页面依赖 CDN。
+- 动效选择 Corporate / Premium：150-250ms、无循环、无夸张弹跳。AI、审核、举报、日志等入口只在 hover / focus 时做一次业务语义反馈。
+- 卡片使用 `--local-x / --local-y` 复用项目已有指针高光机制，避免新增复杂动画库，同时保留 `prefers-reduced-motion` 降级。
+
+### 当前完成情况
+
+- 代码修复和文档同步已完成。
+- 本地 `npm test` 和 `npm run deploy:dry-run` 已通过。
+- 本地 Playwright 已截图检查管理员工作台桌面 / 移动端，图标比例、右侧箭头和 hover surface 正常。
+
+### 遗留问题
+
+- `styles.css` 的后台样式仍以版本覆盖层维护；后续可拆成 `admin-dashboard.css`、`motion.css` 和 `theme.css`，减少覆盖成本。
+- 当前 Octicon 路径写入 `app.js`，未来如果后台图标继续扩展，可增加一个小型构建脚本从 `@primer/octicons` 自动生成图标映射。
+
+### 下一步建议
+
+1. 如果继续提升后台体验，可以把管理员工作台改成左侧一级模块导航 + 右侧最近任务流，进一步减少卡片墙感。
+2. 后续可为 AI 分析、举报处理、反馈审核增加更精细的 skeleton / pending 状态，而不是只在入口卡片做动效。

@@ -1221,16 +1221,22 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       return {
         groupCount: document.querySelectorAll(".admin-module-group").length,
         iconCount: document.querySelectorAll(".admin-module-group .workspace-icon svg").length,
+        cueCount: document.querySelectorAll(".admin-module-group .workspace-card-cue svg").length,
+        toneCount: document.querySelectorAll(".admin-module-group .workspace-card[data-card-tone]").length,
+        octiconCount: document.querySelectorAll(".admin-module-group .workspace-icon svg[data-octicon='true']").length,
         hasGroupedSurface: Boolean(group),
         iconTransition: getComputedStyle(icon).transitionProperty,
-        svgStroke: getComputedStyle(svg).stroke,
+        svgFill: getComputedStyle(svg).fill,
       };
     });
     assert.ok(adminMotionState.groupCount >= 5);
     assert.ok(adminMotionState.iconCount >= 10);
+    assert.equal(adminMotionState.octiconCount, adminMotionState.iconCount);
+    assert.equal(adminMotionState.cueCount, adminMotionState.iconCount);
+    assert.equal(adminMotionState.toneCount, adminMotionState.iconCount);
     assert.equal(adminMotionState.hasGroupedSurface, true);
     assert.match(adminMotionState.iconTransition, /transform/);
-    assert.notEqual(adminMotionState.svgStroke, "none");
+    assert.notEqual(adminMotionState.svgFill, "none");
     await assertNoHorizontalOverflow(page, `${baseUrl}/index.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/whitepaper.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/about.html`);

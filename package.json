@@ -1,6 +1,6 @@
 {
   "name": "youkong-living-room",
-  "version": "0.23.2",
+  "version": "0.23.3",
   "private": true,
   "description": "有空客厅官网与活动系统 MVP",
   "scripts": {
@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@cloudbase/node-sdk": "^3.18.3",
+    "@primer/octicons": "^19.31.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "express": "^4.21.2",
