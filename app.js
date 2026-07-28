@@ -907,8 +907,10 @@ async function initMeDashboardPage() {
 
   const pendingPreview = qs("[data-my-pending]", root);
   const pendingSection = qs("[data-my-pending-section]", root);
-  if (pendingSection && (!user || !hasRole(user, "collaborator"))) {
+  if (pendingSection && (!user || (!hasRole(user, "collaborator") && !hasRole(user, "admin")))) {
     pendingSection.hidden = true;
+  } else if (hasRole(user, "admin")) {
+    await renderMyPendingTasks();
   } else {
     renderPendingTasks(pendingPreview, (dashboard.pending?.activities || []).slice(0, 3), { compact: true });
   }
@@ -1041,15 +1043,36 @@ function renderWorkspaceCards(root, user, summary, pendingSummary) {
 }
 
 function renderWorkspaceCard(card) {
+  const icon = card.icon ? `<span class="workspace-icon" aria-hidden="true">${workspaceIconSvg(card.icon)}</span>` : "";
+  const label = `<span>${escapeHtml(card.label)}</span>`;
   return `
-    <a class="workspace-card" href="${card.href}">
-      <span>${escapeHtml(card.label)}</span>
+    <a class="workspace-card${card.className ? ` ${escapeHtml(card.className)}` : ""}" href="${card.href}">
+      ${icon ? `<div class="workspace-card-top">${icon}${label}</div>` : label}
       <strong>${escapeHtml(String(card.count))}</strong>
       <h3>${escapeHtml(card.title)}</h3>
       <p>${escapeHtml(card.body)}</p>
       <small>${escapeHtml(card.meta)}</small>
     </a>
   `;
+}
+
+function workspaceIconSvg(name = "circle") {
+  const icons = {
+    activity: `<path d="M7 3v4M17 3v4M4 9h16M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M8 13h3M8 16h5"/>`,
+    ai: `<path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3Z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14Z"/><path d="M5 14l.7 1.8L8 16.5l-2.3.7L5 19l-.7-1.8L2 16.5l2.3-.7L5 14Z"/>`,
+    badge: `<path d="M12 3l7 4v5c0 4.2-2.7 7.1-7 9-4.3-1.9-7-4.8-7-9V7l7-4Z"/><path d="M9 12l2 2 4-5"/>`,
+    feedback: `<path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M8 9h8M8 13h5"/>`,
+    friend: `<path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/>`,
+    grid: `<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>`,
+    governance: `<path d="M12 3a4 4 0 0 1 4 4c0 2.6-1.9 4.3-4 6-2.1-1.7-4-3.4-4-6a4 4 0 0 1 4-4Z"/><path d="M5 21a7 7 0 0 1 14 0"/><path d="M4 13h3M17 13h3"/>`,
+    logs: `<path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4M9 11h6M9 15h6M9 19h4"/>`,
+    people: `<path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><path d="M9.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>`,
+    report: `<path d="M5 21V4"/><path d="M5 5h12l-1 5 1 5H5"/>`,
+    rules: `<path d="M12 3l7 4v5c0 4.2-2.7 7.1-7 9-4.3-1.9-7-4.8-7-9V7l7-4Z"/><path d="M9 10h6M9 14h6"/>`,
+    template: `<path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h4"/>`,
+    todo: `<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>`,
+  };
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${icons[name] || `<circle cx="12" cy="12" r="8"/>`}</svg>`;
 }
 
 async function initActivityEditorPage() {
@@ -1541,8 +1564,17 @@ function updateLoadMore(button, visible, total) {
 async function renderMyPendingTasks() {
   const panel = qs("[data-my-pending]");
   if (!panel) return;
-  const { activities } = await api.get("/api/activities?pending=me");
-  renderPendingTasks(panel, activities);
+  const user = mePageState.user || await getOptionalUser();
+  const [{ activities }, feedbackResult] = await Promise.all([
+    api.get("/api/activities?pending=me"),
+    hasRole(user, "admin")
+      ? api.get("/api/feedbacks?status=admin_review&page=1&pageSize=12")
+      : Promise.resolve({ feedbacks: [] }),
+  ]);
+  renderPendingTasks(panel, activities, {
+    feedbacks: feedbackResult.feedbacks || [],
+    onRefresh: renderMyPendingTasks,
+  });
 }
 
 async function initReviewTasksPage() {
@@ -1550,6 +1582,7 @@ async function initReviewTasksPage() {
   if (!root) return;
   const user = await requireCurrentUser();
   if (!user) return;
+  mePageState.user = user;
   if (!hasRole(user, "collaborator") && !hasRole(user, "admin")) {
     root.innerHTML = `<section class="section"><div class="wrap"><div class="empty-state"><strong>暂无审核权限</strong><p>只有协作员或管理员可以查看审核待办。</p></div></div></section>`;
     return;
@@ -1860,7 +1893,11 @@ async function initAdminPage() {
 
   const dashboard = await api.get("/api/dashboard/admin");
   renderAdminDashboardCards(adminRoot, dashboard.activities, dashboard.users, dashboard.modules, dashboard.templates, dashboard.pending, dashboard.friends, dashboard.feedbacks);
-  renderPendingTasks(qs("[data-admin-pending]", adminRoot), (dashboard.pending?.activities || []).slice(0, 4), { compact: true });
+  renderPendingTasks(qs("[data-admin-pending]", adminRoot), (dashboard.pending?.activities || []).slice(0, 4), {
+    compact: true,
+    feedbacks: (dashboard.pending?.feedbacks || []).slice(0, 4),
+    onRefresh: initAdminPage,
+  });
 }
 
 async function requireAdminUser(root) {
@@ -1878,6 +1915,7 @@ async function requireAdminUser(root) {
 function renderAdminDashboardCards(root, activitiesSummary, usersSummary, modulesSummary, templatesSummary, pendingSummary, friendsSummary, feedbackSummary) {
   const container = qs("[data-admin-dashboard-cards]", root);
   if (!container) return;
+  container.classList.add("admin-module-groups");
   const counts = activitiesSummary?.byStatus || {};
   const reviewing = Number(activitiesSummary?.reviewing ?? ((counts.admin_review || 0) + (counts.collaborator_review || 0)));
   const activityTotal = Number(activitiesSummary?.total || 0);
@@ -1887,105 +1925,160 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
   const friendTotal = Number(friendsSummary?.total || 0);
   const feedbackPending = Number(feedbackSummary?.pendingReview || 0);
   const pendingTotal = Number(pendingSummary?.total || 0);
-  const cards = [
+  const groups = [
     {
-      href: "admin-activities.html",
-      label: "全部活动",
-      title: "筛选和查看所有状态活动",
-      body: "按标题、模块、状态、时间和报名数管理。",
-      meta: `${reviewing} 个审核中`,
-      count: activityTotal,
+      title: "待办",
+      body: "先处理会影响公开展示和社区安全的事项。",
+      cards: [
+        {
+          href: "review-tasks.html",
+          label: "审核待办",
+          title: "活动与反馈复核",
+          body: "管理员处理活动复核和匿名反馈复核，协作员仍只处理活动审核。",
+          meta: `活动 ${pendingSummary?.activityTotal ?? pendingTotal - feedbackPending} / 反馈 ${feedbackPending}`,
+          count: pendingTotal,
+          icon: "todo",
+        },
+      ],
     },
     {
-      href: "admin-members.html",
-      label: "协作员管理",
-      title: "管理协作员和手机号",
-      body: "添加、搜索、修改、删除可登录治理后台的人。",
-      meta: "管理员 / 协作员",
-      count: userTotal,
+      title: "活动运营",
+      body: "活动内容、来源、模块和反馈沉淀放在这里。",
+      cards: [
+        {
+          href: "admin-activities.html",
+          label: "全部活动",
+          title: "筛选和查看所有状态活动",
+          body: "按标题、模块、状态、时间和报名数管理。",
+          meta: `${reviewing} 个审核中`,
+          count: activityTotal,
+          icon: "activity",
+        },
+        {
+          href: "admin-modules.html",
+          label: "模块管理",
+          title: "维护活动分类模块",
+          body: "管理有空放映、有空食堂等分类。",
+          meta: "活动分类",
+          count: moduleTotal,
+          icon: "grid",
+        },
+        {
+          href: "admin-templates.html",
+          label: "活动模板",
+          title: "维护活动描述模板",
+          body: "给放映、食堂、夜校等活动准备可复用正文。",
+          meta: "描述模板",
+          count: templateTotal,
+          icon: "template",
+        },
+        {
+          href: "admin-friends.html",
+          label: "客厅的朋友们",
+          title: "维护朋友主体",
+          body: "名称、简介、Logo、地址、联系人和启用状态。",
+          meta: "活动来源",
+          count: friendTotal,
+          icon: "friend",
+        },
+        {
+          href: "admin-feedbacks.html",
+          label: "活动反馈",
+          title: "查看和审核匿名反馈",
+          body: "AI 会先判断是否适合展示，管理员可兜底决定。",
+          meta: "待审核反馈",
+          count: feedbackPending,
+          icon: "feedback",
+        },
+      ],
     },
     {
-      href: "admin-modules.html",
-      label: "模块管理",
-      title: "维护活动分类模块",
-      body: "管理有空放映、有空食堂等分类。",
-      meta: "活动分类",
-      count: moduleTotal,
+      title: "社区治理",
+      body: "举报、信用、徽章这些长期自治能力集中查看。",
+      cards: [
+        {
+          href: "admin-reports.html",
+          label: "社区举报",
+          title: "查看活动举报和分析结论",
+          body: "每条举报都会记录原因、AI/规则复核结果和活动后续流转。",
+          meta: "Community Report",
+          count: "Report",
+          icon: "report",
+        },
+        {
+          href: "admin-governance.html",
+          label: "社区治理",
+          title: "管理信用策略、徽章和身份时间线",
+          body: "Community Trust、Trust Policy、Community Badge 和展示策略集中管理。",
+          meta: "Community Trust",
+          count: "Trust",
+          icon: "governance",
+        },
+      ],
     },
     {
-      href: "admin-templates.html",
-      label: "活动模板",
-      title: "维护活动描述模板",
-      body: "给放映、食堂、夜校等活动准备可复用正文。",
-      meta: "描述模板",
-      count: templateTotal,
+      title: "安全与智能",
+      body: "开放发布背后的规则、AI 和风险解释。",
+      cards: [
+        {
+          href: "admin-safety.html",
+          label: "规则引擎",
+          title: "配置开放发布的风险规则",
+          body: "调整敏感词、URL、格式异常等规则分值和策略阈值。",
+          meta: "Rule Engine",
+          count: "OS",
+          icon: "rules",
+        },
+        {
+          href: "admin-ai.html",
+          label: "AI 分析",
+          title: "管理可插拔 AI Analysis Engine",
+          body: "开启或关闭 AI，配置 Provider、Prompt、能力和调用策略。",
+          meta: "Observer",
+          count: "AI",
+          icon: "ai",
+        },
+      ],
     },
     {
-      href: "admin-friends.html",
-      label: "客厅的朋友们",
-      title: "维护朋友主体",
-      body: "名称、简介、Logo、地址、联系人和启用状态。",
-      meta: "活动来源",
-      count: friendTotal,
-    },
-    {
-      href: "admin-feedbacks.html",
-      label: "活动反馈",
-      title: "查看和审核匿名反馈",
-      body: "AI 会先判断是否适合展示，管理员可兜底决定。",
-      meta: "待审核反馈",
-      count: feedbackPending,
-    },
-    {
-      href: "review-tasks.html",
-      label: "审核待办",
-      title: "处理当前审核任务",
-      body: "查看详情、封面和审核记录后处理。",
-      meta: "管理员审核",
-      count: pendingTotal,
-    },
-    {
-      href: "admin-logs.html",
-      label: "操作日志",
-      title: "查看系统里的关键动作",
-      body: "新增、保存、删除、提交、审核、撤回都会留下记录。",
-      meta: "审计记录",
-      count: "Log",
-    },
-    {
-      href: "admin-reports.html",
-      label: "社区举报",
-      title: "查看活动举报和分析结论",
-      body: "每条举报都会记录原因、AI/规则复核结果和活动后续流转。",
-      meta: "Community Report",
-      count: "Report",
-    },
-    {
-      href: "admin-safety.html",
-      label: "规则引擎",
-      title: "配置开放发布的风险规则",
-      body: "调整敏感词、URL、格式异常等规则分值和策略阈值。",
-      meta: "Rule Engine",
-      count: "OS",
-    },
-    {
-      href: "admin-ai.html",
-      label: "AI 分析",
-      title: "管理可插拔 AI Analysis Engine",
-      body: "开启或关闭 AI，配置 Provider、Prompt、能力和调用策略。",
-      meta: "Observer",
-      count: "AI",
-    },
-    {
-      href: "admin-governance.html",
-      label: "社区治理",
-      title: "管理信用策略、徽章和身份时间线",
-      body: "Community Trust、Trust Policy、Community Badge 和展示策略集中管理。",
-      meta: "Community Trust",
-      count: "Trust",
+      title: "系统维护",
+      body: "协作员、权限和操作记录等基础维护入口。",
+      cards: [
+        {
+          href: "admin-members.html",
+          label: "协作员管理",
+          title: "管理协作员和手机号",
+          body: "添加、搜索、修改、删除可登录治理后台的人。",
+          meta: "管理员 / 协作员",
+          count: userTotal,
+          icon: "people",
+        },
+        {
+          href: "admin-logs.html",
+          label: "操作日志",
+          title: "查看系统里的关键动作",
+          body: "新增、保存、删除、提交、审核、撤回都会留下记录。",
+          meta: "审计记录",
+          count: "Log",
+          icon: "logs",
+        },
+      ],
     },
   ];
-  container.innerHTML = cards.map(renderWorkspaceCard).join("");
+  container.innerHTML = groups.map((group) => `
+    <section class="admin-module-group">
+      <div class="admin-module-group-head">
+        <div>
+          <h3>${escapeHtml(group.title)}</h3>
+          <p>${escapeHtml(group.body)}</p>
+        </div>
+        <span>${group.cards.length} 个入口</span>
+      </div>
+      <div class="workspace-grid admin-module-grid">
+        ${group.cards.map(renderWorkspaceCard).join("")}
+      </div>
+    </section>
+  `).join("");
   revealDynamicContent(container);
 }
 
@@ -3147,16 +3240,43 @@ async function renderUsers() {
   });
 }
 
-function renderPendingTasks(container, activities) {
+function renderPendingTasks(container, activities = [], options = {}) {
   if (!container) return;
-  if (!activities.length) {
-    container.innerHTML = `<div class="empty-state"><strong>暂无待办</strong><p>需要你审核的活动会出现在这里。</p></div>`;
+  const feedbacks = options.feedbacks || [];
+  if (!activities.length && !feedbacks.length) {
+    container.innerHTML = `<div class="empty-state"><strong>暂无待办</strong><p>需要处理的活动或反馈会出现在这里。</p></div>`;
     revealDynamicContent(container);
     return;
   }
-  container.innerHTML = activities.map(renderReviewTask).join("");
+  container.innerHTML = [
+    activities.length ? `
+      <section class="pending-task-group">
+        <div class="pending-task-head">
+          <div>
+            <span class="tag soft">活动审核</span>
+            <h3>需要判断是否继续流转的活动</h3>
+          </div>
+          <small>${activities.length} 条</small>
+        </div>
+        <div class="event-list rows">${activities.map(renderReviewTask).join("")}</div>
+      </section>
+    ` : "",
+    feedbacks.length ? `
+      <section class="pending-task-group">
+        <div class="pending-task-head">
+          <div>
+            <span class="tag soft">反馈审核</span>
+            <h3>AI 拦截后需要管理员决定是否展示的匿名反馈</h3>
+          </div>
+          <small>${feedbacks.length} 条</small>
+        </div>
+        <div class="event-list rows">${feedbacks.map((feedback) => renderFeedbackRow(feedback, { reviewActions: true, taskMode: true })).join("")}</div>
+      </section>
+    ` : "",
+  ].join("");
   revealDynamicContent(container);
   bindReviewButtons(container);
+  bindFeedbackReviewActions(container, options.onRefresh || (async () => {}));
 }
 
 function renderReviewTask(activity) {
@@ -3653,9 +3773,20 @@ function renderFeedbackText(feedback = {}) {
   ].filter(Boolean).join(" / ") || "没有文字内容";
 }
 
+function renderFeedbackReviewButtons(feedback = {}, options = {}) {
+  if (!options.reviewActions) return "";
+  if (feedback.status === "approved") {
+    return `<button class="button outline danger-soft" type="button" data-reject-feedback data-feedback-action-label="隐藏">隐藏</button>`;
+  }
+  if (feedback.status === "rejected") {
+    return `<button class="button outline" type="button" data-approve-feedback data-feedback-action-label="恢复展示">恢复展示</button>`;
+  }
+  return `<button class="button outline" type="button" data-approve-feedback data-feedback-action-label="展示">展示</button><button class="button outline danger-soft" type="button" data-reject-feedback data-feedback-action-label="不展示">不展示</button>`;
+}
+
 function renderFeedbackRow(feedback = {}, options = {}) {
   return `
-    <article class="event-row feedback-row" data-feedback-id="${escapeHtml(feedback.id)}">
+    <article class="event-row feedback-row${options.taskMode ? " feedback-task-row" : ""}" data-feedback-id="${escapeHtml(feedback.id)}">
       <div>
         <div class="tag-row"><span class="tag">${escapeHtml(feedback.statusLabel || feedbackStatusLabel(feedback.status))}</span><span class="tag soft">权重 ${Number(feedback.feedbackWeight || 0)}</span></div>
         <h3><a href="activity.html?id=${encodeURIComponent(feedback.activityId)}">${escapeHtml(feedback.activityTitle || "未命名活动")}</a></h3>
@@ -3664,7 +3795,7 @@ function renderFeedbackRow(feedback = {}, options = {}) {
       </div>
       <div class="row-actions">
         <a class="button outline" href="activity-feedback.html?id=${encodeURIComponent(feedback.activityId)}">活动反馈</a>
-        ${options.reviewActions && feedback.status === "admin_review" ? `<button class="button outline" type="button" data-approve-feedback>展示</button><button class="button outline danger-soft" type="button" data-reject-feedback>不展示</button>` : ""}
+        ${renderFeedbackReviewButtons(feedback, options)}
       </div>
     </article>
   `;
@@ -3679,7 +3810,8 @@ function bindFeedbackReviewActions(root = document, after = async () => {}) {
       await after();
     });
     qs("[data-reject-feedback]", row)?.addEventListener("click", async () => {
-      if (!confirm("确定不展示这条反馈吗？")) return;
+      const label = qs("[data-reject-feedback]", row).dataset.feedbackActionLabel || "不展示";
+      if (!confirm(`确定${label}这条反馈吗？`)) return;
       await api.post(`/api/feedbacks/${encodeURIComponent(row.dataset.feedbackId)}/review`, { action: "reject" });
       showToast("保存成功");
       resetPagedState("feedbacks");
@@ -3753,7 +3885,18 @@ async function renderActivityFeedbackPage(root, id) {
   try {
     const svg = await loadQrSvg(url);
     qrBox.innerHTML = svg;
-    qs("[data-download-feedback-qr]", root)?.addEventListener("click", () => downloadTextFile(`${activity.title || "活动反馈"}-反馈二维码.svg`, svg, "image/svg+xml"));
+    const downloadButton = qs("[data-download-feedback-qr]", root);
+    downloadButton?.addEventListener("click", async () => {
+      downloadButton.disabled = true;
+      try {
+        await downloadFeedbackQrJpg(`${activity.title || "活动反馈"}-反馈二维码.jpg`, svg);
+        showToast("反馈二维码 JPG 已生成");
+      } catch (error) {
+        showToast(error.message || "二维码下载失败");
+      } finally {
+        downloadButton.disabled = false;
+      }
+    });
   } catch (error) {
     qrBox.innerHTML = `<div class="empty-state slim"><strong>二维码生成失败</strong><p>${escapeHtml(error.message)}</p></div>`;
   }
@@ -3785,8 +3928,7 @@ async function renderActivityFeedbackList(root, id) {
   revealDynamicContent(list);
 }
 
-function downloadTextFile(filename, text, type = "text/plain") {
-  const blob = new Blob([text], { type });
+function downloadBlob(filename, blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -3795,6 +3937,37 @@ function downloadTextFile(filename, text, type = "text/plain") {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function downloadTextFile(filename, text, type = "text/plain") {
+  downloadBlob(filename, new Blob([text], { type }));
+}
+
+async function downloadFeedbackQrJpg(filename, svgText) {
+  const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+  const svgUrl = URL.createObjectURL(svgBlob);
+  try {
+    const image = new Image();
+    const loaded = new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error("二维码图片加载失败"));
+    });
+    image.src = svgUrl;
+    await loaded;
+    const canvas = document.createElement("canvas");
+    canvas.width = 1080;
+    canvas.height = 1080;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const padding = 120;
+    ctx.drawImage(image, padding, padding, canvas.width - padding * 2, canvas.height - padding * 2);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.94));
+    if (!blob) throw new Error("二维码 JPG 生成失败");
+    downloadBlob(filename, blob);
+  } finally {
+    URL.revokeObjectURL(svgUrl);
+  }
 }
 
 async function initFeedbackFormPage() {

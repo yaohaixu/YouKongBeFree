@@ -310,8 +310,8 @@
     ctx.font = "400 30px -apple-system, BlinkMacSystemFont, sans-serif";
     wrapText(ctx, "来客厅坐坐，也可以把这个活动分享给朋友。", 96, footerY + 54, 620, 44, 2);
 
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png", 0.94));
-    if (blob) triggerDownload(blob, `${safeFileName(activity.title)}-活动邀请函.png`);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    if (blob) triggerDownload(blob, `${safeFileName(activity.title)}-活动邀请函.jpg`);
   }
 
   function mount(root, activity, options = {}) {

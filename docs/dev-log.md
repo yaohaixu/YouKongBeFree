@@ -2922,3 +2922,44 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 部署后在 CloudBase 控制台创建 `yk_activityFeedbacks.activityId + identityId`、`yk_activityFeedbacks.status + createdAt`、`yk_livingRoomFriends.enabled + updatedAt` 等索引。
 2. 线上验证一个已开始活动的匿名反馈二维码，确认微信内置浏览器也能提交且同设备重复提交返回已有反馈。
 3. 后续可增加反馈异步分析队列和反馈导出字段配置，进一步降低 AI 调用等待和 CSV 字段变更成本。
+
+## 2026-07-28 - 0.23.0 活动反馈治理与后台工作台体验升级
+
+### 任务目标
+
+根据最新反馈，优化活动反馈二维码和活动邀请函下载格式；让 AI 拦截的活动反馈进入管理员审核待办；允许管理员隐藏已展示反馈；修复规则引擎参数文本框视觉不一致；并把 YKadmin 后台从平铺卡片墙调整为更清晰的分组工作地图，同时安装并使用 `lottiefiles/motion-design-skill` 的动效原则。
+
+### 具体修改
+
+- `assets/js/activity-share.js`：活动邀请函导出从 PNG 改为 JPG。
+- `app.js`：反馈二维码预览继续使用 SVG，下载时转换为白底 JPG；活动反馈审核按钮支持展示、不展示、隐藏、恢复展示；审核待办支持活动任务和反馈任务分组渲染；管理员工作台入口改为五组信息架构并加入统一 SVG 图标。
+- `lib/app.js`：`/api/dashboard/admin` 返回待审核反馈预览，并把活动待办与反馈待办计入管理员待办总数。
+- `activity-feedback.html`：反馈二维码下载按钮文案调整为「下载反馈二维码」。
+- `review-tasks.html`、`admin.html`：同步活动复核 / 反馈复核和后台分组文案。
+- `styles.css`：新增后台分组容器、线性图标、待办分组、规则文本框统一样式和 reduced-motion 降级；规则参数 JSON 文本框与规则说明保持同尺寸同视觉语言。
+- `tests/smoke.test.js`：新增管理员待办反馈、反馈展示 / 隐藏 / 恢复展示、活动反馈二维码 JPG 下载、活动邀请函 JPG 下载和规则文本框样式一致性断言。
+- `README.md`、`CHANGELOG.md`、`docs/security.md`、`package.json`、`package-lock.json`、`*.html`：同步版本、文档和静态缓存参数。
+
+### 技术方案选择
+
+- 反馈复核只进入管理员待办，而不进入协作员待办，是因为匿名反馈会直接影响公开活动详情页展示，属于全站内容兜底治理。
+- 反馈内容不删除，而是通过 `approved / admin_review / rejected` 状态切换展示，是为了保留复盘和审计线索，也符合 Community OS “少删除、重提示、可追溯”的治理方向。
+- 反馈二维码预览保留 SVG、下载改为 JPG，是为了兼顾页面清晰度和微信 / 相册保存兼容性。
+- 后台入口使用内置 SVG 图标而不是外部图标库，避免增加 CSP、网络加载和部署复杂度。
+- 动效只使用 transform、opacity 和轻微状态过渡，并提供 `prefers-reduced-motion` 降级，避免后台页面出现装饰性动效。
+
+### 当前完成情况
+
+- 功能开发、文档同步和版本号更新已完成。
+- 本地 `npm test` 和 `npm run deploy:dry-run` 已通过。
+
+### 遗留问题
+
+- 后台模块继续增加时，后续可以进一步抽出真正的后台侧边栏或命令菜单，减少 `app.js` 中 dashboard 渲染逻辑体积。
+- 当前活动反馈审核仍复用展示 / 不展示接口，未来若要更细分「AI 拦截」「管理员隐藏」「发起人不公开」的原因，可增加 `reviewReason` 字段。
+
+### 下一步建议
+
+1. 线上部署后用一个已开始活动验证反馈二维码 JPG 在微信内置浏览器和手机相册里的可保存性。
+2. 后续把活动反馈分析改为异步队列，避免反馈提交时等待 AI。
+3. 继续拆分 `app.js` 的 admin dashboard、feedbacks、activity share 模块，让前端主文件更轻。

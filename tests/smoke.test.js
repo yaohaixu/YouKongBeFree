@@ -1113,11 +1113,24 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.equal(riskyFeedback.feedback.feedbackWeight, 12);
     const feedbackAdminList = await request("/api/feedbacks?status=admin_review&page=1&pageSize=10&q=垃圾反馈", {}, admin.token);
     assert.ok(feedbackAdminList.feedbacks.some((feedback) => feedback.id === riskyFeedback.feedback.id));
+    const adminDashboardWithFeedback = await request("/api/dashboard/admin", {}, admin.token);
+    assert.ok(adminDashboardWithFeedback.pending.feedbackTotal >= 1);
+    assert.ok(adminDashboardWithFeedback.pending.feedbacks.some((feedback) => feedback.id === riskyFeedback.feedback.id));
     const reviewedFeedback = await request(`/api/feedbacks/${riskyFeedback.feedback.id}/review`, {
       method: "POST",
       body: { action: "approve" },
     }, admin.token);
     assert.equal(reviewedFeedback.feedback.status, "approved");
+    const hiddenFeedback = await request(`/api/feedbacks/${riskyFeedback.feedback.id}/review`, {
+      method: "POST",
+      body: { action: "reject" },
+    }, admin.token);
+    assert.equal(hiddenFeedback.feedback.status, "rejected");
+    const restoredFeedback = await request(`/api/feedbacks/${riskyFeedback.feedback.id}/review`, {
+      method: "POST",
+      body: { action: "approve" },
+    }, admin.token);
+    assert.equal(restoredFeedback.feedback.status, "approved");
     const exportResponse = await fetch(`${baseUrl}/api/feedbacks/export?activityId=${encodeURIComponent(expired.activity.id)}`, {
       headers: {
         Authorization: `Bearer ${admin.token}`,
@@ -1137,6 +1150,16 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       body: { enabled: "false" },
     }, admin.token);
   }
+
+  const pendingFeedbackForReviewTasks = await request(`/api/activities/${expired.activity.id}/feedbacks`, {
+    method: "POST",
+    headers: { "X-YK-Client-Id": `${testClientId}_feedback_todo` },
+    body: {
+      favorite: "AI 关闭时这条反馈应进入管理员待办。",
+      improvement: "需要管理员确认后再展示。",
+    },
+  });
+  assert.equal(pendingFeedbackForReviewTasks.feedback.status, "admin_review");
 
   const coverBuffer = fs.readFileSync(path.join(__dirname, "..", "assets", "youkong-gathering.png"));
   const pending = await createActivity(member.token, {
@@ -1213,6 +1236,24 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-friends.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-feedbacks.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-safety.html`);
+    await page.waitForSelector("[data-rule-id] textarea[name='params']");
+    const safetyTextareaState = await page.evaluate(() => {
+      const description = document.querySelector("[data-rule-id] textarea[name='description']");
+      const params = document.querySelector("[data-rule-id] textarea[name='params']");
+      const descriptionStyle = getComputedStyle(description);
+      const paramsStyle = getComputedStyle(params);
+      return {
+        descriptionFont: descriptionStyle.fontFamily,
+        paramsFont: paramsStyle.fontFamily,
+        descriptionHeight: Math.round(description.getBoundingClientRect().height),
+        paramsHeight: Math.round(params.getBoundingClientRect().height),
+        descriptionRadius: descriptionStyle.borderRadius,
+        paramsRadius: paramsStyle.borderRadius,
+      };
+    });
+    assert.equal(safetyTextareaState.paramsFont, safetyTextareaState.descriptionFont);
+    assert.equal(safetyTextareaState.paramsHeight, safetyTextareaState.descriptionHeight);
+    assert.equal(safetyTextareaState.paramsRadius, safetyTextareaState.descriptionRadius);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-ai.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-governance.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-trust-policy.html`);
@@ -1222,6 +1263,10 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-activity-confidence.html?id=${created.activity.id}`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/registrations.html?id=${created.activity.id}`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/activity-feedback.html?id=${expired.activity.id}`);
+    const feedbackQrDownload = page.waitForEvent("download");
+    await page.getByRole("button", { name: "下载反馈二维码" }).click();
+    const feedbackQrFile = await feedbackQrDownload;
+    assert.match(feedbackQrFile.suggestedFilename(), /反馈二维码\.jpg$/);
     await assertNoHorizontalOverflow(page, `${baseUrl}/feedback.html?id=${expired.activity.id}`);
     await page.goto(`${baseUrl}/feedback.html?id=${expired.activity.id}`);
     await page.waitForLoadState("networkidle");
@@ -1404,7 +1449,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 	    const posterDownload = page.waitForEvent("download");
 	    await page.getByRole("button", { name: "下载活动邀请函" }).click();
 	    const posterFile = await posterDownload;
-	    assert.match(posterFile.suggestedFilename(), /活动邀请函\.png$/);
+	    assert.match(posterFile.suggestedFilename(), /活动邀请函\.jpg$/);
 
     await page.goto(`${baseUrl}/review-tasks.html`);
     await page.waitForLoadState("networkidle");
@@ -1413,11 +1458,16 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       text: document.querySelector("[data-review-action] option:checked")?.textContent.trim(),
       coverCount: document.querySelectorAll(".review-cover").length,
       richImageCount: document.querySelectorAll(".review-detail .article-content img").length,
+      feedbackTaskCount: document.querySelectorAll(".feedback-task-row").length,
+      feedbackTaskActions: Array.from(document.querySelectorAll(".feedback-task-row .row-actions .button")).map((button) => button.textContent.trim()),
     }));
     assert.equal(reviewState.value, "");
     assert.equal(reviewState.text, "请选择");
     assert.equal(reviewState.coverCount, 1);
     assert.ok(reviewState.richImageCount >= 1);
+    assert.ok(reviewState.feedbackTaskCount >= 1);
+    assert.ok(reviewState.feedbackTaskActions.includes("展示"));
+    assert.ok(reviewState.feedbackTaskActions.includes("不展示"));
   } finally {
     if (context) await context.close();
     await browser.close();
