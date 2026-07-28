@@ -1210,6 +1210,36 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.equal(themeSwitchAfterClick.mode, "dark");
     assert.match(themeSwitchAfterClick.label, /黑夜模式/);
     assert.equal(themeSwitchAfterClick.cycling, true);
+    await page.goto(`${baseUrl}/me.html`);
+    await page.waitForSelector("[data-workspace-cards] .workspace-icon svg[data-octicon='true']");
+    await page.waitForFunction(() => document.querySelector("[data-my-pending-section]")?.hidden === true);
+    const openWorkspaceMotionState = await page.evaluate(() => {
+      const cards = [...document.querySelectorAll("[data-workspace-cards] .workspace-card")];
+      const firstCard = cards[0];
+      const firstIcon = firstCard?.querySelector(".workspace-icon");
+      const firstIconStyle = firstIcon ? getComputedStyle(firstIcon) : null;
+      return {
+        cardCount: cards.length,
+        iconCount: document.querySelectorAll("[data-workspace-cards] .workspace-icon svg[data-octicon='true']").length,
+        cueCount: document.querySelectorAll("[data-workspace-cards] .workspace-card-cue svg").length,
+        toneCount: document.querySelectorAll("[data-workspace-cards] .workspace-card[data-card-tone]").length,
+        labels: cards.map((card) => card.querySelector(".workspace-card-top > span:not(.workspace-icon):not(.workspace-card-cue)")?.textContent.trim()),
+        hrefs: cards.map((card) => card.getAttribute("href")),
+        iconTransition: firstIconStyle?.transitionProperty || "",
+        iconFill: firstCard?.querySelector(".workspace-icon svg") ? getComputedStyle(firstCard.querySelector(".workspace-icon svg")).fill : "",
+        pendingHidden: document.querySelector("[data-my-pending-section]")?.hidden,
+      };
+    });
+    assert.equal(openWorkspaceMotionState.cardCount, 4);
+    assert.equal(openWorkspaceMotionState.iconCount, openWorkspaceMotionState.cardCount);
+    assert.equal(openWorkspaceMotionState.cueCount, openWorkspaceMotionState.cardCount);
+    assert.equal(openWorkspaceMotionState.toneCount, openWorkspaceMotionState.cardCount);
+    assert.deepEqual(openWorkspaceMotionState.labels, ["我的报名", "我的反馈", "发起活动", "我发起的活动"]);
+    assert.deepEqual(openWorkspaceMotionState.hrefs, ["#my-registrations", "#my-feedbacks", "activity-editor.html", "my-activities.html"]);
+    assert.match(openWorkspaceMotionState.iconTransition, /transform/);
+    assert.notEqual(openWorkspaceMotionState.iconFill, "none");
+    assert.equal(openWorkspaceMotionState.pendingHidden, true);
+    await page.goto(`${baseUrl}/login.html`);
     await page.getByLabel("手机号").fill("18800000000");
     await page.getByRole("button", { name: "进入有空" }).click();
     await page.waitForURL("**/admin.html");

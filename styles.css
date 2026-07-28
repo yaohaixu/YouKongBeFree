@@ -8435,6 +8435,257 @@ html[data-theme="light"] body.product-surface .form-note p {
   animation: admin-icon-lift 230ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
+/* 0.23.4 open workspace command surface */
+body:has(main[data-me-dashboard]) .me-workspace-section {
+  --me-section-tone: var(--accent);
+  position: relative;
+}
+
+body:has(main[data-me-dashboard]) .me-workspace-section[data-me-section="pending"] {
+  --me-section-tone: #d4473d;
+}
+
+body:has(main[data-me-dashboard]) .me-workspace-section[data-me-section="registrations"] {
+  --me-section-tone: #1a7f37;
+}
+
+body:has(main[data-me-dashboard]) .me-workspace-section[data-me-section="feedbacks"] {
+  --me-section-tone: #0a7d6b;
+}
+
+body:has(main[data-me-dashboard]) .me-workspace-section[data-me-section="entries"] {
+  --me-section-tone: #2f6feb;
+}
+
+body:has(main[data-me-dashboard]) .me-workspace-section .section-head {
+  align-items: center;
+  padding-bottom: 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--me-section-tone) 14%, var(--line) 86%);
+}
+
+body:has(main[data-me-dashboard]) .me-workspace-section .section-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: color-mix(in srgb, var(--ink) 58%, var(--me-section-tone) 42%);
+}
+
+body:has(main[data-me-dashboard]) .me-workspace-section .section-kicker::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border: 1px solid color-mix(in srgb, var(--me-section-tone) 34%, var(--line) 66%);
+  border-radius: 3px;
+  background:
+    radial-gradient(circle at 35% 20%, color-mix(in srgb, #fff 54%, transparent), transparent 44%),
+    var(--me-section-tone);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--me-section-tone) 10%, transparent);
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] {
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card {
+  --workspace-tone: var(--accent);
+  --workspace-tone-soft: color-mix(in srgb, var(--workspace-tone) 12%, var(--panel) 88%);
+  --workspace-tone-line: color-mix(in srgb, var(--workspace-tone) 24%, var(--line) 76%);
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+  gap: 13px;
+  min-height: 228px;
+  padding: 18px;
+  border-radius: 16px;
+  border-color: color-mix(in srgb, var(--workspace-tone) 11%, var(--line) 89%);
+  background:
+    radial-gradient(circle 220px at var(--local-x, 20%) var(--local-y, 0%), color-mix(in srgb, var(--workspace-tone) 12%, transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 97%, #fff 3%), color-mix(in srgb, var(--panel) 89%, var(--bg) 11%));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 36%, transparent),
+    0 1px 0 rgba(32, 37, 31, 0.03);
+  isolation: isolate;
+  transition:
+    transform 210ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 210ms cubic-bezier(0.2, 0, 0, 1),
+    background 210ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 210ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card[data-card-tone="urgent"] {
+  --workspace-tone: #d4473d;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card[data-card-tone="blue"] {
+  --workspace-tone: #2f6feb;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card[data-card-tone="slate"] {
+  --workspace-tone: #57606a;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card[data-card-tone="purple"] {
+  --workspace-tone: #8250df;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card[data-card-tone="amber"] {
+  --workspace-tone: #b76e00;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card[data-card-tone="green"] {
+  --workspace-tone: #1a7f37;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card[data-card-tone="rose"] {
+  --workspace-tone: #cf222e;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card[data-card-tone="teal"] {
+  --workspace-tone: #0a7d6b;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card[data-card-tone="indigo"] {
+  --workspace-tone: #5161d6;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card::before {
+  background:
+    radial-gradient(circle 180px at var(--local-x, 50%) var(--local-y, 0%), color-mix(in srgb, var(--workspace-tone) 17%, transparent), transparent 72%);
+  opacity: 0;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(110deg, transparent 0%, color-mix(in srgb, #fff 32%, transparent) 42%, transparent 70%);
+  opacity: 0;
+  transform: translateX(-110%) skewX(-14deg);
+  transition:
+    opacity 180ms cubic-bezier(0.2, 0, 0, 1),
+    transform 360ms cubic-bezier(0.2, 0, 0, 1);
+  pointer-events: none;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card:hover,
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card:focus-visible {
+  transform: translateY(-4px);
+  border-color: var(--workspace-tone-line);
+  background:
+    radial-gradient(circle 250px at var(--local-x, 20%) var(--local-y, 0%), color-mix(in srgb, var(--workspace-tone) 17%, transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 98%, #fff 2%), color-mix(in srgb, var(--panel) 91%, var(--bg) 9%));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 46%, transparent),
+    0 16px 34px color-mix(in srgb, var(--workspace-tone) 11%, transparent),
+    0 20px 52px rgba(32, 37, 31, 0.1);
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card:hover::before,
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card:focus-visible::before {
+  opacity: 1;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card:hover::after,
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card:focus-visible::after {
+  opacity: 0.42;
+  transform: translateX(110%) skewX(-14deg);
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card:hover .workspace-card-cue,
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card:focus-visible .workspace-card-cue {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  background: color-mix(in srgb, var(--workspace-tone) 14%, var(--panel) 86%);
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-count {
+  min-width: auto;
+  min-height: 32px;
+  margin-top: 4px;
+  justify-self: start;
+  border: 1px solid color-mix(in srgb, var(--workspace-tone) 18%, var(--line) 82%);
+  border-radius: 999px;
+  padding: 6px 11px;
+  background: color-mix(in srgb, var(--workspace-tone) 9%, var(--panel) 91%);
+  color: var(--workspace-tone);
+  font-size: 18px;
+  font-weight: 820;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 34%, transparent);
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card h3 {
+  margin-top: 2px;
+  color: var(--ink);
+  font-size: 19px;
+  line-height: 1.24;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card p {
+  color: var(--muted);
+  line-height: 1.62;
+}
+
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card small {
+  align-self: end;
+  color: #596258;
+}
+
+body:has(main[data-me-dashboard]) .compact-list .event-row,
+body:has(main[data-me-dashboard]) [data-my-pending] .event-row {
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 96%, #fff 4%), color-mix(in srgb, var(--panel) 90%, var(--bg) 10%));
+  transition:
+    transform 190ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 190ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 190ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+body:has(main[data-me-dashboard]) .compact-list .event-row:hover,
+body:has(main[data-me-dashboard]) [data-my-pending] .event-row:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--me-section-tone) 22%, var(--line) 78%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 38%, transparent),
+    0 12px 26px rgba(32, 37, 31, 0.07);
+}
+
+body:has(main[data-me-dashboard]) .compact-list .row-actions .button,
+body:has(main[data-me-dashboard]) [data-my-pending] .row-actions .button {
+  min-width: 96px;
+}
+
+.workspace-card[data-workspace-icon="create"]:hover .workspace-icon svg,
+.workspace-card[data-workspace-icon="create"]:focus-visible .workspace-icon svg {
+  animation: workspace-icon-send 245ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.workspace-card[data-workspace-icon="registration"]:hover .workspace-icon svg,
+.workspace-card[data-workspace-icon="registration"]:focus-visible .workspace-icon svg {
+  animation: workspace-icon-bookmark 230ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.workspace-card[data-workspace-icon="feedback"]:hover .workspace-icon svg,
+.workspace-card[data-workspace-icon="feedback"]:focus-visible .workspace-icon svg {
+  animation: workspace-icon-dialog 230ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.workspace-card[data-workspace-icon="mine"]:hover .workspace-icon svg,
+.workspace-card[data-workspace-icon="mine"]:focus-visible .workspace-icon svg,
+.workspace-card[data-workspace-icon="admin"]:hover .workspace-icon svg,
+.workspace-card[data-workspace-icon="admin"]:focus-visible .workspace-icon svg {
+  animation: admin-icon-lift 230ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
 html[data-theme="dark"] body.product-surface .admin-module-group {
   background:
     linear-gradient(180deg, rgba(255, 241, 223, 0.08), rgba(255, 241, 223, 0.04)),
@@ -8462,10 +8713,76 @@ html[data-theme="dark"] body.product-surface .workspace-card-cue {
   background: color-mix(in srgb, var(--workspace-tone) 13%, rgba(255, 241, 223, 0.06) 87%);
 }
 
+html[data-theme="dark"] body:has(main[data-me-dashboard]) .me-workspace-section .section-head {
+  border-color: color-mix(in srgb, var(--me-section-tone) 18%, rgba(255, 241, 223, 0.12) 82%);
+}
+
+html[data-theme="dark"] body:has(main[data-me-dashboard]) .me-workspace-section .section-kicker {
+  color: color-mix(in srgb, #fff1df 74%, var(--me-section-tone) 26%);
+}
+
+html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card {
+  background:
+    radial-gradient(circle 220px at var(--local-x, 20%) var(--local-y, 0%), color-mix(in srgb, var(--workspace-tone) 15%, transparent), transparent 70%),
+    linear-gradient(180deg, rgba(255, 241, 223, 0.09), rgba(255, 241, 223, 0.045));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 241, 223, 0.1),
+    0 1px 0 rgba(255, 241, 223, 0.04);
+}
+
+html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card:hover,
+html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card:focus-visible {
+  background:
+    radial-gradient(circle 250px at var(--local-x, 20%) var(--local-y, 0%), color-mix(in srgb, var(--workspace-tone) 20%, transparent), transparent 70%),
+    linear-gradient(180deg, rgba(255, 241, 223, 0.115), rgba(255, 241, 223, 0.06));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 241, 223, 0.14),
+    0 16px 34px color-mix(in srgb, var(--workspace-tone) 12%, transparent),
+    0 22px 52px rgba(0, 0, 0, 0.2);
+}
+
+html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card-top > span:not(.workspace-icon):not(.workspace-card-cue) {
+  color: color-mix(in srgb, #fff1df 76%, var(--workspace-tone) 24%);
+}
+
+html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card h3 {
+  color: #fff1df;
+}
+
+html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card p,
+html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card small {
+  color: rgba(255, 241, 223, 0.72);
+}
+
+html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-count,
+html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card-cue {
+  background: color-mix(in srgb, var(--workspace-tone) 13%, rgba(255, 241, 223, 0.06) 87%);
+}
+
+html[data-theme="dark"] body:has(main[data-me-dashboard]) .compact-list .event-row,
+html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-my-pending] .event-row {
+  background:
+    linear-gradient(180deg, rgba(255, 241, 223, 0.08), rgba(255, 241, 223, 0.045));
+  box-shadow: none;
+}
+
 @media (max-width: 640px) {
   .admin-module-grid .workspace-card {
     min-height: auto;
     padding: 16px;
+  }
+
+  body:has(main[data-me-dashboard]) [data-workspace-cards] {
+    grid-template-columns: 1fr;
+  }
+
+  body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card {
+    min-height: auto;
+    padding: 16px;
+  }
+
+  body:has(main[data-me-dashboard]) .me-workspace-section .section-head {
+    align-items: start;
   }
 
   .workspace-icon {
@@ -8670,6 +8987,48 @@ html[data-theme="dark"] body.product-surface .workspace-card-cue {
   }
 }
 
+@keyframes workspace-icon-send {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+
+  58% {
+    transform: translate(2px, -2px) rotate(-5deg) scale(1.06);
+  }
+
+  100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes workspace-icon-bookmark {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+
+  55% {
+    transform: translateY(-2px) scale(1.05);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes workspace-icon-dialog {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+
+  58% {
+    transform: translateY(-1px) scale(1.06);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes interest-confirm {
   0% {
     transform: scale(1);
@@ -8774,6 +9133,9 @@ html[data-theme="dark"] body.product-surface .workspace-card-cue {
   .admin-module-grid .workspace-card,
   .admin-module-grid .workspace-card::before,
   .admin-module-grid .workspace-card::after,
+  body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card,
+  body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card::before,
+  body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card::after,
   .workspace-icon::after {
     animation: none !important;
   }
@@ -8782,6 +9144,11 @@ html[data-theme="dark"] body.product-surface .workspace-card-cue {
   .admin-module-grid .workspace-card,
   .admin-module-grid .workspace-card::before,
   .admin-module-grid .workspace-card::after,
+  body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card,
+  body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card::before,
+  body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card::after,
+  body:has(main[data-me-dashboard]) .compact-list .event-row,
+  body:has(main[data-me-dashboard]) [data-my-pending] .event-row,
   .workspace-icon,
   .workspace-icon svg,
   .workspace-icon::after,

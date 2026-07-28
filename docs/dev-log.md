@@ -3073,3 +3073,38 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 
 1. 如果继续提升后台体验，可以把管理员工作台改成左侧一级模块导航 + 右侧最近任务流，进一步减少卡片墙感。
 2. 后续可为 AI 分析、举报处理、反馈审核增加更精细的 skeleton / pending 状态，而不是只在入口卡片做动效。
+
+## 2026-07-28 - 0.23.4 「我的」开放工作台图标与动效统一
+
+### 任务目标
+
+根据反馈，普通用户、活动参与者和活动发起人的「我的」页面也需要像管理员工作台一样拥有更好的设计图标和动效。本次目标是把 `0.23.3` 的 Primer / Geist inspired command surface 扩展到开放工作台，同时保持普通用户页面更轻、更直接。
+
+### 具体修改
+
+- `me.html`：为待办预览、我的报名、我的活动反馈和入口分区增加稳定 `data-me-section` 标记，并为我的报名 / 我的反馈增加页面锚点。
+- `app.js`：开放工作台入口增加「我的报名」「我的反馈」两张参与者入口卡片；发起活动、我发起的活动、审核待办和管理后台卡片增加 Octicon 风格图标、语义 tone 和右侧 cue arrow 数据。
+- `styles.css`：新增 `0.23.4 open workspace command surface` 样式层，覆盖普通工作台入口卡片、分区 tone、列表行 hover feedback、明暗主题和 reduced-motion 降级。
+- `tests/smoke.test.js`：新增未登录 `me.html` 冒烟断言，校验 4 个基础入口、Octicon SVG、tone、cue arrow、锚点和协作待办隐藏状态。
+- `README.md`、`CHANGELOG.md`、`package.json`、`package-lock.json`、`*.html`：同步版本和静态资源缓存参数到 `0.23.4`。
+
+### 技术方案选择
+
+- 继续沿用管理员工作台的 Octicon / tone / cue arrow 视觉系统，避免普通工作台和后台产生两套不一致的组件语言。
+- 普通工作台没有照搬后台分组外壳，只强化入口卡片和列表反馈，保持「我的」页对未登录用户足够轻。
+- 动效继续使用 motion-design 的 Corporate / Premium 取向：150-250ms、transform / opacity 优先、无弹跳、无循环，并保留 `prefers-reduced-motion` 降级。
+- 「我的报名」「我的反馈」入口使用锚点跳转，是因为这两个内容已经在当前页面上方展示；让卡片成为清晰入口，不额外制造新页面跳转。
+
+### 当前完成情况
+
+- 代码修改、版本号和文档同步已完成。
+- 本地 `npm test` 和 `npm run deploy:dry-run` 已通过。
+
+### 遗留问题
+
+- `styles.css` 继续通过版本覆盖层维护后台 / 开放工作台样式；后续拆分 CSS 时建议提取 `workspace-card` 组件样式，减少 admin 与 me 两处选择器重复。
+
+### 下一步建议
+
+1. 可以继续把 `workspaceIconSvg()` 从 `app.js` 抽成独立图标模块，避免主逻辑文件继续膨胀。
+2. 后续可给「我的报名」和「我的反馈」列表补 skeleton 状态，让读取历史记录时的等待感更稳。
