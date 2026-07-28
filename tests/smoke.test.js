@@ -1182,16 +1182,21 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await page.waitForSelector("[data-theme-switch]");
     const themeSwitchState = await page.evaluate(() => {
       const switcher = document.querySelector("[data-theme-switch]");
+      const ring = switcher?.querySelector(".theme-switch-ring");
       return {
         hasSwitch: Boolean(switcher),
         mode: switcher?.dataset.themeMode,
         svgCount: document.querySelectorAll("[data-theme-switch] svg").length,
+        ringWidth: ring ? parseFloat(getComputedStyle(ring).width || "0") : 0,
+        svgWidths: [...document.querySelectorAll("[data-theme-switch] svg")].map((svg) => parseFloat(getComputedStyle(svg).width || "0")),
         label: switcher?.getAttribute("aria-label") || "",
       };
     });
     assert.equal(themeSwitchState.hasSwitch, true);
     assert.equal(themeSwitchState.mode, "system");
     assert.equal(themeSwitchState.svgCount, 3);
+    assert.ok(themeSwitchState.ringWidth >= 36);
+    assert.ok(Math.max(...themeSwitchState.svgWidths) <= 16);
     assert.match(themeSwitchState.label, /跟随系统/);
     await page.locator("[data-theme-switch]").click();
     const themeSwitchAfterClick = await page.evaluate(() => {
