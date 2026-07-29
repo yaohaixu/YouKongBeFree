@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>编辑 AI 模型｜有空客厅</title>
+    <meta name="description" content="YKadmin 新增或编辑 AI 模型档案。" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <script src="theme.js?v=0.25.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.25.0" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html"><span class="brand-mark">有空</span><span class="brand-text">有空客厅</span></a>
+        <button class="menu-toggle" type="button" aria-label="打开导航" aria-expanded="false"><span></span><span></span><span></span></button>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="whitepaper.html">社区共识</a>
+          <a href="participate.html">活动与参与</a>
+          <a href="donate.html">捐赠支持</a>
+          <a href="about.html">关于与联系</a>
+          <span class="session-nav" data-session-nav><a href="me.html">我的</a></span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" data-admin-ai-model-editor-page>
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">模型详情</p>
+          <h1 data-ai-model-editor-heading>新增 AI 模型。</h1>
+          <p>API Key 只允许写入和替换，不会在页面回显。保存后可在场景路由中设为主模型或备用模型。</p>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap editor-layout">
+          <form class="form-note config-editor" data-ai-model-form>
+            <h3 data-ai-model-form-title>新增模型</h3>
+            <div class="form-grid compact-form-grid">
+              <label>模型名称<input name="name" required placeholder="比如：DeepSeek 主模型" /></label>
+              <label>Provider<select name="provider"><option value="openai-compatible">OpenAI Compatible</option><option value="openai">OpenAI</option><option value="deepseek">DeepSeek</option><option value="qwen">Qwen</option><option value="openrouter">OpenRouter</option><option value="ollama">Ollama / Local</option><option value="claude">Claude Adapter</option><option value="gemini">Gemini Adapter</option></select></label>
+              <label>Base URL<input name="baseUrl" placeholder="https://api.example.com/v1" /></label>
+              <label>Model Name<input name="model" required placeholder="模型名称" /></label>
+              <label>API Key<input name="apiKey" type="password" autocomplete="new-password" placeholder="已保存则留空即可" /></label>
+              <label>是否启用<select name="enabled"><option value="true">启用</option><option value="false">关闭</option></select></label>
+              <label>优先级<input name="priority" type="number" min="1" value="1" /></label>
+              <label>Timeout(ms)<input name="requestTimeoutMs" type="number" min="1000" value="15000" /></label>
+              <label>Temperature<input name="temperature" type="number" min="0" max="2" step="0.1" value="0.2" /></label>
+              <label>Max Tokens<input name="maxTokens" type="number" min="1" value="1200" /></label>
+              <label>Retry<input name="retryCount" type="number" min="0" max="5" value="1" /></label>
+              <label>日调用上限<input name="dailyLimit" type="number" min="0" value="0" /></label>
+            </div>
+            <fieldset class="form-fieldset">
+              <legend>适用场景</legend>
+              <label><input type="checkbox" name="sceneScopes" value="activity" /> 活动分析</label>
+              <label><input type="checkbox" name="sceneScopes" value="feedback" /> 活动反馈</label>
+              <label><input type="checkbox" name="sceneScopes" value="report" /> 举报复核</label>
+              <label><input type="checkbox" name="sceneScopes" value="manual" /> 手动重分析</label>
+            </fieldset>
+            <div class="form-actions">
+              <button class="button primary" type="submit">保存模型</button>
+              <button class="button outline" type="button" data-ai-model-test>测试连接</button>
+              <a class="button ghost" href="admin-ai-models.html">取消</a>
+            </div>
+            <p class="form-message" data-ai-model-message></p>
+          </form>
+
+          <aside class="panel-block sticky-panel">
+            <p class="section-kicker">配置建议</p>
+            <h3>给高风险场景更稳的模型。</h3>
+            <p class="muted-text">活动分析和举报复核建议使用更稳定的模型；活动反馈可以选择更快、更便宜的模型。故障转移会按场景路由里的备用队列依次尝试。</p>
+            <div class="button-row">
+              <a class="button ghost" href="admin-ai.html">场景路由</a>
+              <a class="button outline" href="admin-ai-usage.html">用量健康</a>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><div class="footer-brand">有空客厅</div><div>保存模型，不保存明文密钥。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="admin-ai.html">AI 控制台</a><a href="admin-ai-models.html">模型配置</a><a href="admin-ai-prompts.html">Prompt 管理</a><a href="admin-ai-usage.html">用量健康</a></nav>
+      </div>
+    </footer>
+    <script src="script.js?v=0.25.0"></script>
+    <script src="app.js?v=0.25.0"></script>
+  </body>
+</html>

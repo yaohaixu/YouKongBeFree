@@ -208,7 +208,9 @@ let mePageState = {
   trustPolicies: [],
   badges: [],
   badgePolicies: [],
+  aiModels: [],
   aiPrompts: [],
+  aiUsage: null,
   friends: [],
   feedbacks: [],
   activityFeedbacks: [],
@@ -268,6 +270,16 @@ const logActionOptions = [
   ["activity.feedback.create", "提交活动反馈"],
   ["activity.feedback.review", "审核活动反馈"],
   ["activity.feedback.export", "导出活动反馈"],
+  ["ai.model.create", "新增 AI 模型"],
+  ["ai.model.update", "保存 AI 模型"],
+  ["ai.model.delete", "删除 AI 模型"],
+  ["ai.model.test", "测试 AI 模型"],
+  ["ai.settings.update", "保存 AI 设置"],
+  ["ai.connection.test", "测试 AI 连接"],
+  ["ai.prompt.create", "新增 Prompt"],
+  ["ai.prompt.update", "保存 Prompt"],
+  ["ai.prompt.delete", "删除 Prompt"],
+  ["ai.prompt.activate", "启用 Prompt"],
   ["activity.report", "社区举报"],
   ["activity.report.review", "举报分析"],
   ["activity.report.substantiated", "举报成立"],
@@ -2926,84 +2938,47 @@ function renderSafetyRules(container, rules = []) {
   });
 }
 
-async function initAdminAiPage() {
-  const root = qs("[data-admin-ai-page]");
-  if (!root) return;
-  const user = await requireAdminUser(root, "ai", "view");
-  if (!user) return;
-  const settingsForm = qs("[data-ai-settings-form]", root);
-  const promptForm = qs("[data-ai-prompt-form]", root);
-  const message = qs("[data-ai-message]", root);
-  qsa("button", settingsForm).forEach((button) => {
-    button.disabled = !hasPermission(user, "ai", "configure");
-  });
-  if (promptForm?.closest(".form-note")) promptForm.closest(".form-note").hidden = !hasPermission(user, "ai", "create");
-  try {
-    const [{ settings }, { prompts }] = await Promise.all([
-      api.get("/api/ai/settings"),
-      api.get("/api/ai/prompts?page=1&pageSize=100"),
-    ]);
-    fillAiSettingsForm(settingsForm, settings);
-    renderAiPrompts(qs("[data-ai-prompts]", root), prompts);
-  } catch (error) {
-    setMessage(message, error.message, "error");
-  }
-  settingsForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    try {
-      const payload = aiSettingsPayload(settingsForm);
-      const { settings } = await api.put("/api/ai/settings", payload);
-      fillAiSettingsForm(settingsForm, settings);
-      setMessage(message, "AI 设置已保存。", "success");
-      showToast("保存成功");
-    } catch (error) {
-      setMessage(message, error.message, "error");
-    }
-  });
-  qs("[data-ai-test]", settingsForm)?.addEventListener("click", async () => {
-    setMessage(message, "正在测试 AI 连接...");
-    const result = await api.post("/api/ai/test-connection", aiSettingsPayload(settingsForm));
-    setMessage(message, result.ok ? `连接成功，响应 ${result.durationMs}ms。` : `连接失败：${result.error}`, result.ok ? "success" : "error");
-  });
-  promptForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    try {
-      await api.post("/api/ai/prompts", {
-        type: promptForm.type.value,
-        version: promptForm.version.value,
-        name: promptForm.name.value,
-        active: promptForm.active.value,
-        systemPrompt: promptForm.systemPrompt.value,
-        userPrompt: promptForm.userPrompt.value,
-      });
-      promptForm.reset();
-      await refreshAiPrompts(root);
-      showToast("保存成功");
-    } catch (error) {
-      setMessage(message, error.message, "error");
-    }
-  });
+const aiSceneLabels = {
+  activity: "活动分析",
+  feedback: "活动反馈",
+  report: "举报复核",
+  manual: "手动重分析",
+};
+
+const aiProviderLabels = {
+  "openai-compatible": "OpenAI Compatible",
+  openai: "OpenAI",
+  deepseek: "DeepSeek",
+  qwen: "Qwen",
+  openrouter: "OpenRouter",
+  ollama: "Ollama / Local",
+  claude: "Claude Adapter",
+  gemini: "Gemini Adapter",
+};
+
+function aiSceneLabel(scene = "") {
+  return aiSceneLabels[scene] || scene || "未分配";
 }
 
-function fillAiSettingsForm(form, settings = {}) {
-  if (!form) return;
-  const strategy = settings.callStrategy || {};
-  form.enabled.value = settings.enabled ? "true" : "false";
-  form.provider.value = settings.provider || "openai-compatible";
-  form.baseUrl.value = settings.baseUrl || "";
-  form.model.value = settings.model || "";
-  form.apiKey.value = "";
-  form.apiKey.placeholder = settings.apiKeyStatus || "未配置";
-  form.requestTimeoutMs.value = settings.requestTimeoutMs || 15000;
-  form.temperature.value = settings.temperature ?? 0.2;
-  form.maxTokens.value = settings.maxTokens || 1200;
-  form.retryCount.value = settings.retryCount || 1;
-  form.cacheTtlSeconds.value = settings.cacheTtlSeconds || 86400;
-  form.promptVersion.value = settings.promptVersion || "activity-default-v1";
-  if (form.ruleConfidenceMax) form.ruleConfidenceMax.value = strategy.ruleConfidenceMax ?? 70;
-  if (form.firstActivityCount) form.firstActivityCount.value = strategy.firstActivityCount ?? 3;
-  form.callStrategy.value = JSON.stringify(strategy, null, 2);
-  form.capabilities.value = JSON.stringify(settings.capabilities || {}, null, 2);
+function aiProviderLabel(provider = "") {
+  return aiProviderLabels[provider] || provider || "未配置";
+}
+
+function aiHealthLabel(status = "") {
+  return { ok: "连接正常", error: "连接异常", unknown: "未测试" }[status] || "未测试";
+}
+
+function aiHealthTone(status = "") {
+  return status === "ok" ? "success" : status === "error" ? "danger-soft" : "soft";
+}
+
+function formatPercent(value = 0) {
+  const number = Number(value || 0);
+  return `${number.toFixed(number % 1 ? 1 : 0)}%`;
+}
+
+function formatCompactNumber(value = 0) {
+  return Number(value || 0).toLocaleString("zh-CN");
 }
 
 function parseJsonText(value, fallback = {}) {
@@ -3014,8 +2989,119 @@ function parseJsonText(value, fallback = {}) {
   }
 }
 
+function activePromptFor(prompts = [], settings = {}, type = "activity") {
+  const version = settings.promptVersions?.[type] || (type === "activity" ? settings.promptVersion : "");
+  return prompts.find((prompt) => prompt.type === type && prompt.version === version)
+    || prompts.find((prompt) => prompt.type === type && prompt.active)
+    || null;
+}
+
+function modelById(models = [], id = "") {
+  return models.find((model) => model.id === id) || null;
+}
+
+function firstRouteModel(settings = {}, models = [], scene = "activity") {
+  const route = settings.sceneRouting?.[scene] || {};
+  return modelById(models, route.primaryProfileId || settings.activeProfileId)
+    || models.find((model) => model.enabled !== false)
+    || null;
+}
+
+async function initAdminAiPage() {
+  const root = qs("[data-admin-ai-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root, "ai", "view");
+  if (!user) return;
+  const settingsForm = qs("[data-ai-settings-form]", root);
+  const message = qs("[data-ai-message]", root);
+  qsa("button", settingsForm).forEach((button) => {
+    button.disabled = !hasPermission(user, "ai", "configure");
+  });
+  try {
+    const [{ settings }, { models }, { usage }, { prompts }] = await Promise.all([
+      api.get("/api/ai/settings"),
+      api.get("/api/ai/models"),
+      api.get("/api/ai/usage?days=7"),
+      api.get("/api/ai/prompts?page=1&pageSize=100"),
+    ]);
+    mePageState.aiModels = models || [];
+    mePageState.aiUsage = usage || null;
+    fillAiSettingsForm(settingsForm, settings);
+    renderAiConsoleSummary(qs("[data-ai-console-summary]", root), settings, models || [], usage || {}, prompts || []);
+    renderAiSceneRoutes(qs("[data-ai-scene-routes]", root), settings, models || []);
+  } catch (error) {
+    setMessage(message, error.message, "error");
+  }
+  settingsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      const payload = aiSettingsPayload(settingsForm);
+      const { settings } = await api.put("/api/ai/settings", payload);
+      fillAiSettingsForm(settingsForm, settings);
+      renderAiSceneRoutes(qs("[data-ai-scene-routes]", root), settings, mePageState.aiModels || []);
+      setMessage(message, "AI 设置已保存。", "success");
+      showToast("保存成功");
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+}
+
+function renderAiConsoleSummary(container, settings = {}, models = [], usage = {}, prompts = []) {
+  if (!container) return;
+  const activityModel = firstRouteModel(settings, models, "activity");
+  const feedbackPrompt = activePromptFor(prompts, settings, "feedback");
+  const activityPrompt = activePromptFor(prompts, settings, "activity");
+  const reportPrompt = activePromptFor(prompts, settings, "report");
+  const healthy = models.filter((model) => model.healthStatus === "ok").length;
+  const backupCount = Math.max(models.filter((model) => model.enabled !== false).length - 1, 0);
+  container.innerHTML = `
+    <article class="ai-console-card primary-console-card">
+      <span class="tag ${settings.enabled ? "" : "danger-soft"}">${settings.enabled ? "AI 已开启" : "AI 已关闭"}</span>
+      <h3>${escapeHtml(activityModel?.name || "未选择主模型")}</h3>
+      <p>${escapeHtml(aiProviderLabel(activityModel?.provider))} · ${escapeHtml(activityModel?.model || "未配置 Model Name")}</p>
+      <div class="button-row">
+        <a class="button primary" href="admin-ai-models.html">切换模型</a>
+        <a class="button outline" href="admin-ai-usage.html">查看用量</a>
+      </div>
+    </article>
+    <article class="ai-console-card"><span class="tag">模型健康</span><strong>${healthy}/${models.length || 0}</strong><p>${backupCount} 个备用模型 · 故障转移${settings.fallbackEnabled === false ? "关闭" : "开启"}</p></article>
+    <article class="ai-console-card"><span class="tag">近 7 天调用</span><strong>${formatCompactNumber(usage.totalCalls || 0)}</strong><p>成功率 ${formatPercent(usage.successRate || 0)} · 平均 ${Math.round(usage.averageDurationMs || 0)}ms</p></article>
+    <article class="ai-console-card"><span class="tag">Token</span><strong>${formatCompactNumber(usage.totalTokens || 0)}</strong><p>缓存命中 ${formatCompactNumber(usage.cacheHits || 0)} 次</p></article>
+    <article class="ai-console-card prompt-console-card"><span class="tag">活动分析 Prompt</span><h3>${escapeHtml(activityPrompt?.name || "默认活动分析")}</h3><p>${escapeHtml(activityPrompt?.version || settings.promptVersion || "activity-default-v1")}</p><a class="button ghost" href="admin-ai-prompts.html?type=activity">查看</a></article>
+    <article class="ai-console-card prompt-console-card"><span class="tag">活动反馈 Prompt</span><h3>${escapeHtml(feedbackPrompt?.name || "默认活动反馈")}</h3><p>${escapeHtml(feedbackPrompt?.version || settings.promptVersions?.feedback || "feedback-default-v1")}</p><a class="button ghost" href="admin-ai-prompts.html?type=feedback">查看</a></article>
+    <article class="ai-console-card prompt-console-card"><span class="tag">举报复核 Prompt</span><h3>${escapeHtml(reportPrompt?.name || "暂未单独配置")}</h3><p>${escapeHtml(reportPrompt?.version || settings.promptVersions?.report || "复用活动分析")}</p><a class="button ghost" href="admin-ai-prompts.html?type=report">查看</a></article>
+  `;
+  revealDynamicContent(container);
+}
+
+function fillAiSettingsForm(form, settings = {}) {
+  if (!form) return;
+  const strategy = settings.callStrategy || {};
+  form.enabled.value = settings.enabled ? "true" : "false";
+  if (form.fallbackEnabled) form.fallbackEnabled.value = settings.fallbackEnabled === false ? "false" : "true";
+  if (form.cacheTtlSeconds) form.cacheTtlSeconds.value = settings.cacheTtlSeconds || 86400;
+  if (form.activeProfileId) form.activeProfileId.value = settings.activeProfileId || "";
+  if (form.fallbackProfileIds) form.fallbackProfileIds.value = JSON.stringify(settings.fallbackProfileIds || []);
+  if (form.sceneRouting) form.sceneRouting.value = JSON.stringify(settings.sceneRouting || {});
+  if (form.ruleConfidenceMax) form.ruleConfidenceMax.value = strategy.ruleConfidenceMax ?? 70;
+  if (form.firstActivityCount) form.firstActivityCount.value = strategy.firstActivityCount ?? 3;
+  form.callStrategy.value = JSON.stringify(strategy, null, 2);
+  form.capabilities.value = JSON.stringify(settings.capabilities || {}, null, 2);
+}
+
 function aiSettingsPayload(form) {
   const callStrategy = parseJsonText(form.callStrategy.value, {});
+  const sceneRouting = {};
+  qsa("[data-ai-scene-route]", form).forEach((route) => {
+    const scene = route.dataset.aiSceneRoute;
+    const primaryProfileId = qs("[data-ai-scene-primary]", route)?.value || "";
+    const fallbackProfileIds = qsa("[data-ai-scene-fallback]:checked", route)
+      .map((input) => input.value)
+      .filter((id) => id && id !== primaryProfileId);
+    sceneRouting[scene] = { primaryProfileId, fallbackProfileIds };
+  });
+  const fallbackProfileIds = Array.from(new Set(Object.values(sceneRouting).flatMap((route) => route.fallbackProfileIds || [])));
   if (form.ruleConfidenceMax) {
     callStrategy.lowConfidenceOnly = true;
     callStrategy.ruleConfidenceMax = Math.max(0, Math.min(100, Number(form.ruleConfidenceMax.value || 70)));
@@ -3027,30 +3113,64 @@ function aiSettingsPayload(form) {
   }
   return {
     enabled: form.enabled.value,
-    provider: form.provider.value,
-    baseUrl: form.baseUrl.value,
-    model: form.model.value,
-    apiKey: form.apiKey.value,
-    requestTimeoutMs: form.requestTimeoutMs.value,
-    temperature: form.temperature.value,
-    maxTokens: form.maxTokens.value,
-    retryCount: form.retryCount.value,
+    fallbackEnabled: form.fallbackEnabled?.value ?? "true",
+    activeProfileId: sceneRouting.activity?.primaryProfileId || form.activeProfileId?.value || "",
+    fallbackProfileIds,
+    sceneRouting,
     cacheTtlSeconds: form.cacheTtlSeconds.value,
-    promptVersion: form.promptVersion.value,
     callStrategy,
     capabilities: form.capabilities.value,
   };
 }
 
+function renderAiSceneRoutes(container, settings = {}, models = []) {
+  if (!container) return;
+  const enabledModels = models.filter((model) => model.enabled !== false);
+  if (!enabledModels.length) {
+    container.innerHTML = `<div class="empty-state"><strong>还没有可用模型</strong><p>先新增一个模型档案，再回来配置场景路由。</p><a class="button primary" href="admin-ai-model-editor.html">新增模型</a></div>`;
+    return;
+  }
+  const sceneRouting = settings.sceneRouting || {};
+  container.innerHTML = Object.entries(aiSceneLabels).map(([scene, label]) => {
+    const route = sceneRouting[scene] || {};
+    const primary = route.primaryProfileId || settings.activeProfileId || enabledModels[0]?.id || "";
+    const fallbacks = new Set(route.fallbackProfileIds || []);
+    return `
+      <article class="ai-scene-route" data-ai-scene-route="${scene}">
+        <div>
+          <span class="tag">${escapeHtml(label)}</span>
+          <h3>${escapeHtml(modelById(models, primary)?.name || "未选择模型")}</h3>
+          <p>${scene === "feedback" ? "活动匿名反馈分析、公开展示判断和精选排序。" : scene === "report" ? "举报后重新理解举报内容和活动内容。" : scene === "manual" ? "管理员手动重新分析时使用。" : "活动发布安全分析、结构化提取和风险解释。"}</p>
+        </div>
+        <div class="ai-route-controls">
+          <label>主模型<select data-ai-scene-primary>${enabledModels.map((model) => `<option value="${escapeHtml(model.id)}" ${model.id === primary ? "selected" : ""}>${escapeHtml(model.name)} · ${escapeHtml(model.model || "未填模型")}</option>`).join("")}</select></label>
+          <fieldset class="form-fieldset compact-fieldset">
+            <legend>备用模型</legend>
+            ${enabledModels.map((model) => `<label><input type="checkbox" data-ai-scene-fallback value="${escapeHtml(model.id)}" ${fallbacks.has(model.id) ? "checked" : ""} /> ${escapeHtml(model.name)}</label>`).join("")}
+          </fieldset>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
 async function refreshAiPrompts(root = document) {
-  const { prompts } = await api.get("/api/ai/prompts?page=1&pageSize=100");
-  renderAiPrompts(qs("[data-ai-prompts]", root), prompts);
+  const filters = qs("[data-ai-prompt-filters]", root);
+  const params = new URLSearchParams({ page: "1", pageSize: "100" });
+  if (filters) {
+    if (filters.type.value) params.set("type", filters.type.value);
+    if (filters.q.value.trim()) params.set("q", filters.q.value.trim());
+  }
+  const { prompts } = await api.get(`/api/ai/prompts?${params.toString()}`);
+  mePageState.aiPrompts = prompts || [];
+  renderAiPrompts(qs("[data-ai-prompts]", root), prompts || []);
+  if (qs("[data-ai-prompt-count]", root)) qs("[data-ai-prompt-count]", root).textContent = `共 ${prompts.length} 个 Prompt 版本`;
 }
 
 function renderAiPrompts(container, prompts = []) {
   if (!container) return;
   if (!prompts.length) {
-    container.innerHTML = `<div class="empty-state"><strong>还没有 Prompt</strong><p>系统初始化后会自动补一个活动分析默认版本。</p></div>`;
+    container.innerHTML = `<div class="empty-state"><strong>还没有 Prompt</strong><p>可以从活动分析、活动反馈或举报复核场景新建一个版本。</p><a class="button primary" href="admin-ai-prompt-editor.html">新增 Prompt</a></div>`;
     return;
   }
   const user = mePageState.user || getCachedUser();
@@ -3059,7 +3179,7 @@ function renderAiPrompts(container, prompts = []) {
       <div>
         <span class="tag">${prompt.active ? "启用中" : "历史版本"}</span>
         <h3>${escapeHtml(prompt.name)}</h3>
-        <p>${escapeHtml(prompt.type)} · ${escapeHtml(prompt.version)} · ${formatDate(prompt.updatedAt || prompt.createdAt)}</p>
+        <p>${escapeHtml(aiSceneLabel(prompt.type))} · ${escapeHtml(prompt.version)} · ${formatDate(prompt.updatedAt || prompt.createdAt)}</p>
         <details class="review-detail">
           <summary>查看 Prompt</summary>
           <pre>${escapeHtml(prompt.systemPrompt || "")}</pre>
@@ -3067,6 +3187,7 @@ function renderAiPrompts(container, prompts = []) {
         </details>
       </div>
       <div class="row-actions">
+        <a class="button outline" href="admin-ai-prompt-editor.html?id=${encodeURIComponent(prompt.id)}">编辑</a>
         <button class="button outline" type="button" data-activate-prompt ${prompt.active || !hasPermission(user, "ai", "configure") ? "disabled" : ""}>启用</button>
         <button class="button outline danger-soft" type="button" data-delete-prompt ${hasPermission(user, "ai", "delete") ? "" : "disabled"}>删除</button>
       </div>
@@ -3086,6 +3207,328 @@ function renderAiPrompts(container, prompts = []) {
       await refreshAiPrompts();
     });
   });
+}
+
+async function initAdminAiModelsPage() {
+  const root = qs("[data-admin-ai-models-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root, "ai", "view");
+  if (!user) return;
+  await refreshAiModelsPage(root);
+}
+
+async function refreshAiModelsPage(root = document) {
+  const [{ models }, { settings }] = await Promise.all([
+    api.get("/api/ai/models"),
+    api.get("/api/ai/settings"),
+  ]);
+  mePageState.aiModels = models || [];
+  renderAiModelList(qs("[data-ai-model-list]", root), models || [], settings || {});
+  if (qs("[data-ai-model-count]", root)) qs("[data-ai-model-count]", root).textContent = `共 ${models.length} 个模型档案`;
+}
+
+function routeUsesModel(settings = {}, modelId = "") {
+  return Object.values(settings.sceneRouting || {}).some((route) => route.primaryProfileId === modelId);
+}
+
+function renderAiModelList(container, models = [], settings = {}) {
+  if (!container) return;
+  if (!models.length) {
+    container.innerHTML = `<div class="empty-state"><strong>还没有模型档案</strong><p>新增一个模型后，就可以在场景路由里设为主模型或备用模型。</p><a class="button primary" href="admin-ai-model-editor.html">新增模型</a></div>`;
+    return;
+  }
+  const user = mePageState.user || getCachedUser();
+  container.innerHTML = models.map((model) => `
+    <article class="event-row ai-model-row" data-ai-model-id="${escapeHtml(model.id)}">
+      <div>
+        <div class="tag-row">
+          <span class="tag ${model.enabled === false ? "danger-soft" : ""}">${model.enabled === false ? "已关闭" : "启用"}</span>
+          <span class="tag ${aiHealthTone(model.healthStatus)}">${aiHealthLabel(model.healthStatus)}</span>
+          ${routeUsesModel(settings, model.id) ? `<span class="tag">主模型</span>` : ""}
+        </div>
+        <h3>${escapeHtml(model.name)}</h3>
+        <p>${escapeHtml(aiProviderLabel(model.provider))} · ${escapeHtml(model.model || "未配置 Model Name")} · 优先级 ${Number(model.priority || 1)}</p>
+        <p>场景：${(model.sceneScopes || []).map(aiSceneLabel).join("、") || "全部"} · Key：${escapeHtml(model.apiKeyStatus || "未配置")} · ${model.lastError ? `最近错误：${escapeHtml(model.lastError)}` : `最近测试：${model.lastTestAt ? formatDate(model.lastTestAt) : "未测试"}`}</p>
+      </div>
+      <div class="row-actions">
+        <a class="button outline" href="admin-ai-model-editor.html?id=${encodeURIComponent(model.id)}">编辑</a>
+        <button class="button outline" type="button" data-test-ai-model ${hasPermission(user, "ai", "configure") ? "" : "disabled"}>测试</button>
+        <button class="button outline" type="button" data-set-ai-model-main ${hasPermission(user, "ai", "configure") ? "" : "disabled"}>设为全部主模型</button>
+        <button class="button outline danger-soft" type="button" data-delete-ai-model ${hasPermission(user, "ai", "delete") ? "" : "disabled"}>删除</button>
+      </div>
+    </article>
+  `).join("");
+  revealDynamicContent(container);
+  qsa("[data-ai-model-id]", container).forEach((row) => {
+    const id = row.dataset.aiModelId;
+    qs("[data-test-ai-model]", row)?.addEventListener("click", async () => {
+      showToast("正在测试连接...");
+      const result = await api.post(`/api/ai/models/${encodeURIComponent(id)}/test`, {});
+      showToast(result.ok ? `连接成功，响应 ${result.durationMs}ms` : `连接失败：${result.error}`);
+      await refreshAiModelsPage();
+    });
+    qs("[data-set-ai-model-main]", row)?.addEventListener("click", async () => {
+      const { settings } = await api.get("/api/ai/settings");
+      const sceneRouting = Object.fromEntries(Object.keys(aiSceneLabels).map((scene) => [
+        scene,
+        { primaryProfileId: id, fallbackProfileIds: (settings.sceneRouting?.[scene]?.fallbackProfileIds || []).filter((item) => item !== id) },
+      ]));
+      await api.put("/api/ai/settings", { activeProfileId: id, sceneRouting });
+      showToast("保存成功");
+      await refreshAiModelsPage();
+    });
+    qs("[data-delete-ai-model]", row)?.addEventListener("click", async () => {
+      if (!confirm("确定删除这个 AI 模型档案吗？")) return;
+      await api.delete(`/api/ai/models/${encodeURIComponent(id)}`);
+      showToast("删除成功");
+      await refreshAiModelsPage();
+    });
+  });
+}
+
+function collectCheckedValues(form, name) {
+  return qsa(`input[name="${name}"]:checked`, form).map((input) => input.value);
+}
+
+function aiModelPayload(form) {
+  return {
+    name: form.name.value,
+    provider: form.provider.value,
+    baseUrl: form.baseUrl.value,
+    model: form.model.value,
+    apiKey: form.apiKey.value,
+    enabled: form.enabled.value,
+    priority: form.priority.value,
+    sceneScopes: collectCheckedValues(form, "sceneScopes"),
+    requestTimeoutMs: form.requestTimeoutMs.value,
+    temperature: form.temperature.value,
+    maxTokens: form.maxTokens.value,
+    retryCount: form.retryCount.value,
+    dailyLimit: form.dailyLimit.value,
+  };
+}
+
+function fillAiModelForm(form, model = {}) {
+  if (!form) return;
+  form.name.value = model.name || "";
+  form.provider.value = model.provider || "openai-compatible";
+  form.baseUrl.value = model.baseUrl || "";
+  form.model.value = model.model || "";
+  form.apiKey.value = "";
+  form.apiKey.placeholder = model.apiKeyStatus || "已保存则留空即可";
+  form.enabled.value = model.enabled === false ? "false" : "true";
+  form.priority.value = model.priority || 1;
+  form.requestTimeoutMs.value = model.requestTimeoutMs || 15000;
+  form.temperature.value = model.temperature ?? 0.2;
+  form.maxTokens.value = model.maxTokens || 1200;
+  form.retryCount.value = model.retryCount ?? 1;
+  form.dailyLimit.value = model.dailyLimit || 0;
+  const scopes = new Set(model.sceneScopes?.length ? model.sceneScopes : Object.keys(aiSceneLabels));
+  qsa('input[name="sceneScopes"]', form).forEach((input) => {
+    input.checked = scopes.has(input.value);
+  });
+}
+
+async function initAdminAiModelEditorPage() {
+  const root = qs("[data-admin-ai-model-editor-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root, "ai", "view");
+  if (!user) return;
+  const form = qs("[data-ai-model-form]", root);
+  const message = qs("[data-ai-model-message]", root);
+  const id = new URLSearchParams(location.search).get("id");
+  let editing = null;
+  if (id) {
+    const { model } = await api.get(`/api/ai/models/${encodeURIComponent(id)}`);
+    editing = model;
+    qs("[data-ai-model-editor-heading]", root).textContent = `编辑 ${model.name}。`;
+    qs("[data-ai-model-form-title]", root).textContent = "编辑模型";
+    fillAiModelForm(form, model);
+  } else {
+    fillAiModelForm(form, {});
+  }
+  const canSave = id ? hasPermission(user, "ai", "edit") : hasPermission(user, "ai", "create");
+  qsa("input, select, textarea", form).forEach((element) => {
+    element.disabled = !canSave;
+  });
+  qs('button[type="submit"]', form).disabled = !canSave;
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      const payload = aiModelPayload(form);
+      const response = editing
+        ? await api.put(`/api/ai/models/${encodeURIComponent(editing.id)}`, payload)
+        : await api.post("/api/ai/models", payload);
+      editing = response.model;
+      showToast("保存成功");
+      location.href = "admin-ai-models.html";
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+  qs("[data-ai-model-test]", form)?.addEventListener("click", async () => {
+    try {
+      setMessage(message, "正在测试连接...");
+      const payload = aiModelPayload(form);
+      const result = editing
+        ? await api.post(`/api/ai/models/${encodeURIComponent(editing.id)}/test`, payload)
+        : await api.post("/api/ai/test-connection", payload);
+      setMessage(message, result.ok ? `连接成功，响应 ${result.durationMs}ms。` : `连接失败：${result.error}`, result.ok ? "success" : "error");
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+}
+
+async function initAdminAiPromptsPage() {
+  const root = qs("[data-admin-ai-prompts-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root, "ai", "view");
+  if (!user) return;
+  const filters = qs("[data-ai-prompt-filters]", root);
+  const type = new URLSearchParams(location.search).get("type") || "";
+  if (type && filters?.type) filters.type.value = type;
+  filters?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await refreshAiPrompts(root);
+  });
+  await refreshAiPrompts(root);
+}
+
+function aiPromptPayload(form) {
+  return {
+    type: form.type.value,
+    version: form.version.value,
+    name: form.name.value,
+    active: form.active.value,
+    systemPrompt: form.systemPrompt.value,
+    userPrompt: form.userPrompt.value,
+  };
+}
+
+function fillAiPromptForm(form, prompt = {}) {
+  if (!form) return;
+  form.type.value = prompt.type || new URLSearchParams(location.search).get("type") || "activity";
+  form.version.value = prompt.version || "";
+  form.name.value = prompt.name || "";
+  form.active.value = prompt.active ? "true" : "false";
+  form.systemPrompt.value = prompt.systemPrompt || "";
+  form.userPrompt.value = prompt.userPrompt || "";
+}
+
+async function initAdminAiPromptEditorPage() {
+  const root = qs("[data-admin-ai-prompt-editor-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root, "ai", "view");
+  if (!user) return;
+  const form = qs("[data-ai-prompt-form]", root);
+  const message = qs("[data-ai-prompt-message]", root);
+  const id = new URLSearchParams(location.search).get("id");
+  let editing = null;
+  if (id) {
+    const { prompt } = await api.get(`/api/ai/prompts/${encodeURIComponent(id)}`);
+    editing = prompt;
+    qs("[data-ai-prompt-editor-heading]", root).textContent = `编辑 ${prompt.name}。`;
+    qs("[data-ai-prompt-form-title]", root).textContent = "编辑 Prompt";
+    fillAiPromptForm(form, prompt);
+  } else {
+    fillAiPromptForm(form, {});
+  }
+  const canSave = id ? hasPermission(user, "ai", "edit") : hasPermission(user, "ai", "create");
+  qsa("input, select, textarea, button", form).forEach((element) => {
+    element.disabled = !canSave;
+  });
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      const payload = aiPromptPayload(form);
+      const response = editing
+        ? await api.put(`/api/ai/prompts/${encodeURIComponent(editing.id)}`, payload)
+        : await api.post("/api/ai/prompts", payload);
+      if (payload.active === "true" && response.prompt?.id) {
+        await api.post(`/api/ai/prompts/${encodeURIComponent(response.prompt.id)}/activate`, {});
+      }
+      showToast("保存成功");
+      location.href = `admin-ai-prompts.html?type=${encodeURIComponent(payload.type)}`;
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+}
+
+async function initAdminAiUsagePage() {
+  const root = qs("[data-admin-ai-usage-page]");
+  if (!root) return;
+  const user = await requireAdminUser(root, "ai", "view");
+  if (!user) return;
+  const filters = qs("[data-ai-usage-filters]", root);
+  filters?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await refreshAiUsagePage(root);
+  });
+  await refreshAiUsagePage(root);
+}
+
+async function refreshAiUsagePage(root = document) {
+  const filters = qs("[data-ai-usage-filters]", root);
+  const days = filters?.days?.value || "7";
+  const { usage } = await api.get(`/api/ai/usage?days=${encodeURIComponent(days)}`);
+  mePageState.aiUsage = usage;
+  renderAiUsageSummary(qs("[data-ai-usage-summary]", root), usage);
+  renderAiUsageModels(qs("[data-ai-usage-models]", root), usage.models || []);
+  renderAiUsageErrors(qs("[data-ai-usage-errors]", root), usage.recentErrors || []);
+}
+
+function renderAiUsageSummary(container, usage = {}) {
+  if (!container) return;
+  container.innerHTML = `
+    <div class="stats ai-usage-stats">
+      <div class="stat"><strong>${formatCompactNumber(usage.totalCalls || 0)}</strong><span>调用次数</span></div>
+      <div class="stat"><strong>${formatPercent(usage.successRate || 0)}</strong><span>成功率</span></div>
+      <div class="stat"><strong>${Math.round(usage.averageDurationMs || 0)}ms</strong><span>平均耗时</span></div>
+      <div class="stat"><strong>${formatCompactNumber(usage.totalTokens || 0)}</strong><span>Token</span></div>
+      <div class="stat"><strong>${formatCompactNumber(usage.cacheHits || 0)}</strong><span>缓存命中</span></div>
+    </div>
+  `;
+}
+
+function renderAiUsageModels(container, models = []) {
+  if (!container) return;
+  if (!models.length) {
+    container.innerHTML = `<div class="empty-state"><strong>暂无 AI 调用记录</strong><p>模型测试、活动分析或反馈分析完成后，这里会出现统计。</p></div>`;
+    return;
+  }
+  container.innerHTML = models.map((model) => `
+    <article class="event-row ai-usage-row">
+      <div>
+        <span class="tag">${escapeHtml(model.provider || "Provider")}</span>
+        <h3>${escapeHtml(model.profileName || model.model || "未命名模型")}</h3>
+        <p>${escapeHtml(model.model || "")} · 调用 ${formatCompactNumber(model.totalCalls)} 次 · 成功率 ${formatPercent(model.successRate)} · 平均 ${Math.round(model.averageDurationMs || 0)}ms</p>
+        <p>Token ${formatCompactNumber(model.totalTokens)} · 缓存命中 ${formatCompactNumber(model.cacheHits)} · 失败 ${formatCompactNumber(model.failedCalls)}</p>
+      </div>
+      <div class="row-actions">
+        ${model.profileId ? `<a class="button outline" href="admin-ai-model-editor.html?id=${encodeURIComponent(model.profileId)}">查看模型</a>` : ""}
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderAiUsageErrors(container, errors = []) {
+  if (!container) return;
+  if (!errors.length) {
+    container.innerHTML = `<div class="empty-state"><strong>最近没有错误</strong><p>如果某个模型超时或 Key 失效，会在这里留下线索。</p></div>`;
+    return;
+  }
+  container.innerHTML = errors.map((error) => `
+    <article class="event-row">
+      <div>
+        <span class="tag danger-soft">${escapeHtml(aiSceneLabel(error.scene))}</span>
+        <h3>${escapeHtml(error.profileName || error.model || "未命名模型")}</h3>
+        <p>${escapeHtml(error.provider || "")} · ${escapeHtml(error.model || "")} · ${formatDate(error.createdAt)}</p>
+        <p>${escapeHtml(error.error || "调用失败")}</p>
+      </div>
+    </article>
+  `).join("");
 }
 
 async function initAdminActivityConfidencePage() {
@@ -4518,7 +4961,7 @@ async function safeInit(task) {
   } catch (error) {
     console.error(error);
     showToast("页面数据读取失败，请刷新后重试");
-    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-safety-rules], [data-ai-prompts], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list], [data-friend-list], [data-feedback-list], [data-activity-feedback-list], [data-my-registrations], [data-my-feedbacks]")
+    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-safety-rules], [data-ai-prompts], [data-ai-console-summary], [data-ai-model-list], [data-ai-usage-models], [data-ai-usage-errors], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list], [data-friend-list], [data-feedback-list], [data-activity-feedback-list], [data-my-registrations], [data-my-feedbacks]")
       .filter((element) => /正在|读取|加载/.test(element.textContent || ""))
       .forEach((element) => {
         element.innerHTML = `<div class="empty-state"><strong>暂时没读到数据</strong><p>请刷新页面重试，或稍后再来。</p></div>`;
@@ -4555,6 +4998,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(initFeedbackFormPage),
     safeInit(initAdminSafetyPage),
     safeInit(initAdminAiPage),
+    safeInit(initAdminAiModelsPage),
+    safeInit(initAdminAiModelEditorPage),
+    safeInit(initAdminAiPromptsPage),
+    safeInit(initAdminAiPromptEditorPage),
+    safeInit(initAdminAiUsagePage),
     safeInit(initAdminGovernancePage),
     safeInit(initAdminTrustPolicyPage),
     safeInit(initAdminBadgesPage),

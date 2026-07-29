@@ -3191,3 +3191,53 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 为角色详情页增加“从已有角色复制”入口，减少新增自定义角色时的勾选成本。
 2. 为权限矩阵增加模块分组折叠和搜索，在权限模块继续增长时保持可读。
 3. 后续可以把角色详情页权限变更记录展示为保存前 diff，让管理员更清楚本次修改会放开或收回哪些能力。
+
+## 2026-07-29 - 0.25.0 AI 控制台、多模型配置与故障转移
+
+### 任务目标
+
+根据新的 AI 配置体验需求，重构原本反人类的单页 AI 设置表单。目标是让管理员可以像 cc-switch 一样维护多个模型档案、随时切换主模型、按场景选择模型、查看用量健康，并让活动反馈 Prompt 有清晰入口。同时保持 AI 作为 Community Observer / Analysis Engine 的定位，不把 AI 变成传统审核员。
+
+### 具体修改
+
+- `lib/community-safety/defaults.js`：新增默认 AI 模型档案和 AI 设置中的 `activeProfileId`、`fallbackEnabled`、`fallbackProfileIds`、`sceneRouting`。
+- `lib/store.js`：新增 `aiModelProfiles` / `yk_aiModelProfiles` 集合；本地和 CloudBase seed 会从旧 `ai_settings` 迁移默认模型档案。
+- `lib/ai-analysis/service.js`：重构 AI service，新增模型档案列表、详情、保存、删除、测试连接、用量统计、场景模型解析、主备故障转移和统一 `runAiAnalysis()` 执行器；活动分析和反馈分析都改为通过场景路由解析模型。
+- `lib/ai-analysis/cache/store-cache.js`：缓存 key 增加模型档案、场景和 Prompt 版本，避免切换模型或 Prompt 后命中旧缓存。
+- `lib/ai-analysis/logger/usage-logger.js`：用量日志增加 `profileId`、`profileName`、`scene`、`attempt`、`fallbackFrom` 和 `promptVersion`。
+- `lib/community-safety/service.js`：活动置信度 `aiMeta` 写入本次使用的模型档案和故障转移 attempts，方便置信度详情继续演进。
+- `lib/app.js`：新增 `/api/ai/models` CRUD、`/api/ai/models/:id/test`、`/api/ai/usage`、Prompt 单条详情接口、Prompt type 筛选；新增 / 编辑 Prompt 勾选立即启用时同步激活同场景版本。
+- `admin-ai.html`：从旧大表单重构为 AI 控制台与场景路由页。
+- 新增 `admin-ai-models.html`、`admin-ai-model-editor.html`、`admin-ai-prompts.html`、`admin-ai-prompt-editor.html`、`admin-ai-usage.html`。
+- `app.js`：新增 AI 控制台渲染、模型档案列表与编辑、场景路由保存、Prompt 场景筛选与编辑、用量健康渲染。
+- `styles.css`：新增 AI 控制台卡片、场景路由、模型档案、用量健康和 fieldset 胶囊控件样式，并补移动端单列布局。
+- `tests/smoke.test.js`：新增默认模型档案存在、反馈 Prompt 筛选与启用、主模型 500 失败后自动切到备用模型、用量统计按模型记录成功 / 失败的覆盖。
+- `README.md`、`CHANGELOG.md`、`package.json`、`package-lock.json`、`*.html`：同步版本与文档到 `0.25.0`。
+
+### 技术方案选择
+
+- AI 模型档案独立成 `aiModelProfiles`，不是继续扩写 `systemConfigs.ai_settings`，因为未来不同场景需要不同模型，也需要记录每个模型的健康状态、优先级和适用范围。
+- 场景路由采用 `activity / feedback / report / manual` 四个 scene，第一版覆盖已有业务和近期可预见的举报复核、手动重分析，不把业务代码绑定到具体 Provider。
+- 旧 `/api/ai/settings` 保留兼容；当旧接口保存 Provider / Base URL / Model / API Key 时，同步默认模型档案并设回场景主模型，避免旧配置路径和新运行时打架。
+- 故障转移在同一个 Prompt 和 Schema 下跨 Provider 尝试，保证业务层只拿标准分析报告；所有失败 attempt 写入用量日志，而不是吞掉。
+- 用量统计第一版只做系统 + 模型维度，避免管理员被单条内容日志淹没，也符合这次参考 cc-switch 的“模型管理器”方向。
+- Prompt 管理拆成独立列表和详情页，是为了把“活动反馈 Prompt 在哪里改”变成显式入口，而不是要求管理员知道隐藏的 `feedback` 类型。
+
+### 当前完成情况
+
+- 代码开发、版本号和文档同步已完成。
+- 本地 `npm test` 通过。
+- 本地 `npm run deploy:dry-run` 通过。
+
+### 遗留问题
+
+- AI 用量统计目前读取近 1000 条日志聚合，足够当前体量；后续调用量增加后建议改成 CloudBase 聚合或每日统计快照。
+- AI 模型档案尚未实现日调用上限熔断，字段已预留 `dailyLimit`，但运行时没有根据该字段跳过模型。
+- Prompt 管理暂未提供样例文本测试 Prompt、版本 diff 和一键复制当前版本创建新版本。
+- 场景路由目前只有主模型和备用队列；后续可以增加按低信用身份、举报复核、随机抽检等策略选择不同模型的更细路由。
+
+### 下一步建议
+
+1. 增加 Prompt 测试台：管理员选择场景、输入样例内容，直接查看结构化 JSON、耗时、Token 和使用模型。
+2. 给 AI 用量健康增加每日趋势图和 Provider 失败率阈值提醒，发现模型异常时自动提示切换主模型。
+3. 拆分 `app.js` 和 `lib/app.js` 中 AI 相关逻辑，优先抽出 `admin-ai` 前端模块和 `lib/routes/ai.js`，降低主文件继续膨胀的维护风险。

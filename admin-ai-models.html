@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>近期活动｜有空客厅</title>
-    <meta name="description" content="查看有空客厅近期活动和历史活动。未登录也可以进入活动详情页报名。" />
+    <title>AI 模型配置｜有空客厅</title>
+    <meta name="description" content="YKadmin 管理 AI 模型档案、连接状态、主备模型和故障转移。" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -28,40 +28,34 @@
       </div>
     </header>
 
-    <main id="main" data-public-activities-page>
-      <section class="page-hero river compact-hero">
+    <main id="main" data-admin-ai-models-page>
+      <section class="page-hero">
         <div class="wrap">
-          <p class="eyebrow">公告栏</p>
-          <h1 data-public-activity-title>近期活动</h1>
-          <p data-public-activity-subtitle>这里显示已经发布、还没有结束的活动。未登录也可以点进活动页报名。</p>
-          <div class="pill-tabs" aria-label="活动视图切换">
-            <a class="active" href="activities.html" data-public-activity-tab="upcoming">近期活动</a>
-            <a href="activities.html?view=history" data-public-activity-tab="history">历史活动</a>
-          </div>
-          <div class="pill-tabs history-source-tabs" aria-label="历史活动来源切换">
-            <a class="active" href="activities.html?view=history" data-public-source-tab="">全部历史</a>
-            <a href="activities.html?view=history&sourceType=living_room" data-public-source-tab="living_room">客厅</a>
-            <a href="activities.html?view=history&sourceType=friend" data-public-source-tab="friend">客厅的朋友们</a>
-          </div>
+          <p class="eyebrow">模型配置</p>
+          <h1>把每个 AI 模型保存成可切换的档案。</h1>
+          <p>不同 Provider 可以并存。活动分析、反馈分析、举报复核可以各自选择主模型，并在失败时切换备用模型。</p>
         </div>
       </section>
 
       <section class="section alt">
-        <div class="wrap activity-list-shell">
+        <div class="wrap">
           <div class="list-toolbar">
-            <span data-public-activity-count>正在读取活动...</span>
-            <a class="button primary" href="participate.html#start">发起一个活动</a>
+            <span data-ai-model-count>正在读取模型...</span>
+            <div class="row-actions">
+              <a class="button primary" href="admin-ai-model-editor.html">新增模型</a>
+              <a class="button ghost" href="admin-ai.html">AI 控制台</a>
+              <a class="button ghost" href="admin.html">回后台</a>
+            </div>
           </div>
-          <div class="event-list public-event-list" data-public-activities></div>
-          <button class="button ghost load-more" type="button" data-load-more-public-activities hidden>加载更多</button>
+          <div class="event-list rows ai-model-list" data-ai-model-list></div>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-grid">
-        <div><div class="footer-brand">有空客厅</div><div>人人都可以发起，也一起维护。</div><div class="credit">网站制作人：海旭</div></div>
-        <nav class="footer-links"><a href="index.html">首页</a><a href="participate.html">活动与参与</a><a href="donate.html">捐赠支持</a><a href="about.html">关于与联系</a></nav>
+        <div><div class="footer-brand">有空客厅</div><div>模型可以切换，社区判断不能外包。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="admin-ai.html">AI 控制台</a><a href="admin-ai-prompts.html">Prompt 管理</a><a href="admin-ai-usage.html">用量健康</a><a href="admin-safety.html">规则引擎</a><a href="admin-logs.html">操作日志</a></nav>
       </div>
     </footer>
     <script src="script.js?v=0.25.0"></script>

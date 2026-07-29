@@ -2,6 +2,35 @@
 
 所有重要变更都会记录在此文件中。格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循语义化版本思路。
 
+## [0.25.0] - 2026-07-29
+
+### Added
+
+- 新增 AI 控制台总览，展示 AI 开关、当前主模型、模型健康、近 7 天调用、Token、活动分析 / 活动反馈 / 举报复核 Prompt 当前版本。
+- 新增 `aiModelProfiles` / `yk_aiModelProfiles` 模型档案集合，支持多个 Provider / Model / 加密 API Key / 超时 / 温度 / Token / 重试 / 优先级 / 适用场景。
+- 新增 `admin-ai-models.html` 和 `admin-ai-model-editor.html`，支持新增、编辑、测试、删除模型档案，并可一键设为全部场景主模型。
+- 新增 AI 场景路由，活动分析、活动反馈、举报复核和手动重分析可分别配置主模型和备用模型队列。
+- 新增 AI 故障转移运行时，主模型缺 Key、超时、5xx、429 或 Provider 调用失败时按备用队列继续尝试，并记录每次 attempt。
+- 新增 `admin-ai-prompts.html` 和 `admin-ai-prompt-editor.html`，Prompt 按活动分析、活动反馈、举报复核场景筛选、编辑、启用和删除。
+- 新增 `admin-ai-usage.html`，按整个系统和模型维度查看调用量、成功率、平均耗时、Token、缓存命中、失败次数和最近错误。
+- AI 用量日志新增 `profileId`、`profileName`、`scene`、`attempt`、`fallbackFrom` 和 `promptVersion` 字段。
+- 活动置信度分析报告的 `aiMeta` 新增模型档案和故障转移 attempts 信息。
+- 冒烟测试新增模型档案默认迁移、活动反馈 Prompt 场景筛选 / 启用、主模型失败后备用模型接管，以及模型维度用量统计覆盖。
+
+### Changed
+
+- `admin-ai.html` 从单页大表单改为控制台 + 场景路由，复杂模型配置、Prompt 管理和用量健康拆到独立子页面。
+- 旧 `/api/ai/settings` 单模型字段继续兼容；保存 Provider / Base URL / Model / API Key 时会同步默认模型档案，并将默认模型设回场景主模型。
+- AI 缓存 key 增加模型档案、场景和 Prompt 版本维度，避免切换模型或 Prompt 后读到旧分析。
+- 新增 Prompt 勾选立即启用时，会同步关闭同场景旧版本并更新 `settings.promptVersions[type]`。
+- README、项目目录、环境集合说明和当前开发状态同步到 `0.25.0`。
+
+### Fixed
+
+- 修复活动反馈 Prompt 虽然后端支持 `feedback` 类型，但后台入口隐藏、需要手动填写类型字段，管理员难以找到的问题。
+- 修复旧单模型配置和新多模型运行时之间可能不同步，导致保存新 Provider 后仍调用旧模型的问题。
+- 修复 Prompt 新增时设置 `active=true` 但没有同步当前 Prompt 版本，可能出现 UI 显示启用但运行时未切换的问题。
+
 ## [0.24.1] - 2026-07-29
 
 ### Added

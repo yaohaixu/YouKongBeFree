@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>编辑 AI Prompt｜有空客厅</title>
+    <meta name="description" content="YKadmin 新增、编辑或启用 AI Prompt 版本。" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <script src="theme.js?v=0.25.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.25.0" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html"><span class="brand-mark">有空</span><span class="brand-text">有空客厅</span></a>
+        <button class="menu-toggle" type="button" aria-label="打开导航" aria-expanded="false"><span></span><span></span><span></span></button>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="whitepaper.html">社区共识</a>
+          <a href="participate.html">活动与参与</a>
+          <a href="donate.html">捐赠支持</a>
+          <a href="about.html">关于与联系</a>
+          <span class="session-nav" data-session-nav><a href="me.html">我的</a></span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" data-admin-ai-prompt-editor-page>
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">Prompt 详情</p>
+          <h1 data-ai-prompt-editor-heading>新增 Prompt 版本。</h1>
+          <p>System Prompt 定义 AI 的身份边界；User Prompt 定义这个场景要分析什么、如何输出。</p>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap editor-layout">
+          <form class="form-note config-editor" data-ai-prompt-form>
+            <h3 data-ai-prompt-form-title>新增 Prompt</h3>
+            <div class="form-grid compact-form-grid">
+              <label>场景<select name="type" required><option value="activity">活动分析</option><option value="feedback">活动反馈</option><option value="report">举报复核</option></select></label>
+              <label>版本<input name="version" placeholder="feedback-v2" required /></label>
+              <label>名称<input name="name" required placeholder="比如：活动反馈分析 v2" /></label>
+              <label>保存后状态<select name="active"><option value="false">保存为历史版本</option><option value="true">立即启用</option></select></label>
+            </div>
+            <label>System Prompt<textarea name="systemPrompt" rows="10" required></textarea></label>
+            <label>User Prompt<textarea name="userPrompt" rows="12" required></textarea></label>
+            <div class="form-actions">
+              <button class="button primary" type="submit">保存 Prompt</button>
+              <a class="button ghost" href="admin-ai-prompts.html">取消</a>
+            </div>
+            <p class="form-message" data-ai-prompt-message></p>
+          </form>
+
+          <aside class="panel-block sticky-panel">
+            <p class="section-kicker">Prompt 分工</p>
+            <h3>不要把身份和任务混在一起。</h3>
+            <p class="muted-text">System Prompt 写“AI 是谁、不能做什么”；User Prompt 写“当前场景要分析什么、输出哪些字段”。活动反馈 Prompt 就在这里选择“活动反馈”场景维护。</p>
+            <div class="button-row">
+              <a class="button ghost" href="admin-ai-prompts.html?type=feedback">活动反馈 Prompt</a>
+              <a class="button outline" href="admin-ai.html">AI 控制台</a>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><div class="footer-brand">有空客厅</div><div>Prompt 可以演进，但要留下版本。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="admin-ai.html">AI 控制台</a><a href="admin-ai-prompts.html">Prompt 管理</a><a href="admin-ai-models.html">模型配置</a><a href="admin-ai-usage.html">用量健康</a></nav>
+      </div>
+    </footer>
+    <script src="script.js?v=0.25.0"></script>
+    <script src="app.js?v=0.25.0"></script>
+  </body>
+</html>

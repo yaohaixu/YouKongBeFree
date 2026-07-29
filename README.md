@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.24.1`
+当前版本：`0.25.0`
 
-状态：`0.24.1` 优化角色权限管理体验：新增 / 编辑角色拆为独立详情页，用户管理页增加「新建角色」入口，权限矩阵改为更稳定的勾选胶囊控件，并将后台治理相关可见文案进一步中文化。
+状态：`0.25.0` 重构 AI 分析引擎后台：新增 AI 控制台、模型档案、场景路由、Prompt 场景化管理、模型故障转移和系统 / 模型维度用量健康统计；旧单模型设置自动迁移并兼容默认模型档案。
 
 ## 访问地址
 
@@ -35,6 +35,9 @@ CloudBase 动态线上站点：
 - 社区举报：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-reports.html
 - 规则引擎：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-safety.html
 - AI 分析：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-ai.html
+- AI 模型配置：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-ai-models.html
+- AI Prompt 管理：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-ai-prompts.html
+- AI 用量健康：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-ai-usage.html
 - 社区信用度：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-trust.html
 - 社区信用策略：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-trust-policy.html
 - 社区徽章：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin-badges.html
@@ -58,7 +61,8 @@ GitHub Pages 静态展示：
 - 社区治理：新增统一社区事件、信用策略、社区徽章和徽章展示策略。社区信用不再只是直接分数，而是由活动发布、活动置信度、社区反馈和报名里程碑等事件按策略投影出来；活动置信度评价单次活动，社区信用评价长期匿名身份，两者通过可配置策略映射。
 - 社区信用：匿名身份初始 50 分，基于事件流逐步变化；后台可查看 Community ID、社区等级、状态、徽章、活动数、报名回应、举报和完整时间线。
 - 社区徽章：后台可配置身份徽章、成就徽章和事件徽章，徽章获得规则使用 JSON Rule Builder；徽章展示策略控制徽章是否公开、展示在哪些位置、是否显示图标 / 名称和悬停说明。
-- AI 分析引擎：AI 是社区观察员，不是审核员；支持开关、Provider、Base URL、Model、加密 API Key、Prompt 版本、调用策略、能力开关、缓存、重试、用量日志和测试连接；AI 介入条件可配置为规则置信度低于 / 等于阈值、匿名身份前 N 场必调 AI、举报后重分析、手动重分析、低信用度、随机抽检或全部分析；规则置信度阈值设为 100 时会覆盖全部活动；AI 关闭、缺少 Key 或不可用时，中高风险活动会进入管理员兜底审核；AI 明确识别营销、垃圾、诈骗、违法、成人和政治敏感内容时，策略引擎会提升风险下限并把高风险活动隐藏后转入管理员审核，疑似营销则保留公开但进入管理员关注待办。
+- AI 分析引擎：AI 是社区观察员，不是审核员；新增 AI 控制台、模型档案、场景路由、Prompt 管理和用量健康页。管理员可配置多个模型档案，每个档案包含 Provider、Base URL、Model、加密 API Key、超时、重试、Max Tokens、Temperature、启用状态、优先级和适用场景；活动分析、活动反馈、举报复核和手动重分析可分别绑定主模型与备用模型，主模型失败时按队列自动故障转移；用量健康按系统和模型维度展示调用量、成功率、平均耗时、Token、缓存命中和最近错误。
+- AI 调用策略：支持开关、Prompt 版本、调用策略、能力开关、缓存、重试和测试连接；AI 介入条件可配置为规则置信度低于 / 等于阈值、匿名身份前 N 场必调 AI、举报后重分析、手动重分析、低信用度、随机抽检或全部分析；规则置信度阈值设为 100 时会覆盖全部活动；AI 关闭、缺少 Key 或不可用时，中高风险活动会进入管理员兜底审核；AI 明确识别营销、垃圾、诈骗、违法、成人和政治敏感内容时，策略引擎会提升风险下限并把高风险活动隐藏后转入管理员审核，疑似营销则保留公开但进入管理员关注待办。
 - 社区举报：活动详情页支持社区反馈；每条新举报都会记录并触发活动重分析。举报理由与规则 / AI 分析相符时活动会下架并转入管理员审核，管理员通过后重新公开；举报暂不成立时只留痕不下架；多人举报会给活动增加中立风险提醒。
 - 风险提示：低风险活动默认不展示“可信”标签；存在营销或较高风险时显示中立提示，帮助参与者自行判断。
 - YKadmin 后台：入口型工作台按待办、活动运营、社区治理、安全与智能、用户与权限、系统维护分组；社区举报、社区信用、信用策略、社区徽章和徽章展示策略直接出现在社区治理分组下，AI 分析仍在安全与智能分组下。
@@ -155,7 +159,12 @@ GitHub Pages 静态展示：
 ├── admin-logs.html         # 管理员操作日志
 ├── admin-reports.html      # 社区举报列表与复核结论
 ├── admin-safety.html       # 规则引擎和策略配置
-├── admin-ai.html           # AI 分析引擎设置和 Prompt
+├── admin-ai.html           # AI 控制台与场景路由
+├── admin-ai-models.html    # AI 模型档案列表
+├── admin-ai-model-editor.html # 新增 / 编辑 AI 模型档案
+├── admin-ai-prompts.html   # AI Prompt 场景化管理
+├── admin-ai-prompt-editor.html # 新增 / 编辑 AI Prompt
+├── admin-ai-usage.html     # AI 用量健康统计
 ├── admin-governance.html   # 社区治理兼容旧入口
 ├── admin-trust.html        # 社区信用列表
 ├── admin-trust-detail.html # 社区信用详情
@@ -254,7 +263,7 @@ YK_DB_FILE=
 
 - `.env` 不允许提交到 Git。
 - 本地默认使用 `STORE_DRIVER=json`，数据写入 `data/youkong-db.json`。
-- 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_templates`、`yk_livingRoomFriends`、`yk_activities`、`yk_registrations`、`yk_activityInterests`、`yk_activityFeedbacks`、`yk_sessions`、`yk_logs`、`yk_safetyRules`、`yk_systemConfigs`、`yk_anonymousIdentities`、`yk_communityEvents`、`yk_trustProfiles`、`yk_trustEvents`、`yk_trustPolicies`、`yk_communityBadges`、`yk_identityBadges`、`yk_badgePolicies`、`yk_rateEvents`、`yk_analysisReports`、`yk_communityReports`、`yk_aiPrompts`、`yk_aiCache`、`yk_aiUsageLogs`。
+- 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_templates`、`yk_livingRoomFriends`、`yk_activities`、`yk_registrations`、`yk_activityInterests`、`yk_activityFeedbacks`、`yk_sessions`、`yk_logs`、`yk_safetyRules`、`yk_systemConfigs`、`yk_anonymousIdentities`、`yk_communityEvents`、`yk_trustProfiles`、`yk_trustEvents`、`yk_trustPolicies`、`yk_communityBadges`、`yk_identityBadges`、`yk_badgePolicies`、`yk_rateEvents`、`yk_analysisReports`、`yk_communityReports`、`yk_aiModelProfiles`、`yk_aiPrompts`、`yk_aiCache`、`yk_aiUsageLogs`。
 - `CORS_ORIGINS` 用英文逗号分隔允许跨域访问 API 的前端域名；`SESSION_MAX_AGE_DAYS` 会被限制在 1 到 30 天之间。
 - `ACTIVITY_AUTO_END_INTERVAL_MS` 控制本地 / 常驻服务的自动结束轮询间隔，默认 15 分钟；`ACTIVITY_AUTO_END_MIN_SWEEP_MS` 控制请求兜底 sweep 的最小间隔；`DISABLE_ACTIVITY_AUTO_END=true` 可关闭后台轮询。
 - `API_TIMING_LOGS=false` 可关闭 API 耗时日志；`API_SLOW_LOG_MS` 控制慢请求阈值，默认 1200ms。
@@ -376,7 +385,10 @@ npm run deploy:cloudbase
 - YKadmin 操作日志独立页，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载，并仅保留最近 30 天日志。
 - YKadmin 社区举报独立页，支持关键词、处理状态、举报原因和日期范围筛选，列表展示举报理由、活动状态、复核结论并可跳转活动和置信度详情。
 - YKadmin 规则引擎页面，支持查看、新增、保存、删除风险规则，并通过 JSON 调整限流、Turnstile、举报阈值、风险分流策略和社区信用权重。
-- YKadmin AI 分析页面，支持配置 AI 总开关、Provider、Base URL、Model、加密 API Key、超时、温度、Token、重试、缓存、调用策略、能力开关、Prompt 版本和连接测试。
+- YKadmin AI 控制台，支持查看 AI 总开关、当前主模型、备用模型数量、近 7 天调用、Prompt 当前版本，并在同页配置活动分析、活动反馈、举报复核和手动重分析的主模型 / 备用模型场景路由。
+- YKadmin AI 模型配置，支持新增、编辑、删除、测试多个模型档案；模型档案包含 Provider、Base URL、Model、加密 API Key、超时、温度、Token、重试、启用状态、优先级和适用场景；可一键设为全部场景主模型，主模型失败时支持跨 Provider 故障转移。
+- YKadmin AI Prompt 管理，支持按活动分析、活动反馈、举报复核场景筛选、新增、编辑、启用和删除 Prompt 版本；活动反馈 Prompt 不再需要手填隐藏 `feedback` 类型。
+- YKadmin AI 用量健康，支持按整个系统和模型维度查看调用量、成功率、平均耗时、Token、缓存命中、失败次数和最近错误。
 - YKadmin 社区治理旧总入口保留为兼容页面；正式工作台已取消总入口，把社区信用、信用策略、社区徽章和徽章展示策略直接放入社区治理分组，AI 分析和规则引擎放入安全与智能分组。
 - YKadmin 信用策略页面，支持新增、编辑、删除事件驱动信用策略；策略由事件类型、条件 JSON、条件模式和 `trustDelta` 组成。
 - YKadmin 社区徽章页面，支持新增、编辑、删除身份徽章、成就徽章和事件徽章；徽章获得规则通过 JSON Rule Builder 配置。
@@ -434,6 +446,7 @@ npm run deploy:cloudbase
 
 ## 已验证
 
+- `0.25.0` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖 AI 模型档案默认迁移、活动反馈 Prompt 场景筛选与启用、主模型 500 失败后自动切换备用模型、模型维度用量统计和新 AI 页面静态构建。
 - `0.24.1` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖用户管理页「新建角色」入口顺序、`admin-role-editor.html` 移动端无横向溢出和权限胶囊控件视觉状态。
 - `0.24.0` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖角色权限 API、自定义角色分配、日志查看角色越权拦截、后台卡片权限过滤和 `admin-roles.html` 移动端无横向溢出。
 - `0.23.4` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖未登录「我的」开放工作台 4 个基础入口、Octicon 风格图标、语义 tone、右侧箭头、锚点入口和待办区隐藏状态。
@@ -529,7 +542,7 @@ npm run deploy:cloudbase
 
 - 生产级身份验证：短信验证码、密码或微信登录，替代当前手机号白名单免密登录。
 - 生产启用 Turnstile：在 Cloudflare 获取 Site Key / Secret Key 后写入 CloudBase 环境变量，并在规则引擎页开启策略。
-- 生产启用 AI 分析引擎：先配置 Provider、Base URL、Model、API Key、Prompt 和调用策略，再用后台「测试连接」灰度验证。
+- 生产启用 AI 分析引擎：先在 AI 模型配置中创建主模型和备用模型，进入 AI 控制台配置活动分析 / 活动反馈 / 举报复核场景路由，再在 Prompt 管理中确认当前启用版本，并用用量健康页观察成功率和错误。
 - `0.22.0` 新增「客厅的朋友们」和匿名活动反馈集合，CloudBase 需要补充 `yk_livingRoomFriends`、`yk_activityFeedbacks` 以及 `yk_activities.sourceType / friendId` 相关索引，详见 `docs/cloudbase-indexes.md`。
 - 管理员仪表盘统计：增加风险分布、举报趋势、AI 调用量、信用度变化和活动发布转化概览。
 - CloudBase 恢复演练和权限策略文档。

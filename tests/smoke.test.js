@@ -106,6 +106,30 @@ async function startAiStub(report = {}) {
   };
 }
 
+async function startFailingAiStub(statusCode = 500) {
+  let calls = 0;
+  const server = http.createServer((req, res) => {
+    if (req.method === "POST" && req.url === "/v1/chat/completions") {
+      calls += 1;
+      res.writeHead(statusCode, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: { message: "stub provider failed" } }));
+      return;
+    }
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end("{}");
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const address = server.address();
+  return {
+    baseUrl: `http://127.0.0.1:${address.port}/v1`,
+    get calls() {
+      return calls;
+    },
+    close: () => new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve()))),
+  };
+}
+
 function localDateTimeFromNow(days, hour = 19, minute = 30) {
   const date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -460,6 +484,24 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(aiSettingsUpdate.settings.callStrategy.firstActivityCount, 4);
   assert.equal(aiSettingsUpdate.settings.callStrategy.lowConfidenceOnly, true);
   assert.equal(aiSettingsUpdate.settings.callStrategy.firstActivitiesAlways, true);
+  const defaultAiModels = await request("/api/ai/models", {}, admin.token);
+  assert.ok(defaultAiModels.models.some((model) => model.id === "ai_model_default"));
+  const feedbackPrompts = await request("/api/ai/prompts?type=feedback&page=1&pageSize=10", {}, admin.token);
+  assert.ok(feedbackPrompts.prompts.every((prompt) => prompt.type === "feedback"));
+  const feedbackPrompt = await request("/api/ai/prompts", {
+    method: "POST",
+    body: {
+      type: "feedback",
+      version: "feedback-smoke-v2",
+      name: "反馈 Prompt 测试版本",
+      active: "true",
+      systemPrompt: "你是活动反馈观察员，只输出 JSON。",
+      userPrompt: "请判断匿名反馈是否适合公开展示。",
+    },
+  }, admin.token);
+  assert.equal(feedbackPrompt.prompt.type, "feedback");
+  const feedbackPromptSettings = await request("/api/ai/settings", {}, admin.token);
+  assert.equal(feedbackPromptSettings.settings.promptVersions.feedback, "feedback-smoke-v2");
   assert.equal(shouldCallAi({
     enabled: true,
     callStrategy: {
@@ -558,6 +600,83 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.equal(aiCalledConfidence.latestAnalysis.aiReport.summary, "AI stub 分析结果");
   } finally {
     await aiStub.close();
+  }
+  const failingAiStub = await startFailingAiStub();
+  const fallbackAiStub = await startAiStub({ summary: "备用模型完成分析" });
+  try {
+    const failingModel = await request("/api/ai/models", {
+      method: "POST",
+      body: {
+        name: "故障转移主模型",
+        provider: "openai-compatible",
+        baseUrl: failingAiStub.baseUrl,
+        model: "failing-stub",
+        apiKey: "stub-key",
+        enabled: "true",
+        priority: 1,
+        sceneScopes: ["activity"],
+        requestTimeoutMs: 15000,
+        temperature: 0.2,
+        maxTokens: 1200,
+        retryCount: 0,
+      },
+    }, admin.token);
+    const backupModel = await request("/api/ai/models", {
+      method: "POST",
+      body: {
+        name: "故障转移备用模型",
+        provider: "openai-compatible",
+        baseUrl: fallbackAiStub.baseUrl,
+        model: "fallback-stub",
+        apiKey: "stub-key",
+        enabled: "true",
+        priority: 2,
+        sceneScopes: ["activity"],
+        requestTimeoutMs: 15000,
+        temperature: 0.2,
+        maxTokens: 1200,
+        retryCount: 0,
+      },
+    }, admin.token);
+    await request("/api/ai/settings", {
+      method: "PUT",
+      body: {
+        enabled: "true",
+        fallbackEnabled: "true",
+        activeProfileId: failingModel.model.id,
+        sceneRouting: {
+          activity: { primaryProfileId: failingModel.model.id, fallbackProfileIds: [backupModel.model.id] },
+          feedback: { primaryProfileId: backupModel.model.id, fallbackProfileIds: [] },
+          report: { primaryProfileId: backupModel.model.id, fallbackProfileIds: [] },
+          manual: { primaryProfileId: backupModel.model.id, fallbackProfileIds: [] },
+        },
+        cacheTtlSeconds: 0,
+        callStrategy: {
+          lowConfidenceOnly: true,
+          ruleConfidenceMax: 100,
+          firstActivitiesAlways: false,
+          mediumRiskOnly: false,
+          randomSampleRate: 0,
+        },
+      },
+    }, admin.token);
+    const fallbackActivity = await createActivity("", {
+      title: "AI 故障转移测试活动",
+      initiator: "匿名发起人",
+      description: "普通社区活动，用于验证主模型失败后自动切到备用模型。",
+    });
+    assert.equal(fallbackActivity.activity.status, "published");
+    assert.ok(failingAiStub.calls >= 1);
+    assert.ok(fallbackAiStub.calls >= 1);
+    const fallbackConfidence = await request(`/api/activities/${fallbackActivity.activity.id}/confidence`, {}, admin.token);
+    assert.equal(fallbackConfidence.latestAnalysis.aiMeta.profileId, backupModel.model.id);
+    assert.ok(fallbackConfidence.latestAnalysis.aiMeta.attempts.some((item) => item.profileId === failingModel.model.id && item.ok === false));
+    const aiUsage = await request("/api/ai/usage?days=7", {}, admin.token);
+    assert.ok(aiUsage.usage.models.some((model) => model.profileId === failingModel.model.id && model.failedCalls >= 1));
+    assert.ok(aiUsage.usage.models.some((model) => model.profileId === backupModel.model.id && model.successCalls >= 1));
+  } finally {
+    await failingAiStub.close();
+    await fallbackAiStub.close();
   }
   const clearAdStub = await startAiStub({
     riskScore: 20,
@@ -1379,6 +1498,11 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.equal(safetyTextareaState.paramsHeight, safetyTextareaState.descriptionHeight);
     assert.equal(safetyTextareaState.paramsRadius, safetyTextareaState.descriptionRadius);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-ai.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-ai-models.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-ai-model-editor.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-ai-prompts.html`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-ai-prompt-editor.html?type=feedback`);
+    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-ai-usage.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-governance.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-trust-policy.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-badges.html`);
