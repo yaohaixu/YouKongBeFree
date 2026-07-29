@@ -711,6 +711,7 @@ function renderMainNav(navLinks, baseLinks, pageName, user) {
     "admin-feedbacks.html",
     "admin-members.html",
     "admin-roles.html",
+    "admin-role-editor.html",
     "admin-modules.html",
     "admin-templates.html",
     "admin-template-editor.html",
@@ -2140,8 +2141,8 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           label: "社区举报",
           title: "查看活动举报和分析结论",
           body: "每条举报都会记录原因、AI/规则复核结果和活动后续流转。",
-          meta: "Community Report",
-          count: "Report",
+          meta: "社区举报",
+          count: "举报",
           icon: "report",
           permission: ["reports", "view"],
         },
@@ -2149,9 +2150,9 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           href: "admin-trust.html",
           label: "社区信用",
           title: "查看匿名身份信用时间线",
-          body: "观察 Community Trust、社区等级、身份状态和事件来源。",
-          meta: "Community Trust",
-          count: "Trust",
+          body: "观察社区信用、社区等级、身份状态和事件来源。",
+          meta: "社区信用",
+          count: "信用",
           icon: "trust",
           permission: ["trust", "view"],
         },
@@ -2160,8 +2161,8 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           label: "信用策略",
           title: "配置社区信用变动规则",
           body: "用策略定义活动置信度、报名、反馈和举报如何影响信用。",
-          meta: "Trust Policy",
-          count: "Policy",
+          meta: "信用策略",
+          count: "策略",
           icon: "policy",
           permission: ["trustPolicy", "view"],
         },
@@ -2170,8 +2171,8 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           label: "社区徽章",
           title: "维护社区贡献的可视表达",
           body: "管理身份徽章、成就徽章和事件徽章。",
-          meta: "Community Badge",
-          count: "Badge",
+          meta: "社区徽章",
+          count: "徽章",
           icon: "badge",
           permission: ["badges", "view"],
         },
@@ -2180,8 +2181,8 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           label: "徽章展示",
           title: "配置徽章展示策略",
           body: "决定徽章是否公开，以及展示在哪些页面和位置。",
-          meta: "Display Policy",
-          count: "Show",
+          meta: "展示策略",
+          count: "展示",
           icon: "eye",
           permission: ["badgePolicy", "view"],
         },
@@ -2196,17 +2197,17 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           label: "规则引擎",
           title: "配置开放发布的风险规则",
           body: "调整敏感词、URL、格式异常等规则分值和策略阈值。",
-          meta: "Rule Engine",
-          count: "OS",
+          meta: "规则引擎",
+          count: "规则",
           icon: "rules",
           permission: ["safety", "view"],
         },
         {
           href: "admin-ai.html",
           label: "AI 分析",
-          title: "管理可插拔 AI Analysis Engine",
+          title: "管理可插拔 AI 分析引擎",
           body: "开启或关闭 AI，配置 Provider、Prompt、能力和调用策略。",
-          meta: "Observer",
+          meta: "观察员",
           count: "AI",
           icon: "ai",
           permission: ["ai", "view"],
@@ -2232,7 +2233,7 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           label: "角色权限",
           title: "配置角色能做什么",
           body: "新增角色，并按模块和动作配置查看、新增、编辑、删除、审核、导出等权限。",
-          meta: "RBAC",
+          meta: "角色权限",
           count: roleTotal,
           icon: "key",
           permission: ["roles", "view"],
@@ -2310,7 +2311,7 @@ async function initAdminGovernancePage() {
   const cards = [
     {
       href: "admin-trust.html",
-      label: "Community Trust",
+      label: "社区信用",
       title: "查看社区身份和信用时间线",
       body: "每个匿名身份的信用变化都来自可追溯事件。",
       meta: "社区身份",
@@ -2318,7 +2319,7 @@ async function initAdminGovernancePage() {
     },
     {
       href: "admin-trust-policy.html",
-      label: "Trust Policy",
+      label: "信用策略",
       title: "配置信用变化策略",
       body: "用事件类型、条件和 trustDelta 映射长期信任。",
       meta: "策略规则",
@@ -2326,35 +2327,35 @@ async function initAdminGovernancePage() {
     },
     {
       href: "admin-badges.html",
-      label: "Community Badge",
+      label: "社区徽章",
       title: "配置社区徽章",
-      body: "徽章依据 Community Trust、活动次数等条件自动授予。",
+      body: "徽章依据社区信用、活动次数等条件自动授予。",
       meta: "可配置徽章",
       count: overview.badges?.total || 0,
     },
     {
       href: "admin-badge-policy.html",
-      label: "Badge Policy",
+      label: "徽章展示策略",
       title: "配置徽章展示位置",
       body: "决定徽章公开展示还是仅后台可见。",
       meta: "展示策略",
-      count: "View",
+      count: "展示",
     },
     {
       href: "admin-ai.html",
-      label: "AI Analysis",
+      label: "AI 分析",
       title: "AI 作为社区观察员",
       body: "AI 输出分析报告，不直接处罚或删除内容。",
-      meta: "Observer",
+      meta: "观察员",
       count: "AI",
     },
     {
       href: "admin-safety.html",
-      label: "Rule Engine",
+      label: "规则引擎",
       title: "开放发布前的风险规则",
       body: "规则引擎给活动置信度提供基准分。",
-      meta: "Risk Rules",
-      count: "Rule",
+      meta: "风险规则",
+      count: "规则",
     },
   ];
   qs("[data-governance-cards]", root).innerHTML = cards.map(renderWorkspaceCard).join("");
@@ -2664,6 +2665,7 @@ async function initAdminMembersPage() {
   bindAdminForms();
   const userPanel = qs("[data-user-create-panel]", root);
   if (userPanel) userPanel.hidden = !hasPermission(user, "users", "create");
+  await initAdminMembersPageRoleLinks(root, user);
   await renderUsers();
 }
 
@@ -2672,23 +2674,53 @@ async function initAdminRolesPage() {
   if (!root) return;
   const user = await requireAdminUser(root, "roles", "view");
   if (!user) return;
-  await loadRoleOptions(root);
   const filters = qs("[data-role-filters]", root);
   filters?.addEventListener("submit", (event) => {
     event.preventDefault();
     renderRoles();
   });
+  qsa("[data-role-create-link]", root).forEach((link) => {
+    link.hidden = !hasPermission(user, "roles", "create");
+  });
+  await renderRoles();
+}
+
+async function initAdminRoleEditorPage() {
+  const root = qs("[data-admin-role-editor-page]");
+  if (!root) return;
+  const editingId = new URLSearchParams(location.search).get("id");
+  const user = await requireAdminUser(root, "roles", editingId ? "edit" : "create");
+  if (!user) return;
   const form = qs("[data-role-form]", root);
+  await loadRoleOptions(root);
   resetRoleForm(form);
+  if (editingId) {
+    const role = (mePageState.roles || []).find((item) => item.id === editingId || item.key === editingId);
+    if (!role) {
+      setMessage(qs("[data-role-message]", root), "没有找到这个角色，请回到角色列表重试。", "error");
+      qsa("input, textarea, button", form).forEach((control) => {
+        if (control.tagName !== "BUTTON") control.disabled = true;
+      });
+      qs("[data-role-submit]", form).disabled = true;
+      return;
+    }
+    fillRoleForm(form, role, { scroll: false });
+  }
+  form?.addEventListener("change", (event) => {
+    if (event.target?.matches("[data-permission-module][data-permission-action]")) {
+      updatePermissionSummary(form);
+    }
+  });
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    await saveRole(form);
+    await saveRole(form, { redirect: true });
   });
-  qs("[data-role-reset]", form)?.addEventListener("click", () => resetRoleForm(form));
-  const canWrite = hasPermission(user, "roles", "create") || hasPermission(user, "roles", "edit");
-  const rolePanel = qs("[data-role-edit-panel]", root);
-  if (rolePanel) rolePanel.hidden = !canWrite;
-  await renderRoles();
+}
+
+async function initAdminMembersPageRoleLinks(root, user) {
+  qsa("[data-role-create-link]", root).forEach((link) => {
+    link.hidden = !hasPermission(user, "roles", "create");
+  });
 }
 
 async function initAdminModulesPage() {
@@ -3449,7 +3481,8 @@ function renderPermissionMatrix(container, permissions = {}, role = {}) {
           const actionLabel = (mePageState.permissionActions || []).find((item) => item.key === action)?.label || action;
           return `
             <label class="permission-chip">
-              <input type="checkbox" data-permission-module="${escapeHtml(module.key)}" data-permission-action="${escapeHtml(action)}" ${checked ? "checked" : ""} ${locked ? "disabled" : ""} />
+              <input class="permission-chip-input" type="checkbox" data-permission-module="${escapeHtml(module.key)}" data-permission-action="${escapeHtml(action)}" ${checked ? "checked" : ""} ${locked ? "disabled" : ""} />
+              <span class="permission-chip-check" aria-hidden="true"></span>
               <span>${escapeHtml(actionLabel)}</span>
             </label>
           `;
@@ -3457,6 +3490,7 @@ function renderPermissionMatrix(container, permissions = {}, role = {}) {
       </div>
     </section>
   `).join("");
+  updatePermissionSummary(container.closest("form") || container);
 }
 
 function resetRoleForm(form = qs("[data-role-form]")) {
@@ -3469,11 +3503,13 @@ function resetRoleForm(form = qs("[data-role-form]")) {
   }
   renderPermissionMatrix(qs("[data-permission-matrix]", form), {});
   qs("[data-role-form-title]", form)?.replaceChildren(document.createTextNode("新增角色"));
+  qs("[data-role-editor-heading]")?.replaceChildren(document.createTextNode("新增一个后台角色。"));
   qs("[data-role-submit]", form) && (qs("[data-role-submit]", form).textContent = "保存角色");
   qs("[data-role-reset]", form) && (qs("[data-role-reset]", form).hidden = true);
+  updatePermissionSummary(form);
 }
 
-function fillRoleForm(form, role = {}) {
+function fillRoleForm(form, role = {}, options = {}) {
   if (!form) return;
   mePageState.editingRole = role;
   form.key.value = role.key || "";
@@ -3482,13 +3518,23 @@ function fillRoleForm(form, role = {}) {
   form.description.value = role.description || "";
   renderPermissionMatrix(qs("[data-permission-matrix]", form), role.permissions || {}, role);
   qs("[data-role-form-title]", form)?.replaceChildren(document.createTextNode(`编辑 ${role.name || role.key}`));
+  qs("[data-role-editor-heading]")?.replaceChildren(document.createTextNode(`编辑 ${role.name || role.key}。`));
   qs("[data-role-submit]", form) && (qs("[data-role-submit]", form).textContent = "保存修改");
   qs("[data-role-reset]", form) && (qs("[data-role-reset]", form).hidden = false);
-  form.scrollIntoView({ behavior: "smooth", block: "start" });
+  updatePermissionSummary(form);
+  if (options.scroll !== false) form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-async function saveRole(form) {
-  const message = qs("[data-role-message]");
+function updatePermissionSummary(root = document) {
+  const target = root.closest?.("form") || root;
+  const summary = qs("[data-permission-summary]", target);
+  if (!summary) return;
+  const count = qsa("[data-permission-module][data-permission-action]", target).filter((input) => input.checked).length;
+  summary.textContent = `${count} 个动作权限`;
+}
+
+async function saveRole(form, options = {}) {
+  const message = qs("[data-role-message]", form) || qs("[data-role-message]");
   const editing = mePageState.editingRole;
   const payload = {
     key: form.key.value,
@@ -3502,6 +3548,12 @@ async function saveRole(form) {
       : await api.post("/api/roles", payload);
     showToast("保存成功");
     setMessage(message, "角色权限已保存。", "success");
+    if (options.redirect) {
+      setTimeout(() => {
+        location.href = "admin-roles.html";
+      }, 520);
+      return;
+    }
     resetRoleForm(form);
     await loadRoleOptions(document);
     await renderRoles();
@@ -3607,7 +3659,7 @@ async function renderRoles() {
           <p>${permissionCount} 个动作权限 · ${formatDate(role.updatedAt || role.createdAt)}</p>
         </div>
         <div class="row-actions">
-          <button class="button outline" type="button" data-edit-role ${canEdit ? "" : "disabled"}>编辑</button>
+          ${canEdit ? `<a class="button outline" href="admin-role-editor.html?id=${encodeURIComponent(role.id)}">编辑</a>` : `<button class="button outline" type="button" disabled>编辑</button>`}
           <button class="button outline danger-soft" type="button" data-delete-role ${canDelete ? "" : "disabled"}>删除</button>
         </div>
       </article>
@@ -3616,12 +3668,10 @@ async function renderRoles() {
   revealDynamicContent(list);
   qsa("[data-role-id]", list).forEach((row) => {
     const role = roles.find((item) => item.id === row.dataset.roleId);
-    qs("[data-edit-role]", row)?.addEventListener("click", () => fillRoleForm(qs("[data-role-form]"), role));
     qs("[data-delete-role]", row)?.addEventListener("click", async () => {
       if (!confirm("确定删除这个角色吗？仍有用户使用时无法删除。")) return;
       await api.delete(`/api/roles/${encodeURIComponent(role.id)}`);
       showToast("删除成功");
-      resetRoleForm(qs("[data-role-form]"));
       await loadRoleOptions(document);
       await renderRoles();
     });
@@ -4493,6 +4543,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(initAdminActivitiesPage),
     safeInit(initAdminMembersPage),
     safeInit(initAdminRolesPage),
+    safeInit(initAdminRoleEditorPage),
     safeInit(initAdminModulesPage),
     safeInit(initAdminTemplatesPage),
     safeInit(initAdminTemplateEditorPage),

@@ -7883,37 +7883,87 @@ html[data-theme="light"] body.product-surface .form-note p {
   letter-spacing: 0;
 }
 
-.role-manager-layout {
-  grid-template-columns: minmax(0, 0.9fr) minmax(360px, 0.48fr);
+.role-list-layout {
+  max-width: min(1120px, calc(100% - var(--page-gutter) * 2));
 }
 
+.role-editor-layout {
+  grid-template-columns: minmax(0, 0.72fr) minmax(300px, 0.28fr);
+}
+
+.role-form-panel {
+  min-width: 0;
+}
+
+.role-form-panel textarea,
 .role-edit-panel textarea {
   min-height: 92px;
   line-height: 1.65;
   resize: vertical;
 }
 
+.permission-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 24px 0 14px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.permission-editor-head strong {
+  display: block;
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.permission-editor-head p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.permission-editor-head > span {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 11px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--panel) 88%, var(--bg) 12%);
+  font-size: 13px;
+  font-weight: 760;
+}
+
 .permission-matrix {
   display: grid;
-  gap: 10px;
-  margin-top: 4px;
+  gap: 12px;
+  margin-top: 0;
 }
 
 .permission-row {
   display: grid;
-  grid-template-columns: minmax(120px, 0.42fr) minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
+  grid-template-columns: minmax(180px, 0.36fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
   border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
   border-radius: 16px;
-  padding: 12px;
-  background: color-mix(in srgb, var(--panel) 88%, var(--bg) 12%);
+  padding: 14px;
+  background: color-mix(in srgb, var(--panel) 92%, var(--bg) 8%);
+  transition:
+    border-color 180ms var(--ease-out),
+    background 180ms var(--ease-out);
+}
+
+.permission-row:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--line) 64%);
+  background: color-mix(in srgb, var(--accent-soft) 18%, var(--panel) 82%);
 }
 
 .permission-row strong {
   display: block;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.35;
 }
 
@@ -7927,22 +7977,28 @@ html[data-theme="light"] body.product-surface .form-note p {
 .permission-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 9px;
+  min-width: 0;
 }
 
 .permission-chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 32px;
+  justify-content: center;
+  gap: 7px;
+  min-width: 76px;
+  min-height: 34px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 5px 10px;
-  background: color-mix(in srgb, var(--panel) 92%, var(--bg) 8%);
-  color: var(--muted);
-  font-size: 12px;
+  padding: 6px 12px 6px 10px;
+  background: color-mix(in srgb, var(--panel) 96%, var(--bg) 4%);
+  color: color-mix(in srgb, var(--ink) 76%, var(--muted) 24%);
+  font-size: 13px;
   font-weight: 760;
+  line-height: 1;
   cursor: pointer;
+  user-select: none;
   transition:
     border-color 160ms ease,
     background 160ms ease,
@@ -7955,17 +8011,67 @@ html[data-theme="light"] body.product-surface .form-note p {
   border-color: color-mix(in srgb, var(--accent) 38%, var(--line) 62%);
 }
 
-.permission-chip input {
-  width: 14px;
-  height: 14px;
+.permission-chip-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   margin: 0;
-  accent-color: var(--accent);
+  opacity: 0;
+  cursor: inherit;
+}
+
+.permission-chip-check {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  border: 1px solid color-mix(in srgb, var(--muted) 34%, var(--line) 66%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--bg) 12%);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.permission-chip-check::after {
+  content: "";
+  width: 7px;
+  height: 4px;
+  border-left: 1.8px solid currentColor;
+  border-bottom: 1.8px solid currentColor;
+  color: #fffefa;
+  opacity: 0;
+  transform: translateY(-1px) rotate(-45deg) scale(0.7);
+  transition:
+    opacity 140ms ease,
+    transform 160ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .permission-chip:has(input:checked) {
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--line) 58%);
-  background: color-mix(in srgb, var(--accent) 12%, var(--panel) 88%);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line) 50%);
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel) 86%);
   color: var(--ink);
+}
+
+.permission-chip:has(input:checked) .permission-chip-check {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.permission-chip:has(input:checked) .permission-chip-check::after {
+  opacity: 1;
+  transform: translateY(-1px) rotate(-45deg) scale(1);
+}
+
+.permission-chip:has(input:focus-visible) {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 54%, var(--line) 46%);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .permission-chip:has(input:disabled) {
@@ -8022,12 +8128,27 @@ html[data-theme="light"] body.product-surface .form-note p {
     align-items: start;
   }
 
-  .role-manager-layout {
+  .role-editor-layout {
     grid-template-columns: 1fr;
   }
 
   .permission-row {
     grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .permission-editor-head {
+    align-items: start;
+    display: grid;
+  }
+
+  .permission-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  }
+
+  .permission-chip {
+    width: 100%;
   }
 }
 

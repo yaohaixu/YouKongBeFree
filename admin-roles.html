@@ -8,8 +8,8 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <script src="theme.js?v=0.24.0"></script>
-    <link rel="stylesheet" href="styles.css?v=0.24.0" />
+    <script src="theme.js?v=0.24.1"></script>
+    <link rel="stylesheet" href="styles.css?v=0.24.1" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -38,7 +38,7 @@
       </section>
 
       <section class="section alt">
-        <div class="wrap manager-layout role-manager-layout">
+        <div class="wrap role-list-layout">
           <div>
             <form class="filter-panel" data-role-filters>
               <label>搜索<input name="q" placeholder="角色名称 / 标识 / 说明" /></label>
@@ -47,27 +47,13 @@
             <div class="list-toolbar">
               <span data-role-count>正在读取角色...</span>
               <div class="row-actions">
+                <a class="button primary" href="admin-role-editor.html" data-role-create-link>新建角色</a>
                 <a class="button ghost" href="admin-members.html">用户管理</a>
                 <a class="button ghost" href="admin.html">回后台</a>
               </div>
             </div>
             <div class="event-list rows" data-role-list></div>
           </div>
-
-          <aside class="form-note sticky-panel role-edit-panel" data-role-edit-panel>
-            <h3 data-role-form-title>新增角色</h3>
-            <form data-role-form>
-              <label>角色标识<input name="key" required placeholder="如 event_operator" /></label>
-              <label>角色名称<input name="name" required placeholder="如 活动运营" /></label>
-              <label>角色说明<textarea name="description" rows="3" placeholder="这个角色负责哪些事情"></textarea></label>
-              <div class="permission-matrix" data-permission-matrix></div>
-              <div class="button-row">
-                <button class="button primary" type="submit" data-role-submit>保存角色</button>
-                <button class="button ghost" type="button" data-role-reset hidden>取消编辑</button>
-              </div>
-              <p class="form-message" data-role-message></p>
-            </form>
-          </aside>
         </div>
       </section>
     </main>
@@ -78,7 +64,7 @@
         <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-members.html">用户管理</a><a href="admin-activities.html">全部活动</a><a href="admin-safety.html">规则引擎</a><a href="admin-ai.html">AI 分析</a><a href="admin-logs.html">操作日志</a></nav>
       </div>
     </footer>
-    <script src="script.js?v=0.24.0"></script>
-    <script src="app.js?v=0.24.0"></script>
+    <script src="script.js?v=0.24.1"></script>
+    <script src="app.js?v=0.24.1"></script>
   </body>
 </html>

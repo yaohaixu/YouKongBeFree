@@ -1323,11 +1323,37 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       localStorage.setItem("yk_session_token", token);
       localStorage.setItem("yk_user", JSON.stringify(user));
     }, { token: member.token, user: member.user });
-    await assertMobileActionStack(memberActionPage, `${baseUrl}/my-activities.html`, 2);
-    await memberActionContext.close();
-    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-members.html`);
-    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-roles.html`);
-    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-templates.html`);
+	    await assertMobileActionStack(memberActionPage, `${baseUrl}/my-activities.html`, 2);
+	    await memberActionContext.close();
+	    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-members.html`);
+	    const memberToolbarState = await page.evaluate(() => {
+	      const labels = Array.from(document.querySelectorAll(".list-toolbar .row-actions .button"))
+	        .map((button) => button.textContent.trim());
+	      return { labels };
+	    });
+	    assert.deepEqual(memberToolbarState.labels.slice(0, 3), ["新建角色", "角色权限", "回后台"]);
+	    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-roles.html`);
+	    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-role-editor.html`);
+	    await page.waitForSelector(".permission-chip-input");
+	    const permissionChipState = await page.evaluate(() => {
+	      const chip = document.querySelector(".permission-chip");
+	      const input = chip?.querySelector(".permission-chip-input");
+	      const check = chip?.querySelector(".permission-chip-check");
+	      const chipRect = chip?.getBoundingClientRect();
+	      return {
+	        hasInput: Boolean(input),
+	        inputOpacity: input ? getComputedStyle(input).opacity : "",
+	        checkSize: check ? Math.round(check.getBoundingClientRect().width) : 0,
+	        chipWidth: chipRect ? Math.round(chipRect.width) : 0,
+	        summary: document.querySelector("[data-permission-summary]")?.textContent.trim() || "",
+	      };
+	    });
+	    assert.equal(permissionChipState.hasInput, true);
+	    assert.equal(permissionChipState.inputOpacity, "0");
+	    assert.ok(permissionChipState.checkSize >= 14);
+	    assert.ok(permissionChipState.chipWidth >= 76);
+	    assert.match(permissionChipState.summary, /动作权限/);
+	    await assertNoHorizontalOverflow(page, `${baseUrl}/admin-templates.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-template-editor.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-logs.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/admin-reports.html`);
