@@ -25,17 +25,40 @@ STORE_DRIVER=cloudbase CLOUDBASE_ENV_ID=youkong-d5gh4x0ayc29a2187 npm run backup
 - `registrations`
 - `logs`
 
-默认不导出 `sessions`，避免把 session hash 写入备份文件。如确需完整排查登录态，可追加：
+默认不导出 `sessions`，避免把 session hash 写入备份文件；同时会脱敏 token、API Key、secret、salt、手机号和联系方式。如确需完整排查登录态，可追加：
 
 ```bash
 npm run backup:data -- --include-sessions
 ```
+
+如确需制作加密离线应急归档，且已经确认备份文件存储位置安全，可追加：
+
+```bash
+npm run backup:data -- --include-secrets
+```
+
+不要把带 `--include-secrets` 的备份文件发送到聊天工具、提交 Git 或放入未加密网盘。
 
 建议频率：
 
 - 每次重要上线前备份一次。
 - 每周至少备份一次线上数据。
 - 删除成员、模块或大量活动前先备份。
+
+## CloudBase 生产密钥
+
+CloudBase 模式下，服务默认要求以下环境变量为长随机值，否则云函数启动会失败以避免线上使用本地 fallback 密钥：
+
+```env
+SESSION_SECRET=请替换为长随机字符串
+IDENTITY_HASH_SALT=请替换为长随机字符串
+AI_CONFIG_ENCRYPTION_KEY=请替换为长随机字符串
+ANONYMOUS_ID_SECRET=请替换为长随机字符串
+```
+
+其中 `ANONYMOUS_ID_SECRET` 是可选独立签名密钥；不填时会回退使用 `IDENTITY_HASH_SALT` 或 `SESSION_SECRET`。生产部署前建议在 CloudBase 控制台配置，不要把真实值写入 `cloudbaserc.json` 或 Git。
+
+若线上此前没有配置 `AI_CONFIG_ENCRYPTION_KEY`，已保存的 AI API Key 会使用历史 fallback 加密。首次迁移时可临时配置 `AI_CONFIG_ENCRYPTION_KEY_PREVIOUS` 为旧值，服务会仅用它尝试解密历史 Key；后续在 AI 控制台重新保存模型 Key 后，删除该迁移变量。
 
 ## API 慢请求日志
 
@@ -76,6 +99,9 @@ API_SLOW_LOG_MS=1200
 - `yk_logs`: `action + createdAt`
 - `yk_logs`: `actorId + createdAt`
 - `yk_logs`: `actorRole + createdAt`
+- `yk_rateEvents`: `identityId + scope`
+- `yk_aiUsageLogs`: `createdAt`
+- `yk_aiUsageLogs`: `profileId + createdAt`
 
 新增筛选条件后，需要同步更新 `docs/cloudbase-indexes.md` 和本文件。
 

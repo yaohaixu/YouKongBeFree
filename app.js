@@ -2589,6 +2589,26 @@ async function initAdminBadgePolicyPage() {
   await renderBadgePolicies();
 }
 
+const badgeDisplayLocationLabels = {
+  activityCard: "活动卡片",
+  activityDetail: "活动详情",
+  initiatorProfile: "发起人主页",
+  registrationList: "报名列表",
+  adminOnly: "仅后台",
+};
+
+function badgeDisplayLocationItems(locations = {}) {
+  const keys = Object.keys(badgeDisplayLocationLabels);
+  Object.keys(locations || {}).forEach((key) => {
+    if (!keys.includes(key)) keys.push(key);
+  });
+  return keys.map((key) => ({
+    key,
+    label: badgeDisplayLocationLabels[key] || key,
+    checked: Boolean(locations?.[key]),
+  }));
+}
+
 async function renderBadgePolicies() {
   const list = qs("[data-badge-policy-list]");
   if (!list) return;
@@ -2601,28 +2621,75 @@ async function renderBadgePolicies() {
     return;
   }
   const user = mePageState.user || getCachedUser();
-  list.innerHTML = policies.map((policy) => `
+  list.innerHTML = policies.map((policy) => {
+    const locationItems = badgeDisplayLocationItems(policy.displayLocations || {});
+    return `
     <article class="event-row badge-policy-row" data-badge-policy-id="${policy.id}">
-      <div>
-        <span class="tag">${policy.enabled === false ? "停用" : "启用"} · ${policy.publicVisible ? "公开展示" : "仅后台"}</span>
+      <div class="badge-policy-summary">
+        <div class="tag-row">
+          <span class="tag">${policy.enabled === false ? "停用" : "启用"}</span>
+          <span class="tag soft">${policy.publicVisible ? "公开展示" : "仅后台"}</span>
+        </div>
         <h3>${escapeHtml(policy.badge?.name || policy.badgeId)}</h3>
         <p>${escapeHtml(policy.tooltip || policy.badge?.description || "暂无说明")}</p>
-        <label>展示位置 JSON<textarea name="displayLocations" rows="4">${escapeHtml(jsonText(policy.displayLocations || {}, {}))}</textarea></label>
+        <small>展示策略只决定徽章在哪里出现，不改变徽章获得规则。</small>
       </div>
-      <div class="row-actions">
-        <label>启用<select name="enabled"><option value="true" ${policy.enabled === false ? "" : "selected"}>启用</option><option value="false" ${policy.enabled === false ? "selected" : ""}>停用</option></select></label>
-        <label>公开<select name="publicVisible"><option value="true" ${policy.publicVisible ? "selected" : ""}>公开</option><option value="false" ${policy.publicVisible ? "" : "selected"}>仅后台</option></select></label>
-        <label>显示图标<select name="showIcon"><option value="true" ${policy.showIcon === false ? "" : "selected"}>显示</option><option value="false" ${policy.showIcon === false ? "selected" : ""}>隐藏</option></select></label>
-        <label>显示名称<select name="showName"><option value="true" ${policy.showName === false ? "" : "selected"}>显示</option><option value="false" ${policy.showName === false ? "selected" : ""}>隐藏</option></select></label>
-        <input name="tooltip" value="${escapeHtml(policy.tooltip || "")}" placeholder="悬停说明" />
-        <input name="order" type="number" value="${Number(policy.order || 100)}" />
-        <button class="button outline" type="button" data-save-badge-policy ${hasPermission(user, "badgePolicy", "edit") ? "" : "disabled"}>保存</button>
+      <div class="badge-policy-controls" aria-label="徽章展示配置">
+        <label class="badge-control-field">启用状态
+          <select name="enabled">
+            <option value="true" ${policy.enabled === false ? "" : "selected"}>启用</option>
+            <option value="false" ${policy.enabled === false ? "selected" : ""}>停用</option>
+          </select>
+        </label>
+        <label class="badge-control-field">公开范围
+          <select name="publicVisible">
+            <option value="true" ${policy.publicVisible ? "selected" : ""}>公开展示</option>
+            <option value="false" ${policy.publicVisible ? "" : "selected"}>仅后台</option>
+          </select>
+        </label>
+        <label class="badge-control-field">图标
+          <select name="showIcon">
+            <option value="true" ${policy.showIcon === false ? "" : "selected"}>显示图标</option>
+            <option value="false" ${policy.showIcon === false ? "selected" : ""}>隐藏图标</option>
+          </select>
+        </label>
+        <label class="badge-control-field">名称
+          <select name="showName">
+            <option value="true" ${policy.showName === false ? "" : "selected"}>显示名称</option>
+            <option value="false" ${policy.showName === false ? "selected" : ""}>隐藏名称</option>
+          </select>
+        </label>
+        <label class="badge-control-field badge-control-field-wide">悬停说明
+          <input name="tooltip" value="${escapeHtml(policy.tooltip || "")}" placeholder="给前台或后台看的简短说明" />
+        </label>
+        <label class="badge-control-field">排序
+          <input name="order" type="number" value="${Number(policy.order || 100)}" />
+        </label>
+        <fieldset class="badge-location-fieldset">
+          <legend>展示位置</legend>
+          <div class="badge-location-grid">
+            ${locationItems.map((item) => `
+              <label class="badge-location-chip">
+                <input type="checkbox" data-badge-location value="${escapeHtml(item.key)}" ${item.checked ? "checked" : ""} />
+                <span>${escapeHtml(item.label)}</span>
+              </label>
+            `).join("")}
+          </div>
+        </fieldset>
+        <div class="badge-policy-actions">
+          <button class="button outline" type="button" data-save-badge-policy ${hasPermission(user, "badgePolicy", "edit") ? "" : "disabled"}>保存展示策略</button>
+        </div>
       </div>
     </article>
-  `).join("");
+  `;
+  }).join("");
   revealDynamicContent(list);
   qsa("[data-badge-policy-id]", list).forEach((row) => {
     qs("[data-save-badge-policy]", row).addEventListener("click", async () => {
+      const displayLocations = {};
+      qsa("[data-badge-location]", row).forEach((input) => {
+        displayLocations[input.value] = input.checked;
+      });
       await api.put(`/api/governance/badge-policies/${row.dataset.badgePolicyId}`, {
         enabled: qs('[name="enabled"]', row).value,
         publicVisible: qs('[name="publicVisible"]', row).value,
@@ -2630,7 +2697,7 @@ async function renderBadgePolicies() {
         showName: qs('[name="showName"]', row).value,
         tooltip: qs('[name="tooltip"]', row).value,
         order: qs('[name="order"]', row).value,
-        displayLocations: parseAdminJsonField(qs('[name="displayLocations"]', row).value, {}),
+        displayLocations,
       });
       showToast("保存成功");
       await renderBadgePolicies();
@@ -3086,6 +3153,7 @@ function fillAiSettingsForm(form, settings = {}) {
   if (form.sceneRouting) form.sceneRouting.value = JSON.stringify(settings.sceneRouting || {});
   if (form.ruleConfidenceMax) form.ruleConfidenceMax.value = strategy.ruleConfidenceMax ?? 70;
   if (form.firstActivityCount) form.firstActivityCount.value = strategy.firstActivityCount ?? 3;
+  if (form.dailyCallLimit) form.dailyCallLimit.value = strategy.dailyCallLimit ?? 200;
   form.callStrategy.value = JSON.stringify(strategy, null, 2);
   form.capabilities.value = JSON.stringify(settings.capabilities || {}, null, 2);
 }
@@ -3104,12 +3172,15 @@ function aiSettingsPayload(form) {
   const fallbackProfileIds = Array.from(new Set(Object.values(sceneRouting).flatMap((route) => route.fallbackProfileIds || [])));
   if (form.ruleConfidenceMax) {
     callStrategy.lowConfidenceOnly = true;
-    callStrategy.ruleConfidenceMax = Math.max(0, Math.min(100, Number(form.ruleConfidenceMax.value || 70)));
+    callStrategy.ruleConfidenceMax = Math.max(0, Math.min(100, Number(form.ruleConfidenceMax.value === "" ? 70 : form.ruleConfidenceMax.value)));
   }
   if (form.firstActivityCount) {
     const firstActivityCount = Math.max(0, Math.min(50, Number(form.firstActivityCount.value || 0)));
     callStrategy.firstActivitiesAlways = firstActivityCount > 0;
     callStrategy.firstActivityCount = firstActivityCount;
+  }
+  if (form.dailyCallLimit) {
+    callStrategy.dailyCallLimit = Math.max(0, Math.min(100000, Number(form.dailyCallLimit.value || 0)));
   }
   return {
     enabled: form.enabled.value,
@@ -3587,7 +3658,7 @@ async function renderActivityConfidence(root, id) {
 	    </section>
 	    <section class="panel-block">
 	      <h3>举报历史</h3>
-	      ${renderConfidenceReports(reports)}
+	      ${renderConfidenceReports(reports, analyses)}
 	    </section>
 	    <section class="panel-block">
 	      <h3>分析历史</h3>
@@ -3597,19 +3668,45 @@ async function renderActivityConfidence(root, id) {
   revealDynamicContent(container);
 }
 
-function renderConfidenceReports(reports = []) {
+function renderConfidenceReports(reports = [], analyses = []) {
   if (!reports.length) return `<p class="muted-text">暂无举报记录。</p>`;
+  const analysisMap = new Map((analyses || []).map((item) => [item.id, item]));
   return `
     <div class="finding-list">
-      ${reports.map((report) => `
-        <div class="finding-item">
-          <strong>${escapeHtml(report.reason || "社区举报")}</strong>
-          <span>${escapeHtml(reportStatusLabel(report.status))}</span>
-          <p>${escapeHtml(report.detail || "没有补充说明")} · ${formatDate(report.createdAt)}</p>
-          ${report.reportReview ? `<p>复核：风险分 ${Number(report.reportReview.riskScore || 0)} · ${report.reportReview.matched ? "举报理由与分析相符" : "暂未支持下架"} · ${escapeHtml(report.reportReview.reason || "")}</p>` : ""}
-          ${report.analysisReportId ? `<p>分析报告：${escapeHtml(report.analysisReportId)}</p>` : ""}
-        </div>
-      `).join("")}
+      ${reports.map((report) => {
+        const analysisReport = report.analysisReport || analysisMap.get(report.analysisReportId);
+        return `
+          <div class="finding-item">
+            <strong>${escapeHtml(report.reason || "社区举报")}</strong>
+            <span>${escapeHtml(reportStatusLabel(report.status))}</span>
+            <p>${escapeHtml(report.detail || "没有补充说明")} · ${formatDate(report.createdAt)}</p>
+            ${report.reportReview ? `<p>复核：风险分 ${Number(report.reportReview.riskScore || 0)} · ${report.reportReview.matched ? "举报理由与分析相符" : "暂未支持下架"} · ${escapeHtml(report.reportReview.reason || "")}</p>` : ""}
+            ${renderReportAnalysisResult(analysisReport)}
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderReportAnalysisResult(analysisReport = null) {
+  if (!analysisReport) return `<p class="muted-text">暂无 AI 分析报告。</p>`;
+  const aiMeta = analysisReport.aiMeta || {};
+  const title = aiMeta.profileName
+    ? `AI 分析：${escapeHtml(aiMeta.profileName)}`
+    : "AI 分析";
+  const meta = [
+    aiMeta.promptVersion ? `Prompt ${aiMeta.promptVersion}` : "",
+    aiMeta.cacheHit ? "缓存命中" : "",
+    analysisReport.createdAt ? formatDate(analysisReport.createdAt) : "",
+  ].filter(Boolean).join(" · ");
+  return `
+    <div class="report-analysis-result">
+      <div class="report-analysis-head">
+        <strong>${title}</strong>
+        ${meta ? `<span>${escapeHtml(meta)}</span>` : ""}
+      </div>
+      ${analysisReport.aiReport ? renderAiReport(analysisReport.aiReport) : renderAiSkippedState(aiMeta)}
     </div>
   `;
 }

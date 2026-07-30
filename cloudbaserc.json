@@ -14,13 +14,7 @@
       "description": "有空客厅官网动态 API",
       "timeout": 30,
       "memorySize": 256,
-      "installDependency": true,
-      "envVariables": {
-        "STORE_DRIVER": "cloudbase",
-        "YKADMIN_NICKNAME": "有空管理员",
-        "CORS_ORIGINS": "https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com",
-        "SESSION_MAX_AGE_DAYS": "14"
-      }
+      "installDependency": true
     }
   ]
 }

@@ -2,6 +2,31 @@
 
 所有重要变更都会记录在此文件中。格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循语义化版本思路。
 
+## [0.25.1] - 2026-07-30
+
+### Added
+
+- AI 控制台新增系统「每日调用上限」，默认 200 次真实模型调用；模型档案已有的 `dailyLimit` 同步接入运行时，超过后会跳过该模型并尝试备用模型。
+- 新增服务端签名匿名身份 Cookie `yk_anon`，与本地 UUID、指纹、UA、IP 共同组成限流身份，降低单纯篡改 LocalStorage 绕过发布频率限制的风险。
+- 新增活动管理 token 有效期、撤销状态和匿名身份绑定字段；默认有效期 180 天，可通过 `MANAGE_TOKEN_MAX_AGE_DAYS` 配置。
+- 新增上传图片像素上限校验，防止小体积超大像素图片造成内存消耗。
+- 新增生产密钥启动检查，CloudBase 模式默认要求配置长随机 `SESSION_SECRET`、`IDENTITY_HASH_SALT` 和 `AI_CONFIG_ENCRYPTION_KEY`。
+- 新增 `tests/security.test.js`，覆盖富文本 XSS、匿名身份签名、防管理 token 重放、AI Base URL SSRF、Prompt Injection 隔离、AI 调用预算和备份脱敏。
+
+### Changed
+
+- Session token hash 优先使用 `SESSION_SECRET` 做 HMAC；旧 SHA256 session 仍兼容读取和退出清理。
+- AI OpenAI-compatible Provider 在 CloudBase 生产环境默认拒绝 localhost、内网地址和云元数据地址，避免管理员误填 Base URL 造成 SSRF；Ollama / local Provider 保留本地模型能力。
+- 备份脚本默认脱敏 token、API Key、salt、手机号、联系方式等敏感字段；仅显式传入 `--include-secrets` 才导出原始敏感字段。
+- 操作日志写入前会去除控制字符、折叠换行并限制长度，降低日志注入和日志污染风险。
+- 活动管理 token 默认不再接受 query 参数；如需兼容旧链接，可临时设置 `ALLOW_MANAGE_TOKEN_QUERY=true`。
+- 徽章展示策略页从 JSON 文本框改为展示位置勾选控件；活动置信度页的举报历史可直接展开对应 AI 分析报告。
+- README、`.env.example`、运维手册、安全说明和静态资源版本参数同步到 `0.25.1`。
+
+### Security
+
+- 本轮按红队审计结论加固匿名身份、管理 token、AI 成本、AI Provider SSRF、上传图片、日志和备份；手机号免密后台登录、社区信用自报名 / 自点感兴趣刷分两项按产品决策暂不修改，继续记录为已知风险。
+
 ## [0.25.0] - 2026-07-29
 
 ### Added

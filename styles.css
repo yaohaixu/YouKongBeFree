@@ -7575,6 +7575,40 @@ html[data-theme="light"] body.product-surface .form-note p {
   gap: 10px;
 }
 
+.report-analysis-result {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-strong) 72%, var(--panel) 28%);
+}
+
+.report-analysis-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.report-analysis-head strong {
+  display: inline;
+  margin: 0;
+}
+
+.finding-item .report-analysis-head span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 720;
+}
+
+.report-analysis-result .ai-report {
+  gap: 8px;
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;
@@ -8439,6 +8473,220 @@ html[data-theme="light"] body.product-surface .form-note p {
 .quick-home:hover .quick-home-icon::after,
 .quick-home:focus-visible .quick-home-icon::after {
   transform: translateY(-2px) rotate(45deg);
+}
+
+body:has(main[data-admin-badge-policy-page]) [data-badge-policy-list] {
+  gap: 16px;
+}
+
+.badge-policy-row {
+  grid-template-columns: minmax(0, 0.86fr) minmax(360px, 1.14fr);
+  align-items: stretch;
+  gap: clamp(18px, 2.4vw, 28px);
+  padding: clamp(18px, 2.4vw, 26px);
+}
+
+.badge-policy-summary {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.badge-policy-summary h3 {
+  margin: 2px 0 0;
+}
+
+.badge-policy-summary p {
+  max-width: 58ch;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.72;
+}
+
+.badge-policy-summary small {
+  display: block;
+  margin-top: 6px;
+  color: var(--soft);
+  line-height: 1.6;
+}
+
+.badge-policy-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+}
+
+.badge-control-field,
+.badge-location-fieldset {
+  min-width: 0;
+}
+
+.badge-control-field {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.badge-control-field-wide,
+.badge-location-fieldset,
+.badge-policy-actions {
+  grid-column: 1 / -1;
+}
+
+.badge-control-field input,
+.badge-control-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 11px 13px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 620;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.badge-control-field input::placeholder {
+  color: var(--soft);
+  font-weight: 540;
+}
+
+.badge-control-field input:focus,
+.badge-control-field select:focus {
+  outline: none;
+  border-color: rgba(15, 111, 92, 0.5);
+  box-shadow: 0 0 0 4px rgba(15, 111, 92, 0.12);
+}
+
+.badge-location-fieldset {
+  display: grid;
+  gap: 10px;
+  margin: 2px 0 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 13px;
+}
+
+.badge-location-fieldset legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.badge-location-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.badge-location-chip {
+  position: relative;
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 160ms var(--ease-out),
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.badge-location-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+}
+
+.badge-location-chip input {
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.badge-location-chip:has(input:checked) {
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--line) 56%);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-strong) 88%);
+  color: var(--ink);
+}
+
+.badge-policy-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 2px;
+}
+
+html[data-theme="light"] body.product-surface .badge-policy-controls,
+html[data-theme="light"] body:has(main[data-admin-badge-policy-page]) .badge-policy-controls {
+  background: rgba(255, 254, 250, 0.72);
+}
+
+html[data-theme="light"] body.product-surface .badge-control-field,
+html[data-theme="light"] body.product-surface .badge-location-fieldset legend,
+html[data-theme="light"] body:has(main[data-admin-badge-policy-page]) .badge-control-field,
+html[data-theme="light"] body:has(main[data-admin-badge-policy-page]) .badge-location-fieldset legend {
+  color: #20251f;
+}
+
+html[data-theme="light"] body.product-surface .badge-control-field input,
+html[data-theme="light"] body.product-surface .badge-control-field select,
+html[data-theme="light"] body.product-surface .badge-location-chip,
+html[data-theme="light"] body:has(main[data-admin-badge-policy-page]) .badge-control-field input,
+html[data-theme="light"] body:has(main[data-admin-badge-policy-page]) .badge-control-field select,
+html[data-theme="light"] body:has(main[data-admin-badge-policy-page]) .badge-location-chip {
+  background: #fffefa;
+  color: #20251f;
+}
+
+@media (max-width: 900px) {
+  .badge-policy-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .badge-policy-controls {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .badge-policy-actions .button {
+    width: 100%;
+  }
+
+  .badge-location-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .badge-location-chip {
+    width: 100%;
+  }
 }
 
 .motion-press {

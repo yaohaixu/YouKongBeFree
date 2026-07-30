@@ -3241,3 +3241,49 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 增加 Prompt 测试台：管理员选择场景、输入样例内容，直接查看结构化 JSON、耗时、Token 和使用模型。
 2. 给 AI 用量健康增加每日趋势图和 Provider 失败率阈值提醒，发现模型异常时自动提示切换主模型。
 3. 拆分 `app.js` 和 `lib/app.js` 中 AI 相关逻辑，优先抽出 `admin-ai` 前端模块和 `lib/routes/ai.js`，降低主文件继续膨胀的维护风险。
+
+## 2026-07-30 - 0.25.1 生产级安全红队加固第一轮
+
+### 任务目标
+
+根据 Community OS 安全红队审计讨论结果，优先加固开放匿名活动发布、管理 token、AI 成本、上传文件、日志和备份这些生产风险点。手机号免密后台登录和社区信用自报名 / 自点感兴趣刷分按产品决策暂不修改，但继续记录为已知风险。
+
+### 具体修改
+
+- `lib/community-safety/identity.js`：新增服务端签名匿名身份 Cookie `yk_anon`，并把服务端匿名 Cookie、本地 UUID、fingerprint、UA、IP 组合为限流 key，降低只改 LocalStorage 绕过限流的风险。
+- `lib/community-safety/service.js`：活动管理 token 改为随机值 + hash 存储，新增过期时间、撤销状态和身份绑定校验；默认不再从 query string 读取管理 token。
+- `lib/community-safety/rate-limit.js`：发布限流使用综合身份 key，而不是只依赖兼容旧数据的匿名 identity id。
+- `lib/app.js`：新增生产密钥启动检查、服务端匿名 Cookie 下发、Session HMAC hash 兼容迁移、上传图片像素上限校验、日志字段控制字符清洗。
+- `lib/ai-analysis/service.js`：接入系统每日 AI 调用预算，默认 200 次；模型档案 `dailyLimit` 开始参与运行时熔断，达到上限后可走备用模型。
+- `lib/ai-analysis/providers/openai-compatible.js`：CloudBase 生产环境默认拒绝 localhost、内网 IP 和云元数据地址作为 AI Base URL，降低 SSRF 风险。
+- `scripts/backup-data.js`：备份默认脱敏 token、API Key、secret、salt、手机号和联系方式，新增 `--include-secrets` 显式开关。
+- `admin-ai.html` / `app.js`：AI 控制台新增系统每日调用上限字段；徽章展示策略页改为勾选展示位置；活动置信度举报历史可直接展示 AI 分析报告。
+- `tests/security.test.js`：新增安全回归测试，覆盖富文本 XSS、匿名身份签名、管理 token 过期 / 撤销 / 身份绑定、AI SSRF、Prompt Injection 隔离、AI 调用预算和备份脱敏。
+- `README.md`、`CHANGELOG.md`、`docs/security.md`、`docs/operations.md`、`docs/cloudbase-indexes.md`、`.env.example`、`package.json`、`package-lock.json`、`*.html`：同步版本、安全说明、运维说明、索引建议和静态资源缓存参数到 `0.25.1`。
+
+### 技术方案选择
+
+- 匿名身份保留原本本地 UUID 作为活动归属兼容字段，新增服务端签名 Cookie 主要用于限流和身份信号增强，避免改坏「我的活动」历史查询。
+- 管理 token 使用“token 本体只给浏览器、服务端只存 hash”的模式，并绑定至少一个匿名身份信号；这样既保留无需登录的开放发布体验，也让复制 URL 或猜测 token 的成本更高。
+- AI 每日预算按 `aiUsageLogs` 计数并排除缓存命中，是为了优先控制真实模型成本；模型级 `dailyLimit` 超限时尝试备用模型，系统级超限时直接跳过 AI 并交给规则和兜底策略。
+- AI Base URL 防内网只在 CloudBase 生产默认收紧，同时保留 Ollama / local Provider 本地开发能力。
+- 图片像素校验采用轻量 header 解析，不引入 `sharp` 等原生依赖，避免 CloudBase 云函数部署体积和平台兼容风险。
+
+### 当前完成情况
+
+- 代码开发、版本号和文档同步已完成。
+- 本地 `npm test` 通过。
+- 本地 `npm run deploy:dry-run` 通过。
+
+### 遗留问题
+
+- 手机号白名单免密登录仍是后台最大身份风险，等待登录方案定稿后再升级。
+- 当前限流和报名锁仍是应用 / 数据记录级能力，CloudBase 多实例高并发下建议继续接入数据库唯一约束、网关限流或 WAF。
+- 社区信用自报名和自点「感兴趣」暂不作为刷分攻击处理；未来让信用度影响更高价值权益前，需要先补关联身份检测和异常行为权重。
+- CloudBase 生产部署前必须在控制台配置 `SESSION_SECRET`、`IDENTITY_HASH_SALT`、`AI_CONFIG_ENCRYPTION_KEY` 等真实长随机密钥，否则服务会拒绝启动。
+
+### 下一步建议
+
+1. 补权限接口矩阵安全测试，覆盖普通访客、协作员、自定义角色、管理员对所有 `/api/*` 管理接口的纵向 / 横向越权。
+2. 把 AI 调用预算做成用量健康页趋势图，并增加接近上限提醒。
+3. 在 CloudBase 控制台补齐 `yk_aiUsageLogs.profileId + createdAt`、`yk_aiUsageLogs.cacheHit + createdAt` 和 `yk_rateEvents.identityId + scope` 索引。

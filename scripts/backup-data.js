@@ -12,6 +12,7 @@ const PAGE_SIZE = 100;
 function parseArgs(argv) {
   const options = {
     includeSessions: false,
+    includeSecrets: false,
     output: "",
   };
 
@@ -19,6 +20,8 @@ function parseArgs(argv) {
     const arg = argv[index];
     if (arg === "--include-sessions") {
       options.includeSessions = true;
+    } else if (arg === "--include-secrets") {
+      options.includeSecrets = true;
     } else if (arg === "--out") {
       options.output = argv[index + 1] || "";
       index += 1;
@@ -33,15 +36,51 @@ function parseArgs(argv) {
 
 function usage() {
   return [
-    "Usage: node scripts/backup-data.js [--out <file-or-dir>] [--include-sessions]",
+    "Usage: node scripts/backup-data.js [--out <file-or-dir>] [--include-sessions] [--include-secrets]",
     "",
     "Examples:",
     "  npm run backup:data",
     "  STORE_DRIVER=cloudbase npm run backup:data",
     "  node scripts/backup-data.js --out output/backups/prod.json",
     "",
-    "By default, sessions are excluded to avoid exporting session hashes.",
+    "By default, sessions are excluded and sensitive fields are redacted.",
+    "Use --include-secrets only for encrypted offline incident response archives.",
   ].join("\n");
+}
+
+function maskPhoneLike(value = "") {
+  const text = String(value || "");
+  const digits = text.replace(/\D/g, "");
+  if (digits.length < 8) return text ? "[redacted]" : "";
+  return `${digits.slice(0, 3)}****${digits.slice(-4)}`;
+}
+
+function shouldRedactKey(key = "") {
+  const normalized = String(key || "").toLowerCase();
+  return normalized.includes("apikey")
+    || normalized.includes("token")
+    || normalized.includes("secret")
+    || normalized.includes("salt")
+    || normalized.includes("authorization")
+    || normalized.includes("password")
+    || normalized === "phonehash"
+    || normalized.endsWith("tokenhash")
+    || normalized.endsWith("keyencrypted");
+}
+
+function redactValue(key, value) {
+  const normalized = String(key || "").toLowerCase();
+  if (shouldRedactKey(key)) return value ? "[redacted]" : value;
+  if (normalized === "phone" || normalized.endsWith("phone")) return maskPhoneLike(value);
+  if (["initiatorcontact", "contactinfo"].includes(normalized)) return value ? "[redacted]" : value;
+  if (Array.isArray(value)) return value.map((item) => redactSecrets(item));
+  if (value && typeof value === "object") return redactSecrets(value);
+  return value;
+}
+
+function redactSecrets(record = {}) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) return record;
+  return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, redactValue(key, value)]));
 }
 
 function timestampForFilename(date = new Date()) {
@@ -90,7 +129,7 @@ async function main() {
 
   for (const collection of collections) {
     const records = await readCollection(store, collection);
-    data[collection] = records;
+    data[collection] = options.includeSecrets ? records : records.map(redactSecrets);
     counts[collection] = records.length;
   }
 
@@ -113,7 +152,16 @@ async function main() {
   console.log(JSON.stringify({ counts, includedCollections: collections }, null, 2));
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  parseArgs,
+  redactSecrets,
+  redactValue,
+  shouldRedactKey,
+};

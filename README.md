@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.25.0`
+当前版本：`0.25.1`
 
-状态：`0.25.0` 重构 AI 分析引擎后台：新增 AI 控制台、模型档案、场景路由、Prompt 场景化管理、模型故障转移和系统 / 模型维度用量健康统计；旧单模型设置自动迁移并兼容默认模型档案。
+状态：`0.25.1` 完成生产级安全红队加固第一轮：匿名身份增加服务端签名 Cookie，活动管理 token 增加过期、撤销和身份绑定，AI 增加每日调用预算与模型级熔断，上传图片增加像素上限，日志与备份默认脱敏，并新增安全自动化测试。
 
 ## 访问地址
 
@@ -62,7 +62,7 @@ GitHub Pages 静态展示：
 - 社区信用：匿名身份初始 50 分，基于事件流逐步变化；后台可查看 Community ID、社区等级、状态、徽章、活动数、报名回应、举报和完整时间线。
 - 社区徽章：后台可配置身份徽章、成就徽章和事件徽章，徽章获得规则使用 JSON Rule Builder；徽章展示策略控制徽章是否公开、展示在哪些位置、是否显示图标 / 名称和悬停说明。
 - AI 分析引擎：AI 是社区观察员，不是审核员；新增 AI 控制台、模型档案、场景路由、Prompt 管理和用量健康页。管理员可配置多个模型档案，每个档案包含 Provider、Base URL、Model、加密 API Key、超时、重试、Max Tokens、Temperature、启用状态、优先级和适用场景；活动分析、活动反馈、举报复核和手动重分析可分别绑定主模型与备用模型，主模型失败时按队列自动故障转移；用量健康按系统和模型维度展示调用量、成功率、平均耗时、Token、缓存命中和最近错误。
-- AI 调用策略：支持开关、Prompt 版本、调用策略、能力开关、缓存、重试和测试连接；AI 介入条件可配置为规则置信度低于 / 等于阈值、匿名身份前 N 场必调 AI、举报后重分析、手动重分析、低信用度、随机抽检或全部分析；规则置信度阈值设为 100 时会覆盖全部活动；AI 关闭、缺少 Key 或不可用时，中高风险活动会进入管理员兜底审核；AI 明确识别营销、垃圾、诈骗、违法、成人和政治敏感内容时，策略引擎会提升风险下限并把高风险活动隐藏后转入管理员审核，疑似营销则保留公开但进入管理员关注待办。
+- AI 调用策略：支持开关、Prompt 版本、调用策略、能力开关、缓存、重试、测试连接、系统每日调用上限和模型档案日调用上限；AI 介入条件可配置为规则置信度低于 / 等于阈值、匿名身份前 N 场必调 AI、举报后重分析、手动重分析、低信用度、随机抽检或全部分析；系统默认每日最多 200 次真实模型调用，缓存命中不计入预算；规则置信度阈值设为 100 时会覆盖全部活动；AI 关闭、缺少 Key 或不可用时，中高风险活动会进入管理员兜底审核；AI 明确识别营销、垃圾、诈骗、违法、成人和政治敏感内容时，策略引擎会提升风险下限并把高风险活动隐藏后转入管理员审核，疑似营销则保留公开但进入管理员关注待办。
 - 社区举报：活动详情页支持社区反馈；每条新举报都会记录并触发活动重分析。举报理由与规则 / AI 分析相符时活动会下架并转入管理员审核，管理员通过后重新公开；举报暂不成立时只留痕不下架；多人举报会给活动增加中立风险提醒。
 - 风险提示：低风险活动默认不展示“可信”标签；存在营销或较高风险时显示中立提示，帮助参与者自行判断。
 - YKadmin 后台：入口型工作台按待办、活动运营、社区治理、安全与智能、用户与权限、系统维护分组；社区举报、社区信用、信用策略、社区徽章和徽章展示策略直接出现在社区治理分组下，AI 分析仍在安全与智能分组下。
@@ -245,17 +245,25 @@ STORE_DRIVER=json
 CLOUDBASE_ENV_ID=youkong-d5gh4x0ayc29a2187
 CORS_ORIGINS=https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com
 SESSION_MAX_AGE_DAYS=14
+SESSION_SECRET=请替换为长随机字符串
 ACTIVITY_AUTO_END_INTERVAL_MS=900000
 ACTIVITY_AUTO_END_MIN_SWEEP_MS=60000
 DISABLE_ACTIVITY_AUTO_END=false
 API_TIMING_LOGS=true
 API_SLOW_LOG_MS=1200
 IDENTITY_HASH_SALT=请替换为长随机字符串
+ANONYMOUS_ID_SECRET=请替换为长随机字符串
 TURNSTILE_ENABLED=false
 TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
 TURNSTILE_BYPASS_LOCAL=true
 AI_CONFIG_ENCRYPTION_KEY=请替换为长随机字符串
+AI_CONFIG_ENCRYPTION_KEY_PREVIOUS=
+REQUIRE_PRODUCTION_SECRETS=true
+MANAGE_TOKEN_MAX_AGE_DAYS=180
+MAX_IMAGE_PIXELS=18000000
+MAX_IMAGE_SIDE=8000
+ALLOW_PRIVATE_AI_BASE_URL=false
 YK_DB_FILE=
 ```
 
@@ -267,9 +275,14 @@ YK_DB_FILE=
 - `CORS_ORIGINS` 用英文逗号分隔允许跨域访问 API 的前端域名；`SESSION_MAX_AGE_DAYS` 会被限制在 1 到 30 天之间。
 - `ACTIVITY_AUTO_END_INTERVAL_MS` 控制本地 / 常驻服务的自动结束轮询间隔，默认 15 分钟；`ACTIVITY_AUTO_END_MIN_SWEEP_MS` 控制请求兜底 sweep 的最小间隔；`DISABLE_ACTIVITY_AUTO_END=true` 可关闭后台轮询。
 - `API_TIMING_LOGS=false` 可关闭 API 耗时日志；`API_SLOW_LOG_MS` 控制慢请求阈值，默认 1200ms。
-- `IDENTITY_HASH_SALT` 用于匿名身份、指纹和管理 token 哈希；生产环境必须保持稳定且不提交 Git。
+- `SESSION_SECRET` 用于登录 session HMAC 哈希；`IDENTITY_HASH_SALT` 用于匿名身份、指纹和管理 token 哈希；`ANONYMOUS_ID_SECRET` 用于服务端匿名身份 Cookie 签名。生产环境必须保持稳定且不提交 Git。
 - `TURNSTILE_*` 控制 Cloudflare Turnstile；默认关闭，本地开发可通过 `TURNSTILE_BYPASS_LOCAL=true` 绕过。
 - `AI_CONFIG_ENCRYPTION_KEY` 用于加密 AI API Key；生产环境必须配置稳定长随机值，避免重启或部署后无法解密旧配置。
+- `AI_CONFIG_ENCRYPTION_KEY_PREVIOUS` 只用于从旧加密 Key 迁移已有模型配置；新环境保持为空，历史模型 Key 重新保存完成后应删除。
+- `REQUIRE_PRODUCTION_SECRETS` 控制生产密钥启动检查；CloudBase 模式默认要求 `SESSION_SECRET`、`IDENTITY_HASH_SALT`、`AI_CONFIG_ENCRYPTION_KEY` 都是长随机值。
+- `MANAGE_TOKEN_MAX_AGE_DAYS` 控制匿名活动管理 token 有效期，默认 180 天，服务端会限制在 1 到 365 天之间。
+- `MAX_IMAGE_PIXELS` 和 `MAX_IMAGE_SIDE` 控制上传图片像素上限，防止超大像素图片消耗内存。
+- `ALLOW_PRIVATE_AI_BASE_URL=false` 时，CloudBase 生产环境会拒绝把 AI Base URL 指向 localhost、内网地址和云元数据地址；仅本地 Ollama / local Provider 允许内网地址。
 - 如果数据不存在，服务会初始化默认管理员和默认活动模块。
 
 ## 运行方式
@@ -301,6 +314,7 @@ npm test
 测试内容包括：
 
 - 语法检查：核心前后端脚本和构建脚本。
+- 安全回归：富文本 XSS 清洗、服务端签名匿名身份防篡改、活动管理 token 过期 / 撤销 / 身份绑定、AI Base URL 内网拦截、Prompt Injection 隔离、AI 每日调用预算和备份脱敏。
 - API 冒烟：登录安全头、协作员新增、匿名/登录发起活动、规则引擎、活动置信度、AI 设置脱敏、AI stub 真实调用、AI 关闭中高风险兜底审核、社区反馈、社区治理事件流、信用策略、社区徽章、徽章展示策略、社区信用、活动模板增删改、客厅朋友新增与活动来源筛选、正文图片上传和伪图片拒绝、兜底双岗复核、富文本清洗、正文图片不计入描述长度校验、昵称报名、报名确认 token、无 token 访问 / 取消拦截、取消报名不进入当前设备我的报名、重复报名刷新 token、一人名额并发保护、报名昵称公示、感兴趣去重、最低报名未成团取消、历史活动按客厅 / 客厅朋友筛选、匿名活动反馈、反馈 AI 展示判断、反馈管理员待办、反馈展示 / 隐藏 / 恢复展示、反馈 CSV 导出、报名表、删除报名日志、删除协作员日志、取消活动日志、模板日志、日志脱敏、日志字段筛选、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
 - Playwright 浏览器冒烟：管理员登录跳转、工作台概览卡片跳转、移动端关键页面无横向溢出、社区治理新页面、客厅朋友 / 活动反馈新后台页面、近期 / 历史活动页、活动反馈二维码 JPG 下载、匿名反馈问卷页、活动编辑页模板下拉和 H1 工具、发起形式和反馈展示字段、富文本 H1 重复点击恢复正文、粘贴文本清洗、活动模板管理页富文本编辑器、活动邀请函 JPG 下载、报名成功页 token 访问、CSV 防公式注入、审核默认「请选择」、反馈审核待办、后台分组图标动效挂载和审核封面图 / 正文图片展示。
 
@@ -325,7 +339,7 @@ npm run backup:data
 STORE_DRIVER=cloudbase CLOUDBASE_ENV_ID=youkong-d5gh4x0ayc29a2187 npm run backup:data
 ```
 
-备份默认输出到 `output/backups/`，该目录不提交 Git；默认不导出 `sessions`，需要完整排查时可使用 `npm run backup:data -- --include-sessions`。
+备份默认输出到 `output/backups/`，该目录不提交 Git；默认不导出 `sessions`，且会脱敏 token、API Key、手机号、联系方式等敏感字段。需要排查登录态时可使用 `npm run backup:data -- --include-sessions`；只有在加密离线应急归档场景才使用 `npm run backup:data -- --include-secrets`。
 
 ## CloudBase 部署
 
@@ -385,7 +399,7 @@ npm run deploy:cloudbase
 - YKadmin 操作日志独立页，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载，并仅保留最近 30 天日志。
 - YKadmin 社区举报独立页，支持关键词、处理状态、举报原因和日期范围筛选，列表展示举报理由、活动状态、复核结论并可跳转活动和置信度详情。
 - YKadmin 规则引擎页面，支持查看、新增、保存、删除风险规则，并通过 JSON 调整限流、Turnstile、举报阈值、风险分流策略和社区信用权重。
-- YKadmin AI 控制台，支持查看 AI 总开关、当前主模型、备用模型数量、近 7 天调用、Prompt 当前版本，并在同页配置活动分析、活动反馈、举报复核和手动重分析的主模型 / 备用模型场景路由。
+- YKadmin AI 控制台，支持查看 AI 总开关、当前主模型、备用模型数量、近 7 天调用、Prompt 当前版本，并在同页配置活动分析、活动反馈、举报复核、手动重分析的主模型 / 备用模型场景路由和系统每日调用上限。
 - YKadmin AI 模型配置，支持新增、编辑、删除、测试多个模型档案；模型档案包含 Provider、Base URL、Model、加密 API Key、超时、温度、Token、重试、启用状态、优先级和适用场景；可一键设为全部场景主模型，主模型失败时支持跨 Provider 故障转移。
 - YKadmin AI Prompt 管理，支持按活动分析、活动反馈、举报复核场景筛选、新增、编辑、启用和删除 Prompt 版本；活动反馈 Prompt 不再需要手填隐藏 `feedback` 类型。
 - YKadmin AI 用量健康，支持按整个系统和模型维度查看调用量、成功率、平均耗时、Token、缓存命中、失败次数和最近错误。
@@ -403,7 +417,7 @@ npm run deploy:cloudbase
 - 活动、协作员、模块和日志列表使用 API 分页；搜索条件只在点击「筛选」时生效。
 - CloudBase 模式下列表查询通过存储层 `where/orderBy/skip/limit/count` 执行，避免云函数读取集合全量后再分页。
 - CloudBase 模式下登录态、手机号登录和工作台概览使用字段级查询与计数，降低已登录页面首屏等待时间。
-- 数据备份脚本支持本地 JSON 和 CloudBase NoSQL，默认导出协作员、模块、活动模板、活动、报名、操作日志和 Community OS / Governance 相关集合。
+- 数据备份脚本支持本地 JSON 和 CloudBase NoSQL，默认导出协作员、模块、活动模板、活动、报名、操作日志和 Community OS / Governance 相关集合，并默认脱敏 token、API Key、手机号、联系方式等敏感字段；只有显式追加 `--include-secrets` 才会导出原始敏感字段。
 - API 慢请求日志支持通过 `API_SLOW_LOG_MS` 调节阈值，便于定位缺索引和慢接口。
 - `npm test` 自动化冒烟流程，覆盖 API 主链路和关键移动端浏览器布局。
 - 审核待办独立页，管理员和协作员按自己的待办进入。
@@ -428,7 +442,7 @@ npm run deploy:cloudbase
 - 发起人可进入独立活动反馈页，下载反馈二维码并查看该活动的匿名反馈明细。
 - 报名名额保护：活动报名、删除报名和取消报名统一维护报名数；满员活动删除报名后自动释放名额并回到可报名状态。
 - 报名确认保护：公开报名成功页和公开取消报名必须携带报名时返回的确认 token，重复报名会刷新 token；后端不再向公开响应返回报名手机号、`phoneHash` 或访问令牌哈希。
-- 文件与导出保护：上传图片会校验扩展名、MIME 和文件内容魔数；报名表 CSV 导出会为 `= + - @` 开头的单元格加保护前缀。
+- 文件与导出保护：上传图片会校验扩展名、MIME、文件内容魔数和图片像素上限，降低伪图片和解压炸弹风险；报名表 CSV 导出会为 `= + - @` 开头的单元格加保护前缀。
 - 管理员查看系统内所有人、所有状态活动。
 - 管理员查看操作日志。
 - 首页和活动页动态读取活动列表。
@@ -436,7 +450,7 @@ npm run deploy:cloudbase
 - 独立近期 / 历史活动列表页：近期活动只展示未结束活动，历史活动展示自动归档后的「活动结束」和「未成团取消」活动，并可按「客厅」和「客厅的朋友们」筛选历史来源。
 - 活动自动结束任务：发布 / 满员活动按结束时间或活动日期自动改为「活动结束」；设置最低报名限度的活动在最后报名日期后若未达最低人数会自动改为「未成团取消」；两类自动流转都会写入系统操作日志，并从首页和近期活动列表移除；管理员可手动触发补扫。
 - CloudBase 动态部署、NoSQL 落库和 Storage 封面上传。
-- 基础安全加固：CSP 等响应头、请求意图校验、限流、Session 哈希、上传白名单、输入校验、过期 session 清理、日志手机号脱敏和最小化手机号返回。
+- 基础安全加固：CSP 等响应头、请求意图校验、综合匿名身份限流、服务端签名匿名 Cookie、管理 token 哈希存储 / 过期 / 撤销 / 身份绑定、Session HMAC 哈希、上传白名单、输入校验、过期 session 清理、日志脱敏和最小化手机号返回。
 - 基础工程规范：`.gitignore`、环境变量示例、README、CHANGELOG、开发日志和 GitHub Actions CI。
 - 前端功能模块拆分：富文本编辑器和活动分享能力已从主 `app.js` 拆到 `assets/js/`。
 - 后端路由拆分起步：操作日志路由已拆到 `lib/routes/logs.js`。
@@ -446,6 +460,7 @@ npm run deploy:cloudbase
 
 ## 已验证
 
+- `0.25.1` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖富文本 XSS、服务端签名匿名身份、管理 token 过期 / 撤销 / 身份绑定、AI Base URL SSRF、Prompt Injection 隔离、AI 每日调用预算、备份脱敏，以及新安全加固后的 CloudBase 构建检查。
 - `0.25.0` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖 AI 模型档案默认迁移、活动反馈 Prompt 场景筛选与启用、主模型 500 失败后自动切换备用模型、模型维度用量统计和新 AI 页面静态构建。
 - `0.24.1` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖用户管理页「新建角色」入口顺序、`admin-role-editor.html` 移动端无横向溢出和权限胶囊控件视觉状态。
 - `0.24.0` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖角色权限 API、自定义角色分配、日志查看角色越权拦截、后台卡片权限过滤和 `admin-roles.html` 移动端无横向溢出。

@@ -832,6 +832,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.ok(reportAdminList.reports.some((report) => report.activityId === created.activity.id));
   const confidenceAfterReport = await request(`/api/activities/${created.activity.id}/confidence`, {}, admin.token);
   assert.ok(confidenceAfterReport.reports.some((report) => report.detail === "测试社区反馈入口"));
+  const confidenceReport = confidenceAfterReport.reports.find((report) => report.detail === "测试社区反馈入口");
+  assert.ok(confidenceReport.analysisReport?.aiReport || confidenceReport.analysisReport?.aiMeta);
   const trustProfiles = await request("/api/trust-profiles?page=1&pageSize=10", {}, admin.token);
   assert.ok(trustProfiles.profiles.some((profile) => profile.id));
   const governanceOverview = await request("/api/governance/overview", {}, admin.token);
