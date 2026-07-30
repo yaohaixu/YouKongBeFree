@@ -1549,8 +1549,12 @@ select:disabled {
   font-size: 14px;
 }
 
-.activity-hero .event-meta + .initiator-contact {
+.activity-hero .initiator-contact {
   margin-top: clamp(24px, 3vw, 34px);
+}
+
+.activity-hero p.initiator-contact {
+  margin-top: clamp(24px, 3vw, 34px) !important;
 }
 
 .initiator-contact strong {
@@ -9798,6 +9802,445 @@ html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-my-pending] .eve
 
   80% {
     transform: translateX(-2px);
+  }
+}
+
+.profile-settings-layout,
+.public-profile-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(320px, 0.5fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+.profile-summary-card,
+.public-profile-card,
+.profile-metrics-card,
+.community-health-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface-strong) 88%, transparent);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.06);
+}
+
+.profile-summary-card,
+.public-profile-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: clamp(18px, 3vw, 34px);
+  align-items: center;
+  padding: clamp(24px, 4vw, 44px);
+}
+
+.profile-summary-card h2,
+.public-profile-card h1 {
+  margin: 0 0 10px;
+  color: var(--ink);
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.profile-summary-card p,
+.public-profile-card p,
+.profile-metrics-card p,
+.community-health-card p {
+  margin: 0;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.profile-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line));
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.72), transparent 34%),
+    color-mix(in srgb, var(--accent) 18%, var(--panel));
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 780;
+  object-fit: cover;
+  text-decoration: none;
+}
+
+.large-avatar {
+  width: clamp(76px, 10vw, 108px);
+  height: clamp(76px, 10vw, 108px);
+  font-size: 20px;
+}
+
+.profile-page-avatar {
+  width: clamp(96px, 12vw, 132px);
+  height: clamp(96px, 12vw, 132px);
+  font-size: 24px;
+}
+
+.profile-form {
+  box-shadow: none;
+}
+
+.profile-form h3 {
+  margin-bottom: 10px;
+}
+
+.public-profile-layout {
+  padding-block: clamp(42px, 7vw, 86px);
+}
+
+.profile-hero {
+  background:
+    radial-gradient(circle at 18% 20%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, transparent), var(--bg));
+}
+
+.profile-metrics-card {
+  display: grid;
+  align-content: center;
+  padding: clamp(24px, 3vw, 36px);
+}
+
+.profile-metrics-card span,
+.community-health-card span {
+  color: var(--soft);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.profile-metrics-card strong,
+.community-health-card strong {
+  display: block;
+  margin: 10px 0;
+  color: var(--ink);
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.profile-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.profile-badge {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.muted-badge {
+  background: color-mix(in srgb, var(--muted) 8%, var(--panel));
+  color: var(--muted);
+}
+
+.profile-activity-grid .empty-state {
+  grid-column: 1 / -1;
+}
+
+.initiator-link {
+  color: var(--ink);
+  font-weight: 760;
+  text-decoration: none;
+}
+
+.initiator-link:hover {
+  text-decoration: underline;
+}
+
+.initiator-card {
+  display: inline-flex;
+  width: fit-content;
+  max-width: min(100%, 520px);
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 180ms var(--ease-out), border-color 180ms ease, background 180ms ease;
+}
+
+.initiator-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+}
+
+.initiator-card small,
+.initiator-card em {
+  display: block;
+  color: var(--soft);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.initiator-card strong {
+  display: block;
+  color: var(--ink);
+  line-height: 1.25;
+}
+
+.initiator-avatar {
+  width: 42px;
+  height: 42px;
+}
+
+.registration-note .muted-text {
+  margin-bottom: 10px;
+}
+
+.full-button {
+  width: 100%;
+}
+
+.mobile-sticky-cta {
+  position: fixed;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  z-index: 42;
+  display: none;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--black);
+  color: var(--inverse);
+  text-decoration: none;
+  font-weight: 780;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
+}
+
+.ticket-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.ticket-card::after {
+  content: "";
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 90px;
+  border-top: 1px dashed var(--line-strong);
+  pointer-events: none;
+}
+
+.ticket-ribbon {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.editor-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.editor-title-row h3 {
+  margin-bottom: 0;
+}
+
+.editor-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px;
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+}
+
+.editor-stepper button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 760;
+  transition: background 180ms ease, color 180ms ease, transform 180ms var(--ease-out);
+}
+
+.editor-stepper button:hover,
+.editor-stepper button.active {
+  background: var(--black);
+  color: var(--inverse);
+}
+
+.editor-section {
+  margin: 0 0 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: clamp(18px, 2.4vw, 26px);
+  background: color-mix(in srgb, var(--panel) 74%, transparent);
+  scroll-margin-top: 92px;
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
+}
+
+.editor-section.active {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  background: color-mix(in srgb, var(--accent) 5%, var(--panel));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.05);
+}
+
+.editor-section legend {
+  padding: 0 8px;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 820;
+}
+
+.form-hint {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.editor-advanced {
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+}
+
+.editor-advanced summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 780;
+}
+
+.community-health-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.community-health-card {
+  min-height: 174px;
+  display: grid;
+  align-content: space-between;
+  padding: 22px;
+}
+
+.community-health-card a {
+  width: fit-content;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 760;
+  text-decoration: none;
+}
+
+.community-health-card a:hover {
+  text-decoration: underline;
+}
+
+.health-ai {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 13%, var(--panel)), var(--panel));
+}
+
+.health-queue,
+.health-review,
+.health-risk {
+  background: color-mix(in srgb, var(--surface-strong) 92%, transparent);
+}
+
+html[data-theme="dark"] .profile-summary-card,
+html[data-theme="dark"] .public-profile-card,
+html[data-theme="dark"] .profile-metrics-card,
+html[data-theme="dark"] .community-health-card,
+html[data-theme="dark"] .editor-section,
+html[data-theme="dark"] .editor-advanced,
+html[data-theme="dark"] .initiator-card {
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+}
+
+html[data-theme="dark"] .profile-avatar {
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.18), transparent 34%),
+    color-mix(in srgb, var(--accent) 34%, var(--panel));
+  color: var(--inverse);
+}
+
+html[data-theme="dark"] .editor-stepper button.active,
+html[data-theme="dark"] .editor-stepper button:hover,
+html[data-theme="dark"] .mobile-sticky-cta {
+  background: var(--inverse);
+  color: var(--black);
+}
+
+@media (max-width: 900px) {
+  .profile-settings-layout,
+  .public-profile-layout,
+  .community-health-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-title-row {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-stepper {
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .profile-summary-card,
+  .public-profile-card {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+
+  .mobile-sticky-cta {
+    display: flex;
+  }
+
+  body:has(.mobile-sticky-cta) {
+    padding-bottom: 82px;
+  }
+
+  .ticket-ribbon {
+    position: static;
+    width: fit-content;
+    margin-bottom: 12px;
+  }
+
+  .ticket-card::after {
+    display: none;
   }
 }
 

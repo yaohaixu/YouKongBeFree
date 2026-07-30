@@ -3287,3 +3287,47 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 补权限接口矩阵安全测试，覆盖普通访客、协作员、自定义角色、管理员对所有 `/api/*` 管理接口的纵向 / 横向越权。
 2. 把 AI 调用预算做成用量健康页趋势图，并增加接近上限提醒。
 3. 在 CloudBase 控制台补齐 `yk_aiUsageLogs.profileId + createdAt`、`yk_aiUsageLogs.cacheHit + createdAt` 和 `yk_rateEvents.identityId + scope` 索引。
+
+## 2026-07-30 - 0.26.0 开放用户体验与发起人主页
+
+### 任务目标
+
+从产品和普通用户视角优化活动参与 / 发起链路：让无需登录的发起人也能维护自己的公开形象，让活动详情和报名成功页更像真实社区活动来源，而不是只是一条匿名表单记录；同时把发起活动页拆成更好理解的分段流程，并在 AI 控制台增加更容易先看懂风险面的社区健康概览。
+
+### 具体修改
+
+- `lib/store.js`：新增 `identityProfiles` 存储集合，对应 CloudBase `yk_identityProfiles`。
+- `lib/app.js`：新增匿名公开资料读写 API、公开发起人主页 API、头像上传路径 `profile-avatars/`、公开资料校验和社区健康概览 API；活动列表和详情 payload 增加 `initiatorProfile`。
+- `app.js`：新增公开资料表单、头像压缩上传、发起人头像 / 名称 / 资料卡渲染、公开发起人主页初始化、活动编辑页四段式步骤导航和 AI 社区健康概览渲染。
+- `me.html`：新增「我的公开资料」编辑卡片和公开主页入口。
+- `profile.html`：新增发起人公开主页。
+- `activity-editor.html`：把发起活动表单改为基本信息、活动介绍、报名设置、发布与高级设置四段，高级设置用 `details` 折叠。
+- `admin-ai.html`：在 AI 控制台顶部加入社区健康概览区域。
+- `styles.css`：新增公开资料、发起人卡片、报名成功票据卡、移动端报名 CTA、活动编辑步骤和社区健康概览样式，并补充白天 / 黑夜模式响应。
+- `tests/smoke.test.js`：新增公开资料 API、公开发起人主页、活动详情发起人卡片、活动编辑分段步骤和「我的」公开资料表单覆盖。
+- `README.md`、`CHANGELOG.md`、`docs/security.md`、`docs/cloudbase-indexes.md`、`package.json`、`package-lock.json`、`*.html`：同步版本、文档、索引建议和静态资源缓存参数到 `0.26.0`。
+
+### 技术方案选择
+
+- 公开资料绑定匿名身份，而不是后台用户账号；这符合开放发起活动的方向，也避免把管理员 / 协作员手机号公开化。
+- 公开资料 API 使用 `publicIdentityProfile` 输出最小公开字段，只展示头像、昵称、简介、公开徽章和公开活动摘要，不暴露完整匿名 UUID、管理 token、手机号或 Community Trust 分数。
+- 发起活动页仍保持单页提交，不拆成多路由向导；这样可以降低状态同步复杂度，同时通过步骤导航和折叠高级设置解决表单臃肿问题。
+- 社区健康概览放在 AI 控制台顶部，是为了让管理员先看到风险面，再决定是否进入模型、Prompt、规则或待办模块处理。
+
+### 当前完成情况
+
+- 代码开发、版本号和文档同步已完成。
+- 本地 `npm test` 通过。
+- 本地 `npm run deploy:dry-run` 通过。
+
+### 遗留问题
+
+- 公开资料目前只有头像、昵称和简介；后续若要做发起人主页深度经营，可继续增加公开活动分类、联系方式展示策略和发起人空间页。
+- 头像上传复用现有图片校验链路，但还没有做裁剪工具；当前由前端压缩并保留原比例。
+- 发起人公开主页目前只展示公开活动摘要和近期公开活动；如果活动量增长，建议给 `yk_identityProfiles` 和公开活动查询继续补索引，并为主页活动列表增加分页。
+
+### 下一步建议
+
+1. 把 `app.js` 中 profile / activity detail / editor 相关逻辑继续拆到 `assets/js/` 下，降低主文件维护压力。
+2. 给公开发起人主页增加分享卡片和活动来源筛选，让长期发起人更像社区里的真实空间节点。
+3. 在 CloudBase 控制台补齐 `yk_identityProfiles.id`、`yk_identityProfiles.communityId` 和 `yk_identityProfiles.updatedAt` 索引。

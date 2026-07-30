@@ -21,6 +21,7 @@
 - AI Provider Base URL 在 CloudBase 生产环境默认拒绝 localhost、内网 IP 和云元数据地址，避免 SSRF；仅 `ollama` / `local` Provider 或显式 `ALLOW_PRIVATE_AI_BASE_URL=true` 才允许私有地址。
 - AI 缓存 key 包含模型档案、场景和 Prompt 版本，避免切换模型或 Prompt 后复用旧分析结果。
 - AI 关闭、缺少 API Key 或调用失败时，策略引擎会按 `aiUnavailableAction`、`aiUnavailableReviewMinRisk` 等配置把中高风险活动送入管理员兜底审核，避免“只降分不复核”；管理员手动重新分析会强制调用 AI、跳过缓存，并记录当前 Prompt 版本。
+- AI 控制台新增社区健康概览，只展示聚合后的待分析、复核、举报、反馈和用量状态，不输出模型 API Key、Prompt 明文以外的敏感运行时密钥或匿名身份完整 UUID。
 - 社区信用采用事件驱动投影：活动提交、置信度评估、活动发布、社区举报和报名里程碑先写入 `communityEvents`，再由 `trustPolicies` 配置计算信任变化；当前值缓存到 `trustProfiles`，便于查询但不作为唯一来源。
 - 社区徽章与徽章展示策略独立于分数本身；徽章获得和展示策略均可配置，负向或观察类内部状态可以只在后台可见，避免公开污名化。
 - Session Cookie 使用 `HttpOnly`，CloudBase 环境使用 `Secure` 和 `SameSite=None`；服务端只保存 token 哈希，并设置过期时间。
@@ -30,12 +31,14 @@
 - API 和本地 Express 静态服务返回安全响应头：CSP、`X-Frame-Options`、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy`，HTTPS 环境返回 HSTS。
 - CloudBase Hosting 静态页补充 HTML `Content-Security-Policy` meta 和 referrer meta，提供基础浏览器侧约束。
 - 上传封面只允许 JPG、PNG、WebP、GIF，单文件最大 6MB，并同时校验扩展名、MIME、文件内容魔数和图片像素尺寸，拒绝 SVG、HTML、脚本类伪图片和小体积超大像素图片。
+- 公开资料头像使用独立 `profile-avatars/` 上传目录，单文件最大 4MB，并复用扩展名、MIME、内容魔数和图片像素校验；公开页只通过文件代理展示图片 URL，不暴露存储路径以外的身份敏感字段。
 - 富文本正文图片需先在浏览器压缩后上传，原图最大 10MB，服务端会校验图片内容魔数并只接受压缩后约 1MB 以内的图片，文件存储到本地 `uploads/` 或 CloudBase Storage；CloudBase 正文图片通过 `/api/files?fileId=...` 代理生成最新临时地址，避免公开页保存过期临时 URL。
 - 手机号、昵称、模块、活动标题、地点、描述、审核意见等字段有格式和长度校验。
 - 活动描述和模板内容只保留有限富文本白名单标签；正文图片标签不会计入 50000 字描述上限，避免上传图片后被 base64 或长 URL 误伤校验。
 - 公开协作员接口不返回手机号；只有管理员成员管理接口返回成员手机号。
 - 操作日志中的手机号脱敏保存，写入前会去除控制字符、折叠换行并限制字段长度，避免日志注入和日志污染。
 - 活动发起后的管理 token 只在浏览器本地保存为哈希映射，服务端保存 hash，不返回明文 token 哈希。
+- 发起人公开主页只返回头像、昵称、简介、公开徽章和公开活动摘要；不会公开后台手机号、发起人联系方式、完整匿名 UUID、管理 token、报名 token、Community Trust 分数或后台审核信息。
 - 社区举报只记录举报原因和补充说明，不作为传统封禁按钮；每条新举报都会触发活动重分析，举报理由与分析结果相符或复核发现强风险时活动隐藏并进入管理员审核，举报暂不成立只留痕，多人举报会增加中立风险提示。
 - 报名写入使用活动维度串行锁、匿名身份维度幂等报名 ID 和确认 token，降低重复提交、隐私数据沉淀和同一活动并发超员风险。
 - 报名成功页和公开取消报名需要报名时返回的确认 token；服务端只保存 token 哈希，公开响应不返回 token 哈希，报名表与公开响应默认不再返回报名手机号。

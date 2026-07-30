@@ -1,10 +1,10 @@
 # CloudBase 查询与索引建议
 
-本项目 `0.7.0` 起，活动、协作员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。`0.8.0` 起，活动自动结束任务也会按 `status + startsAt` 查询过期待归档活动。`0.9.0` 起，跨天活动可填写 `endsAt`，但 sweep 仍用 `status + startsAt` 缩小候选，再用 `endsAt` 做最终判断，暂不要求新增 `endsAt` 索引。`0.10.0` 起，报名记录新增 `phoneHash` 用于重复报名识别，操作日志手机号改为脱敏保存。`0.13.4` 起，登录态、手机号登录和工作台 dashboard 也使用字段查询与计数接口，建议同步补齐对应索引。`0.13.5` 起，API 慢请求会写入 CloudBase 云函数日志，可用日志中的 `path` 对照本文档补索引。`0.14.0` 起，操作日志页支持操作类型、操作人、角色和日期范围组合筛选，建议补充 `yk_logs` 组合索引。`0.15.0` 起新增活动描述模板集合 `yk_templates`，发起活动时会读取模板列表，管理员模板管理页会按更新时间分页和关键词搜索。`0.18.0` 起新增 Community OS 安全架构集合，规则引擎、匿名身份、Community Trust、社区反馈、活动置信度和 AI Analysis Engine 均建议按本文补充索引。`0.19.0` 起新增 Community Governance 集合，Trust Policy、Community Badge、Badge Policy 和统一 Community Event 时间线建议按本文补齐索引。`0.20.0` 起活动发布改为异步安全分析，并新增社区举报后台，建议补齐 `yk_activityAnalysisJobs` 和 `yk_communityReports.status + createdAt` 相关索引。`0.20.1` 起分析队列会恢复超时 `running` 任务，建议补齐 `yk_activityAnalysisJobs.status + startedAt` 索引。`0.20.2` 已通过 CloudBase CLI 在生产环境补齐本文档核心推荐索引，并额外补充常用业务 `id` 字段索引。`0.21.0` 起公开报名改为匿名身份去重，并新增最低报名成团、报名截止和「感兴趣」集合，建议补齐 `yk_activities.status + minRegistrationEnabled + registrationDeadline`、`yk_registrations.activityId + identityId` 和 `yk_activityInterests` 相关索引。`0.22.0` 起新增「客厅的朋友们」和匿名活动反馈集合，建议补齐 `yk_livingRoomFriends`、`yk_activityFeedbacks`、`yk_activities.sourceType / friendId` 相关索引。`0.25.1` 起 AI 每日调用预算会按 `yk_aiUsageLogs.createdAt` 和 `yk_aiUsageLogs.profileId + createdAt` 计数，建议补齐模型用量索引。
+本项目 `0.7.0` 起，活动、协作员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。`0.8.0` 起，活动自动结束任务也会按 `status + startsAt` 查询过期待归档活动。`0.9.0` 起，跨天活动可填写 `endsAt`，但 sweep 仍用 `status + startsAt` 缩小候选，再用 `endsAt` 做最终判断，暂不要求新增 `endsAt` 索引。`0.10.0` 起，报名记录新增 `phoneHash` 用于重复报名识别，操作日志手机号改为脱敏保存。`0.13.4` 起，登录态、手机号登录和工作台 dashboard 也使用字段查询与计数接口，建议同步补齐对应索引。`0.13.5` 起，API 慢请求会写入 CloudBase 云函数日志，可用日志中的 `path` 对照本文档补索引。`0.14.0` 起，操作日志页支持操作类型、操作人、角色和日期范围组合筛选，建议补充 `yk_logs` 组合索引。`0.15.0` 起新增活动描述模板集合 `yk_templates`，发起活动时会读取模板列表，管理员模板管理页会按更新时间分页和关键词搜索。`0.18.0` 起新增 Community OS 安全架构集合，规则引擎、匿名身份、Community Trust、社区反馈、活动置信度和 AI Analysis Engine 均建议按本文补充索引。`0.19.0` 起新增 Community Governance 集合，Trust Policy、Community Badge、Badge Policy 和统一 Community Event 时间线建议按本文补齐索引。`0.20.0` 起活动发布改为异步安全分析，并新增社区举报后台，建议补齐 `yk_activityAnalysisJobs` 和 `yk_communityReports.status + createdAt` 相关索引。`0.20.1` 起分析队列会恢复超时 `running` 任务，建议补齐 `yk_activityAnalysisJobs.status + startedAt` 索引。`0.20.2` 已通过 CloudBase CLI 在生产环境补齐本文档核心推荐索引，并额外补充常用业务 `id` 字段索引。`0.21.0` 起公开报名改为匿名身份去重，并新增最低报名成团、报名截止和「感兴趣」集合，建议补齐 `yk_activities.status + minRegistrationEnabled + registrationDeadline`、`yk_registrations.activityId + identityId` 和 `yk_activityInterests` 相关索引。`0.22.0` 起新增「客厅的朋友们」和匿名活动反馈集合，建议补齐 `yk_livingRoomFriends`、`yk_activityFeedbacks`、`yk_activities.sourceType / friendId` 相关索引。`0.25.1` 起 AI 每日调用预算会按 `yk_aiUsageLogs.createdAt` 和 `yk_aiUsageLogs.profileId + createdAt` 计数，建议补齐模型用量索引。`0.26.0` 起新增匿名公开资料集合 `yk_identityProfiles`，活动卡、活动详情和发起人主页会按匿名身份 / Community ID 读取公开资料。
 
 ## 推荐索引
 
-建议在 CloudBase 控制台或 CloudBase CLI 为以下集合建立索引，避免数据量增长后列表筛选变慢。`0.20.2` 已在环境 `youkong-d5gh4x0ayc29a2187` 创建并抽样验证；`0.21.0` 和 `0.22.0` 新增字段和集合需要继续补充下方新增索引。
+建议在 CloudBase 控制台或 CloudBase CLI 为以下集合建立索引，避免数据量增长后列表筛选变慢。`0.20.2` 已在环境 `youkong-d5gh4x0ayc29a2187` 创建并抽样验证；`0.21.0`、`0.22.0` 和 `0.26.0` 新增字段和集合需要继续补充下方新增索引。
 
 ### `yk_activities`
 
@@ -93,6 +93,12 @@
 - `activityId + status + feedbackWeight`：活动详情读取公开展示的前三条高权重反馈。
 - `activityId + createdAt`：发起人活动反馈详情页读取全部反馈。
 - `status + createdAt`：管理员反馈列表按待复核 / 已展示 / 不展示筛选。
+
+### `yk_identityProfiles`
+
+- `id`：当前浏览器匿名身份读取 / 保存「我的公开资料」，以及活动 payload 批量补齐发起人资料。
+- `communityId`：`profile.html?id=...` 公开发起人主页按短 Community ID 读取资料。
+- `updatedAt`：后续公开资料管理、最近更新排序或异常资料排查。
 
 ### `yk_safetyRules`
 

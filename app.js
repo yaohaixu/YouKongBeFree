@@ -2,6 +2,8 @@ const CLIENT_ID_KEY = "yk_client_id";
 const ACTIVITY_TOKEN_KEY = "yk_activity_tokens";
 const ACTIVITY_INTEREST_KEY = "yk_activity_interests";
 const REGISTRATION_TOKEN_KEY = "yk_registration_tokens";
+const PROFILE_AVATAR_MAX_BYTES = 4 * 1024 * 1024;
+const PROFILE_AVATAR_COMPRESSED_BYTES = 900 * 1024;
 
 function randomToken() {
   const webCrypto = window.crypto || window.msCrypto;
@@ -211,6 +213,7 @@ let mePageState = {
   aiModels: [],
   aiPrompts: [],
   aiUsage: null,
+  profile: null,
   friends: [],
   feedbacks: [],
   activityFeedbacks: [],
@@ -270,6 +273,7 @@ const logActionOptions = [
   ["activity.feedback.create", "提交活动反馈"],
   ["activity.feedback.review", "审核活动反馈"],
   ["activity.feedback.export", "导出活动反馈"],
+  ["profile.update", "保存个人资料"],
   ["ai.model.create", "新增 AI 模型"],
   ["ai.model.update", "保存 AI 模型"],
   ["ai.model.delete", "删除 AI 模型"],
@@ -354,7 +358,7 @@ window.addEventListener("youkong-toast", (event) => {
 function revealDynamicContent(root) {
   if (!root || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const elements = qsa(
-    ".event-card, .event-row, .manage-row, .empty-state, .data-table, .activity-hero, .article-content, .success-card",
+    ".event-card, .event-row, .manage-row, .empty-state, .data-table, .activity-hero, .article-content, .success-card, .public-profile-card, .profile-metrics-card, .community-health-card",
     root
   );
   elements.forEach((element, index) => {
@@ -497,6 +501,51 @@ function descriptionToHtml(value = "") {
     .split(/\n{2,}/)
     .map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br />")}</p>`)
     .join("");
+}
+
+function profileUrl(profile = {}) {
+  const publicId = profile?.hasProfile && profile?.communityId ? profile.communityId : profile?.id;
+  return publicId ? `profile.html?id=${encodeURIComponent(publicId)}` : "";
+}
+
+function avatarInitials(name = "") {
+  const text = String(name || "有空朋友").trim();
+  return escapeHtml(text.slice(0, 2) || "有空");
+}
+
+function renderProfileAvatar(profile = {}, name = "", className = "profile-avatar") {
+  const label = profile?.displayName || name || "有空朋友";
+  if (profile?.avatarUrl) {
+    return `<img class="${escapeHtml(className)}" src="${escapeHtml(profile.avatarUrl)}" alt="${escapeHtml(label)}的头像" loading="lazy" />`;
+  }
+  return `<span class="${escapeHtml(className)}" aria-hidden="true">${avatarInitials(label)}</span>`;
+}
+
+function renderInitiatorName(activity = {}, options = {}) {
+  const profile = activity.initiatorProfile || null;
+  const name = profile?.displayName || activity.initiator || activity.creatorName || "有空朋友";
+  const url = profileUrl(profile);
+  const text = escapeHtml(name);
+  if (!url || options.plain) return text;
+  return `<a class="initiator-link" href="${url}">${text}</a>`;
+}
+
+function renderInitiatorCard(activity = {}) {
+  const profile = activity.initiatorProfile || null;
+  if (!profile && !activity.initiator) return "";
+  const name = profile?.displayName || activity.initiator || "有空朋友";
+  const url = profileUrl(profile);
+  const content = `
+    ${renderProfileAvatar(profile, name, "profile-avatar initiator-avatar")}
+    <span>
+      <small>发起人</small>
+      <strong>${escapeHtml(name)}</strong>
+      ${profile?.bio ? `<em>${escapeHtml(profile.bio)}</em>` : ""}
+    </span>
+  `;
+  return url
+    ? `<a class="initiator-card" href="${url}">${content}</a>`
+    : `<div class="initiator-card">${content}</div>`;
 }
 
 function renderInitiatorContact(activity) {
@@ -865,7 +914,7 @@ function renderActivityCard(activity) {
         <p>${escapeHtml(activity.location)} · ${formatActivityTime(activity)}</p>
         <div class="event-meta">
           <span>${escapeHtml(activity.statusLabel || "活动发布")}</span>
-          <span>发起人：${escapeHtml(activity.initiator)}</span>
+          <span>发起人：${renderInitiatorName(activity)}</span>
           <span>${capacity}</span>
           ${renderFormationMeta(activity)}
         </div>
@@ -873,6 +922,65 @@ function renderActivityCard(activity) {
       </div>
     </article>
   `;
+}
+
+async function initProfilePage() {
+  const root = qs("[data-profile-page]");
+  if (!root) return;
+  const id = new URLSearchParams(location.search).get("id");
+  if (!id) {
+    root.innerHTML = `<section class="section"><div class="wrap"><div class="empty-state"><strong>缺少发起人标识</strong><p>请从活动详情页或活动列表进入发起人主页。</p></div></div></section>`;
+    return;
+  }
+  try {
+    const { profile, badges = [], summary = {}, activities = [] } = await api.get(`/api/profiles/${encodeURIComponent(id)}`);
+    const badgeList = badges.filter((badge) => badge && badge.name).slice(0, 6);
+    root.innerHTML = `
+      <section class="profile-hero">
+        <div class="wrap public-profile-layout">
+          <article class="public-profile-card">
+            ${renderProfileAvatar(profile, profile?.displayName, "profile-avatar profile-page-avatar")}
+            <div>
+              <p class="section-kicker">${escapeHtml(profile?.communityId || "Community ID")}</p>
+              <h1>${escapeHtml(profile?.displayName || "有空朋友")}</h1>
+              <p>${escapeHtml(profile?.bio || "这个朋友还没有写简介，可以从公开活动里认识 TA。")}</p>
+              <div class="profile-badge-row">
+                ${badgeList.length ? badgeList.map((badge) => `<span class="profile-badge">${escapeHtml(badge.name)}</span>`).join("") : `<span class="profile-badge muted-badge">暂无公开徽章</span>`}
+              </div>
+            </div>
+          </article>
+          <aside class="profile-metrics-card">
+            <span>公开活动</span>
+            <strong>${Number(summary.total || 0)}</strong>
+            <p>${Number(summary.upcoming || 0)} 个近期活动 · ${Number(summary.history || 0)} 个历史活动</p>
+            <p>${Number(summary.registrations || 0)} 次报名 · ${Number(summary.interests || 0)} 次感兴趣</p>
+          </aside>
+        </div>
+      </section>
+      <section class="section tight">
+        <div class="wrap">
+          <div class="section-head compact-head">
+            <div>
+              <p class="section-kicker">公开活动</p>
+              <h2>这个发起人公开过的活动。</h2>
+            </div>
+            <a class="button ghost" href="activities.html">查看近期活动</a>
+          </div>
+          <div class="activity-grid profile-activity-grid">
+            ${
+              activities.length
+                ? activities.map(renderActivityCard).join("")
+                : `<div class="empty-state"><strong>暂时没有公开活动</strong><p>公开发布后的活动会出现在这里。</p><a class="button primary" href="activity-editor.html">发起活动</a></div>`
+            }
+          </div>
+        </div>
+      </section>
+    `;
+    bindActivityInterestActions(root);
+    revealDynamicContent(root);
+  } catch (error) {
+    root.innerHTML = `<section class="section"><div class="wrap"><div class="empty-state"><strong>暂时没读到公开资料</strong><p>${escapeHtml(error.message)}</p></div></div></section>`;
+  }
 }
 
 function bindActivityInterestActions(root = document) {
@@ -958,12 +1066,131 @@ async function getOptionalUser() {
   }
 }
 
+async function loadMyProfile() {
+  const { profile } = await api.get("/api/profile/me");
+  mePageState.profile = profile || null;
+  return mePageState.profile;
+}
+
+function preferredDisplayName() {
+  return mePageState.profile?.displayName || mePageState.user?.nickname || "";
+}
+
+function updateProfilePreview(root = document, profile = mePageState.profile || {}) {
+  const name = profile?.displayName || "有空朋友";
+  qsa("[data-profile-name]", root).forEach((item) => {
+    item.textContent = name;
+  });
+  qsa("[data-profile-bio]", root).forEach((item) => {
+    item.textContent = profile?.bio || "可以写一句你常发起什么、喜欢怎样的公共生活。";
+  });
+  qsa("[data-profile-avatar]", root).forEach((box) => {
+    box.innerHTML = renderProfileAvatar(profile, name, "profile-avatar large-avatar");
+  });
+  const link = qs("[data-profile-public-link]", root);
+  if (link && profile?.id) {
+    link.href = profileUrl(profile);
+    link.hidden = false;
+  }
+}
+
+function imageElementFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("头像图片读取失败"));
+    };
+    image.src = url;
+  });
+}
+
+async function compressAvatarFile(file) {
+  if (!file || file.size <= PROFILE_AVATAR_COMPRESSED_BYTES || file.type === "image/gif") return file;
+  if (!file.type.startsWith("image/")) return file;
+  try {
+    const image = await imageElementFromFile(file);
+    const side = Math.min(720, Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
+    const ratio = Math.min(1, side / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round((image.naturalWidth || image.width) * ratio));
+    canvas.height = Math.max(1, Math.round((image.naturalHeight || image.height) * ratio));
+    const context = canvas.getContext("2d");
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", 0.84));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" });
+  } catch {
+    return file;
+  }
+}
+
+function bindProfileForm(root = document) {
+  const form = qs("[data-profile-form]", root);
+  if (!form || form.dataset.bound === "true") return;
+  const message = qs("[data-profile-message]", form);
+  const avatarInput = form.avatar;
+  avatarInput?.addEventListener("change", () => {
+    const file = avatarInput.files?.[0];
+    if (!file) return;
+    const previewProfile = {
+      ...(mePageState.profile || {}),
+      displayName: form.displayName.value || mePageState.profile?.displayName || "",
+      bio: form.bio.value || mePageState.profile?.bio || "",
+      avatarUrl: URL.createObjectURL(file),
+    };
+    updateProfilePreview(root, previewProfile);
+    setTimeout(() => URL.revokeObjectURL(previewProfile.avatarUrl), 1500);
+  });
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setMessage(message, "正在保存资料...");
+    try {
+      const formData = new FormData();
+      formData.set("displayName", form.displayName.value);
+      formData.set("bio", form.bio.value);
+      const avatar = avatarInput?.files?.[0] || null;
+      if (avatar) {
+        if (avatar.size > PROFILE_AVATAR_MAX_BYTES) throw new Error("头像不能超过 4MB");
+        formData.set("avatar", await compressAvatarFile(avatar));
+      }
+      const { profile } = await api.put("/api/profile/me", formData);
+      mePageState.profile = profile;
+      form.displayName.value = profile.displayName || "";
+      form.bio.value = profile.bio || "";
+      if (avatarInput) avatarInput.value = "";
+      updateProfilePreview(root, profile);
+      qs("[data-user-name]", root) && (qs("[data-user-name]", root).textContent = profile.displayName || mePageState.user?.nickname || "朋友");
+      setMessage(message, "资料已保存。", "success");
+      showToast("保存成功");
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    }
+  });
+  form.dataset.bound = "true";
+}
+
 async function initMeDashboardPage() {
   const root = qs("[data-me-dashboard]");
   if (!root) return;
   const user = await getOptionalUser();
   mePageState.user = user;
-  qs("[data-user-name]", root).textContent = user?.nickname || "朋友";
+  const profile = await loadMyProfile().catch(() => null);
+  if (profile) {
+    const form = qs("[data-profile-form]", root);
+    if (form) {
+      form.displayName.value = profile.displayName || "";
+      form.bio.value = profile.bio || "";
+    }
+    updateProfilePreview(root, profile);
+  }
+  bindProfileForm(root);
+  qs("[data-user-name]", root).textContent = profile?.displayName || user?.nickname || "朋友";
 
   const dashboard = await api.get("/api/dashboard/me");
 
@@ -1217,8 +1444,10 @@ async function initActivityEditorPage() {
   if (!form) return;
   const user = await getOptionalUser();
   mePageState.user = user;
-  qs("[data-user-name]") && (qs("[data-user-name]").textContent = user?.nickname || "朋友");
+  const profile = await loadMyProfile().catch(() => null);
+  qs("[data-user-name]") && (qs("[data-user-name]").textContent = profile?.displayName || user?.nickname || "朋友");
   resetActivityForm(form);
+  bindActivityEditorSteps(form);
   bindInitiatorContactToggle(form);
   bindMinRegistrationToggle(form);
   bindSourceTypeToggle(form);
@@ -1287,6 +1516,35 @@ async function initActivityEditorPage() {
     resetActivityForm(form);
     setMessage(message, "已取消编辑。");
   });
+}
+
+function bindActivityEditorSteps(form) {
+  const stepper = qs("[data-editor-stepper]", form);
+  if (!stepper || stepper.dataset.bound === "true") return;
+  const buttons = qsa("[data-editor-step-target]", stepper);
+  const sections = qsa("[data-editor-section]", form);
+  const setActive = (key) => {
+    buttons.forEach((button) => button.classList.toggle("active", button.dataset.editorStepTarget === key));
+    sections.forEach((section) => section.classList.toggle("active", section.dataset.editorSection === key));
+  };
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.editorStepTarget;
+      setActive(key);
+      qs(`[data-editor-section="${key}"]`, form)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  const observer = "IntersectionObserver" in window
+    ? new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
+      if (visible?.target?.dataset.editorSection) setActive(visible.target.dataset.editorSection);
+    }, { rootMargin: "-20% 0px -55% 0px", threshold: [0.2, 0.45, 0.7] })
+    : null;
+  sections.forEach((section) => observer?.observe(section));
+  setActive(sections[0]?.dataset.editorSection || "basic");
+  stepper.dataset.bound = "true";
 }
 
 function bindInitiatorContactToggle(form) {
@@ -1418,7 +1676,7 @@ async function getTurnstileToken(form) {
 function resetActivityForm(form) {
   mePageState.editingActivity = null;
   form.reset();
-  form.initiator.value = mePageState.user ? mePageState.user.nickname : "";
+  form.initiator.value = preferredDisplayName();
   if (form.showInitiatorContact) form.showInitiatorContact.value = "no";
   if (form.initiatorContact) form.initiatorContact.value = mePageState.user?.phone || "";
   bindInitiatorContactToggle(form);
@@ -1841,12 +2099,13 @@ async function initActivityPage() {
         <p>${escapeHtml(activity.location)} · ${formatActivityTime(activity)}</p>
         <div class="event-meta">
           <span>${escapeHtml(activity.statusLabel || "活动发布")}</span>
-          <span>发起人：${escapeHtml(activity.initiator)}</span>
+          <span>发起人：${renderInitiatorName(activity)}</span>
           <span>${activity.capacity ? `限额 ${activity.capacity} 人` : "人数无上限"}</span>
           <span>已报名 ${activity.registrationCount} 人</span>
           ${renderFormationMeta(activity)}
         </div>
         ${renderRiskNotice(activity)}
+        ${renderInitiatorCard(activity)}
         ${renderInitiatorContact(activity)}
         <div class="activity-share-actions" aria-label="活动分享操作">
           <button class="button ghost" type="button" data-download-poster>下载活动邀请函</button>
@@ -1865,13 +2124,14 @@ async function initActivityPage() {
         <article class="article-content">${descriptionToHtml(activity.description)}</article>
         ${
           canRegisterActivity(activity)
-            ? `<aside class="form-note">
+            ? `<aside class="form-note registration-note" id="activity-registration">
                 <h3>报名这个活动</h3>
+                <p class="muted-text">只需要留下一个昵称，方便发起人现场确认。</p>
                 ${renderActivityFormationPanel(activity)}
                 <form data-register-form>
                   <label for="nickname">昵称</label>
-                  <input id="nickname" name="nickname" required />
-                  <button class="button primary" type="submit">提交报名</button>
+                  <input id="nickname" name="nickname" maxlength="32" autocomplete="nickname" required placeholder="比如 海边散步的人" />
+                  <button class="button primary full-button" type="submit">提交报名</button>
                   <p class="form-message" data-register-message></p>
                 </form>
                 ${renderCommunityReportBox(activity)}
@@ -1885,6 +2145,7 @@ async function initActivityPage() {
         }
       </div>
     </section>
+    ${canRegisterActivity(activity) ? `<a class="mobile-sticky-cta" href="#activity-registration">报名这个活动</a>` : ""}
     ${renderPublicRegistrationNames(activity)}
     ${renderPublicFeedbacks(activity)}
   `;
@@ -1954,10 +2215,11 @@ async function initSuccessPage() {
     const { activity, registration } = await api.get(`/api/activities/${activityId}/registrations/${registrationId}?token=${encodeURIComponent(registrationToken)}`);
     root.innerHTML = `
       <section class="success-hero">
-        <div class="wrap success-card">
-          <p class="eyebrow">报名成功</p>
-          <h1>来客厅见。</h1>
-          <p>你的报名已经记录下来，可以把这个页面留作确认信息。</p>
+        <div class="wrap success-card ticket-card">
+          <div class="ticket-ribbon">报名成功</div>
+          <p class="eyebrow">活动票根</p>
+          <h1>来现场见。</h1>
+          <p>你的报名已经记录下来，这个页面可以留作确认信息。</p>
           <div class="success-grid">
             <div>
               <span>活动</span>
@@ -1970,6 +2232,7 @@ async function initSuccessPage() {
               <p>已记录昵称</p>
             </div>
           </div>
+          ${renderInitiatorCard(activity)}
           <div class="button-row">
             <a class="button primary" href="activity.html?id=${encodeURIComponent(activity.id)}">查看活动</a>
             <button class="button ghost" type="button" data-download-poster>下载活动邀请函</button>
@@ -1991,7 +2254,7 @@ async function initSuccessPage() {
       showToast("取消成功");
       root.innerHTML = `
         <section class="success-hero">
-          <div class="wrap success-card">
+          <div class="wrap success-card ticket-card">
             <p class="eyebrow">已取消报名</p>
             <h1>这次先留白。</h1>
             <p>你的报名记录已经取消，之后想来还可以重新报名。</p>
@@ -3085,14 +3348,16 @@ async function initAdminAiPage() {
     button.disabled = !hasPermission(user, "ai", "configure");
   });
   try {
-    const [{ settings }, { models }, { usage }, { prompts }] = await Promise.all([
+    const [{ settings }, { models }, { usage }, { prompts }, healthResult] = await Promise.all([
       api.get("/api/ai/settings"),
       api.get("/api/ai/models"),
       api.get("/api/ai/usage?days=7"),
       api.get("/api/ai/prompts?page=1&pageSize=100"),
+      api.get("/api/safety/health"),
     ]);
     mePageState.aiModels = models || [];
     mePageState.aiUsage = usage || null;
+    renderCommunityHealth(qs("[data-community-health]", root), healthResult.health || {});
     fillAiSettingsForm(settingsForm, settings);
     renderAiConsoleSummary(qs("[data-ai-console-summary]", root), settings, models || [], usage || {}, prompts || []);
     renderAiSceneRoutes(qs("[data-ai-scene-routes]", root), settings, models || []);
@@ -3138,6 +3403,43 @@ function renderAiConsoleSummary(container, settings = {}, models = [], usage = {
     <article class="ai-console-card prompt-console-card"><span class="tag">活动分析 Prompt</span><h3>${escapeHtml(activityPrompt?.name || "默认活动分析")}</h3><p>${escapeHtml(activityPrompt?.version || settings.promptVersion || "activity-default-v1")}</p><a class="button ghost" href="admin-ai-prompts.html?type=activity">查看</a></article>
     <article class="ai-console-card prompt-console-card"><span class="tag">活动反馈 Prompt</span><h3>${escapeHtml(feedbackPrompt?.name || "默认活动反馈")}</h3><p>${escapeHtml(feedbackPrompt?.version || settings.promptVersions?.feedback || "feedback-default-v1")}</p><a class="button ghost" href="admin-ai-prompts.html?type=feedback">查看</a></article>
     <article class="ai-console-card prompt-console-card"><span class="tag">举报复核 Prompt</span><h3>${escapeHtml(reportPrompt?.name || "暂未单独配置")}</h3><p>${escapeHtml(reportPrompt?.version || settings.promptVersions?.report || "复用活动分析")}</p><a class="button ghost" href="admin-ai-prompts.html?type=report">查看</a></article>
+  `;
+  revealDynamicContent(container);
+}
+
+function renderCommunityHealth(container, health = {}) {
+  if (!container) return;
+  const ai = health.ai || {};
+  const queue = health.queue || {};
+  const risk = health.risk || {};
+  const budget = ai.remainingToday === null
+    ? "未设上限"
+    : `剩余 ${formatCompactNumber(ai.remainingToday)} 次`;
+  container.innerHTML = `
+    <article class="community-health-card health-ai">
+      <span>AI 今日</span>
+      <strong>${formatCompactNumber(ai.todayCalls || 0)}</strong>
+      <p>${ai.enabled ? `已开启 · ${budget}` : "AI 已关闭，安全策略仍在运行"}</p>
+      <a href="admin-ai-usage.html">查看用量</a>
+    </article>
+    <article class="community-health-card health-queue">
+      <span>安全队列</span>
+      <strong>${Number(queue.pendingAnalysis || 0) + Number(queue.queuedJobs || 0)}</strong>
+      <p>${Number(queue.pendingAnalysis || 0)} 个活动分析中 · ${Number(queue.queuedJobs || 0)} 个任务排队</p>
+      <a href="admin-activities.html?status=analysis_pending">查看活动</a>
+    </article>
+    <article class="community-health-card health-review">
+      <span>社区复核</span>
+      <strong>${Number(queue.adminReview || 0) + Number(queue.feedbackReview || 0)}</strong>
+      <p>${Number(queue.adminReview || 0)} 个活动 · ${Number(queue.feedbackReview || 0)} 条反馈</p>
+      <a href="review-tasks.html">处理待办</a>
+    </article>
+    <article class="community-health-card health-risk">
+      <span>近期风险</span>
+      <strong>${Number(risk.reportWarnings || 0)}</strong>
+      <p>${Number(risk.highRiskActivities || 0)} 个高风险活动 · ${Number(queue.hiddenReview || 0)} 个已隐藏复核</p>
+      <a href="admin-reports.html">查看举报</a>
+    </article>
   `;
   revealDynamicContent(container);
 }
@@ -5058,7 +5360,7 @@ async function safeInit(task) {
   } catch (error) {
     console.error(error);
     showToast("页面数据读取失败，请刷新后重试");
-    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-safety-rules], [data-ai-prompts], [data-ai-console-summary], [data-ai-model-list], [data-ai-usage-models], [data-ai-usage-errors], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list], [data-friend-list], [data-feedback-list], [data-activity-feedback-list], [data-my-registrations], [data-my-feedbacks]")
+    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-profile-page], [data-safety-rules], [data-ai-prompts], [data-ai-console-summary], [data-community-health], [data-ai-model-list], [data-ai-usage-models], [data-ai-usage-errors], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list], [data-friend-list], [data-feedback-list], [data-activity-feedback-list], [data-my-registrations], [data-my-feedbacks]")
       .filter((element) => /正在|读取|加载/.test(element.textContent || ""))
       .forEach((element) => {
         element.innerHTML = `<div class="empty-state"><strong>暂时没读到数据</strong><p>请刷新页面重试，或稍后再来。</p></div>`;
@@ -5079,6 +5381,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(initReviewTasksPage),
     safeInit(initActivityPage),
     safeInit(initSuccessPage),
+    safeInit(initProfilePage),
     safeInit(initAdminPage),
     safeInit(initAdminActivitiesPage),
     safeInit(initAdminMembersPage),

@@ -8,8 +8,8 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <script src="theme.js?v=0.25.1"></script>
-    <link rel="stylesheet" href="styles.css?v=0.25.1" />
+    <script src="theme.js?v=0.26.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.26.0" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -34,6 +34,34 @@
           <p class="eyebrow">我的工作台</p>
           <h1><span data-user-name>朋友</span>，从这里进入你要处理的事。</h1>
           <p>无需登录也可以发起活动和管理同一浏览器里创建的活动。协作员或管理员登录后，会看到对应治理入口。</p>
+        </div>
+      </section>
+
+      <section class="section me-profile-section" data-me-section="profile">
+        <div class="wrap profile-settings-layout">
+          <article class="profile-summary-card">
+            <div data-profile-avatar>
+              <span class="profile-avatar large-avatar" aria-hidden="true">有空</span>
+            </div>
+            <div>
+              <p class="section-kicker">我的公开资料</p>
+              <h2 data-profile-name>有空朋友</h2>
+              <p data-profile-bio>可以写一句你常发起什么、喜欢怎样的公共生活。</p>
+              <div class="button-row">
+                <a class="button ghost" data-profile-public-link href="profile.html" hidden>查看我的主页</a>
+              </div>
+            </div>
+          </article>
+          <form class="form-note profile-form" data-profile-form>
+            <h3>编辑公开资料</h3>
+            <label>头像<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp,image/gif" /></label>
+            <label>昵称<input name="displayName" maxlength="32" placeholder="别人会在活动里看到这个名字" /></label>
+            <label>个人简介<textarea name="bio" maxlength="280" rows="4" placeholder="比如：喜欢发起放映、读书和城市散步。"></textarea></label>
+            <div class="form-actions">
+              <button class="button primary" type="submit">保存资料</button>
+            </div>
+            <p class="form-message" data-profile-message></p>
+          </form>
         </div>
       </section>
 
@@ -106,7 +134,7 @@
         <nav class="footer-links"><a href="activity-editor.html">发起活动</a><a href="my-activities.html">我的活动</a><a href="admin.html">后台</a></nav>
       </div>
     </footer>
-    <script src="script.js?v=0.25.1"></script>
-    <script src="app.js?v=0.25.1"></script>
+    <script src="script.js?v=0.26.0"></script>
+    <script src="app.js?v=0.26.0"></script>
   </body>
 </html>

@@ -387,6 +387,18 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   });
   assert.equal(fakeImageUpload.status, 400);
 
+  const savedProfile = await request("/api/profile/me", {
+    method: "PUT",
+    body: {
+      displayName: "海旭测试",
+      bio: "喜欢发起放映和城市散步的测试资料",
+    },
+  }, member.token);
+  assert.equal(savedProfile.profile.displayName, "海旭测试");
+  assert.equal(savedProfile.profile.bio, "喜欢发起放映和城市散步的测试资料");
+  const myProfile = await request("/api/profile/me", {}, member.token);
+  assert.equal(myProfile.profile.displayName, "海旭测试");
+
   const template = await request("/api/templates", {
     method: "POST",
     body: {
@@ -425,10 +437,18 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(created.activity.endsAt, localDateTimeFromNow(30, 22, 0));
   assert.equal(created.activity.showInitiatorContact, true);
   assert.equal(created.activity.initiatorContact, "13300002222");
+  assert.equal(created.activity.initiatorProfile.displayName, "海旭测试");
+  assert.match(created.activity.initiatorProfile.communityId, /^[A-Z0-9]/);
   assert.match(created.activity.description, /<h1>活动段落标题<\/h1>/);
   assert.match(created.activity.description, /<img src="\/uploads\//);
   assert.match(created.activity.description, /<strong>重点<\/strong>/);
   assert.doesNotMatch(created.activity.description, /script|alert/i);
+  const publicProfile = await request(`/api/profiles/${encodeURIComponent(created.activity.initiatorProfile.id)}`);
+  assert.equal(publicProfile.profile.displayName, "海旭测试");
+  assert.ok(publicProfile.activities.some((activity) => activity.id === created.activity.id));
+  const shortPublicProfile = await request(`/api/profiles/${encodeURIComponent(created.activity.initiatorProfile.communityId)}`);
+  assert.equal(shortPublicProfile.profile.displayName, "海旭测试");
+  assert.ok(shortPublicProfile.activities.some((activity) => activity.id === created.activity.id));
 
   const friendSourceActivity = await createActivity(member.token, {
     title: "客厅朋友来源测试活动",
@@ -1537,6 +1557,18 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 
     await page.goto(`${baseUrl}/me.html`);
     await page.waitForLoadState("networkidle");
+    const profileFormState = await page.evaluate(() => ({
+      hasProfileForm: Boolean(document.querySelector("[data-profile-form]")),
+      hasAvatarInput: Boolean(document.querySelector('[data-profile-form] input[name="avatar"]')),
+      hasDisplayName: Boolean(document.querySelector('[data-profile-form] input[name="displayName"]')),
+      hasBio: Boolean(document.querySelector('[data-profile-form] textarea[name="bio"]')),
+    }));
+    assert.deepEqual(profileFormState, {
+      hasProfileForm: true,
+      hasAvatarInput: true,
+      hasDisplayName: true,
+      hasBio: true,
+    });
     const dashboardLinks = await page.evaluate(() =>
       Array.from(document.querySelectorAll("[data-workspace-summary] a.stat-link")).map((link) => ({
         text: link.textContent.trim(),
@@ -1560,6 +1592,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       hasSourceType: Boolean(document.querySelector("[data-source-type-toggle]")),
       hasFriendField: Boolean(document.querySelector("[data-friend-field]")),
       hasFeedbackDisplay: Boolean(document.querySelector('select[name="showFeedbacks"]')),
+      stepper: Array.from(document.querySelectorAll("[data-editor-step-target]")).map((button) => button.textContent.trim()),
+      sectionCount: document.querySelectorAll("[data-editor-section]").length,
     }));
     assert.equal(editorState.hasEditor, true);
     assert.ok(editorState.toolCount >= 8);
@@ -1570,6 +1604,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.equal(editorState.hasSourceType, true);
     assert.equal(editorState.hasFriendField, true);
     assert.equal(editorState.hasFeedbackDisplay, true);
+    assert.deepEqual(editorState.stepper, ["基本", "介绍", "报名", "发布"]);
+    assert.equal(editorState.sectionCount, 4);
     const richEditorCommandState = await page.evaluate(() => {
       const canvas = document.querySelector("[data-rich-canvas]");
       canvas.innerHTML = "<p>移动端标题</p>";
@@ -1637,6 +1673,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 	      nicknameField: Boolean(document.querySelector('[data-register-form] input[name="nickname"]')),
 	      richHeading: Boolean(document.querySelector(".article-content h1")),
 	      richImage: Boolean(document.querySelector(".article-content img")),
+	      initiatorLink: document.querySelector(".initiator-link")?.getAttribute("href") || "",
+	      initiatorCard: Boolean(document.querySelector(".initiator-card")),
 	      contact: document.querySelector(".initiator-contact")?.textContent || "",
       contactMarginTop: parseFloat(getComputedStyle(document.querySelector(".activity-hero .initiator-contact")).marginTop || "0"),
       detailLineColor: getComputedStyle(document.querySelector(".activity-hero > div:first-child > p")).color,
@@ -1650,6 +1688,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 	    assert.equal(shareState.nicknameField, true);
 	    assert.equal(shareState.richHeading, true);
     assert.equal(shareState.richImage, true);
+    assert.match(shareState.initiatorLink, /^profile\.html\?id=/);
+    assert.equal(shareState.initiatorCard, true);
     assert.match(shareState.contact, /13300002222/);
     assert.ok(shareState.contactMarginTop >= 24);
     assert.equal(shareState.detailLineColor, "rgb(43, 48, 43)");
@@ -1672,6 +1712,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       summaryWeight: 620,
       labelColor: "rgb(63, 73, 63)",
     });
+
     const csvEscaped = await page.evaluate(() => window.escapeCsv("=HYPERLINK(\"https://example.com\")"));
     assert.equal(csvEscaped, "\"'=HYPERLINK(\"\"https://example.com\"\")\"");
 	    const posterTextPreview = await page.evaluate(() => window.youkongActivityShare.posterTextPreview({
@@ -1700,6 +1741,17 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 	    await page.getByRole("button", { name: "下载活动邀请函" }).click();
 	    const posterFile = await posterDownload;
 	    assert.match(posterFile.suggestedFilename(), /活动邀请函\.jpg$/);
+
+    await page.goto(`${baseUrl}/profile.html?id=${encodeURIComponent(created.activity.initiatorProfile.id)}`);
+    await page.waitForLoadState("networkidle");
+    const publicProfileState = await page.evaluate(() => ({
+      heading: document.querySelector(".public-profile-card h1")?.textContent.trim() || "",
+      hasActivity: Array.from(document.querySelectorAll(".profile-activity-grid .event-card h3")).some((item) => item.textContent.includes("分页和日志测试活动")),
+      hasMetrics: Boolean(document.querySelector(".profile-metrics-card strong")),
+    }));
+    assert.equal(publicProfileState.heading, "海旭测试");
+    assert.equal(publicProfileState.hasActivity, true);
+    assert.equal(publicProfileState.hasMetrics, true);
 
     await page.goto(`${baseUrl}/review-tasks.html`);
     await page.waitForLoadState("networkidle");
