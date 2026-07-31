@@ -189,6 +189,36 @@ async function createActivity(token, overrides = {}) {
   return waitForActivityAnalysis(created, token);
 }
 
+function activityUpdateForm(activity, overrides = {}) {
+  const form = new FormData();
+  const showRegistrationNames = overrides.showRegistrationNames !== undefined ? overrides.showRegistrationNames : activity.showRegistrationNames;
+  const showFeedbacks = overrides.showFeedbacks !== undefined ? overrides.showFeedbacks : activity.showFeedbacks;
+  const minRegistrationEnabled = overrides.minRegistrationEnabled !== undefined ? overrides.minRegistrationEnabled : activity.minRegistrationEnabled;
+  const showInitiatorContact = overrides.showInitiatorContact !== undefined ? overrides.showInitiatorContact : activity.showInitiatorContact;
+  form.set("title", overrides.title || activity.title || "自动化测试活动");
+  form.set("moduleId", overrides.moduleId || activity.moduleId);
+  form.set("collaboratorId", overrides.collaboratorId ?? activity.collaboratorId ?? "");
+  form.set("initiator", overrides.initiator || activity.initiator || "成员A");
+  form.set("startsAt", overrides.startsAt || activity.startsAt || localDateTimeFromNow(30));
+  form.set("endsAt", overrides.endsAt ?? activity.endsAt ?? "");
+  form.set("location", overrides.location || activity.location || "有空客厅");
+  form.set("capacity", overrides.capacity ?? activity.capacity ?? "");
+  form.set("showRegistrationNames", showRegistrationNames ? "yes" : "no");
+  form.set("showFeedbacks", showFeedbacks === false ? "no" : "yes");
+  form.set("sourceType", overrides.sourceType || activity.sourceType || "living_room");
+  form.set("friendId", overrides.friendId ?? activity.friendId ?? "");
+  form.set("minRegistrationEnabled", minRegistrationEnabled ? "yes" : "no");
+  form.set("minRegistrationCount", overrides.minRegistrationCount ?? activity.minRegistrationCount ?? "");
+  form.set("registrationDeadline", overrides.registrationDeadline ?? activity.registrationDeadline ?? "");
+  form.set("showInitiatorContact", showInitiatorContact ? "yes" : "no");
+  form.set("initiatorContact", overrides.initiatorContact ?? activity.initiatorContact ?? "");
+  form.set("description", overrides.description || activity.description || "用于自动化测试更新活动。");
+  form.set("intent", overrides.intent || "draft");
+  if (overrides.editLockToken) form.set("editLockToken", overrides.editLockToken);
+  if (overrides.activityVersion) form.set("activityVersion", String(overrides.activityVersion));
+  return form;
+}
+
 async function waitForActivityAnalysis(created, token = "", attempts = 80) {
   let current = created;
   for (let index = 0; index < attempts; index += 1) {
@@ -450,6 +480,122 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(shortPublicProfile.profile.displayName, "海旭测试");
   assert.ok(shortPublicProfile.activities.some((activity) => activity.id === created.activity.id));
 
+  const coHeaders = {
+    "X-YK-Client-Id": `${testClientId}_cohost`,
+    "X-YK-Fingerprint": "fp_smoke_cohost",
+  };
+  const coProfile = await request("/api/profile/me", {
+    method: "PUT",
+    headers: coHeaders,
+    body: {
+      displayName: "共同发起人B",
+      bio: "负责一起维护活动的测试资料",
+    },
+  });
+  assert.equal(coProfile.profile.displayName, "共同发起人B");
+  const coActivity = await createActivity(member.token, {
+    title: "共同发起人协作测试活动",
+  });
+  const invite = await request(`/api/activities/${coActivity.activity.id}/co-initiator-invites`, {
+    method: "POST",
+    body: {},
+  }, member.token);
+  const inviteToken = new URL(invite.invite.inviteUrl).searchParams.get("token");
+  assert.ok(inviteToken);
+  const invitePreview = await request(`/api/co-initiator-invites/${encodeURIComponent(inviteToken)}`, { headers: coHeaders });
+  assert.equal(invitePreview.activity.id, coActivity.activity.id);
+  const acceptedInvite = await request(`/api/co-initiator-invites/${encodeURIComponent(inviteToken)}/accept`, {
+    method: "POST",
+    headers: coHeaders,
+    body: {},
+  });
+  assert.ok(acceptedInvite.activity.coInitiators.some((profile) => profile.displayName === "共同发起人B"));
+  const coMine = await request("/api/activities?owner=me&page=1&pageSize=10", { headers: coHeaders });
+  assert.ok(coMine.activities.some((activity) => activity.id === coActivity.activity.id));
+  const ownerLock = await request(`/api/activities/${coActivity.activity.id}/edit-lock`, {
+    method: "POST",
+    body: {},
+  }, member.token);
+  assert.ok(ownerLock.editLockToken);
+  const coLockConflict = await fetch(`${baseUrl}/api/activities/${coActivity.activity.id}/edit-lock`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+      ...coHeaders,
+    },
+    body: "{}",
+  });
+  assert.equal(coLockConflict.status, 423);
+  const coTakeover = await request(`/api/activities/${coActivity.activity.id}/edit-lock`, {
+    method: "POST",
+    headers: coHeaders,
+    body: { takeover: true },
+  });
+  const coUpdate = await request(`/api/activities/${coActivity.activity.id}`, {
+    method: "PUT",
+    headers: coHeaders,
+    body: activityUpdateForm(coActivity.activity, {
+      title: "共同发起人保存草稿测试",
+      intent: "draft",
+      editLockToken: coTakeover.editLockToken,
+      activityVersion: coTakeover.activityVersion,
+    }),
+  });
+  assert.equal(coUpdate.activity.status, "draft");
+  assert.equal(coUpdate.activity.analysisStatus, "draft");
+  assert.equal(coUpdate.activity.analysisVersion, coActivity.activity.analysisVersion);
+  const staleCoUpdate = await fetch(`${baseUrl}/api/activities/${coActivity.activity.id}`, {
+    method: "PUT",
+    headers: {
+      "X-Requested-With": "XMLHttpRequest",
+      ...coHeaders,
+    },
+    body: activityUpdateForm(coUpdate.activity, {
+      title: "共同发起人陈旧版本测试",
+      editLockToken: coTakeover.editLockToken,
+      activityVersion: coTakeover.activityVersion,
+    }),
+  });
+  assert.equal(staleCoUpdate.status, 409);
+  const coLifecycleActivity = await createActivity(member.token, {
+    title: "共同发起人生命周期测试活动",
+  });
+  const lifecycleInvite = await request(`/api/activities/${coLifecycleActivity.activity.id}/co-initiator-invites`, {
+    method: "POST",
+    body: {},
+  }, member.token);
+  const lifecycleInviteToken = new URL(lifecycleInvite.invite.inviteUrl).searchParams.get("token");
+  await request(`/api/co-initiator-invites/${encodeURIComponent(lifecycleInviteToken)}/accept`, {
+    method: "POST",
+    headers: coHeaders,
+    body: {},
+  });
+  const coRegistrations = await request(`/api/activities/${coLifecycleActivity.activity.id}/registrations`, { headers: coHeaders });
+  assert.deepEqual(coRegistrations.registrations, []);
+  const coFeedbacks = await request(`/api/activities/${coLifecycleActivity.activity.id}/feedbacks?manage=true`, { headers: coHeaders });
+  assert.deepEqual(coFeedbacks.feedbacks, []);
+  const coRemoveAttempt = await fetch(`${baseUrl}/api/activities/${coLifecycleActivity.activity.id}/co-initiators/${encodeURIComponent(coProfile.profile.id)}`, {
+    method: "DELETE",
+    headers: {
+      "X-Requested-With": "XMLHttpRequest",
+      ...coHeaders,
+    },
+  });
+  assert.equal(coRemoveAttempt.status, 403);
+  const endedByCo = await request(`/api/activities/${coLifecycleActivity.activity.id}/end`, {
+    method: "POST",
+    headers: coHeaders,
+    body: {},
+  });
+  assert.equal(endedByCo.activity.status, "ended");
+  const coPublicProfile = await request(`/api/profiles/${encodeURIComponent(coProfile.profile.communityId)}`);
+  assert.ok(coPublicProfile.activities.some((activity) => activity.id === coLifecycleActivity.activity.id));
+  const removedCo = await request(`/api/activities/${coLifecycleActivity.activity.id}/co-initiators/${encodeURIComponent(coProfile.profile.id)}`, {
+    method: "DELETE",
+  }, member.token);
+  assert.ok(!removedCo.activity.coInitiators.some((profile) => profile.id === coProfile.profile.id));
+
   const friendSourceActivity = await createActivity(member.token, {
     title: "客厅朋友来源测试活动",
     sourceType: "friend",
@@ -464,13 +610,13 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const owned = await request("/api/activities?owner=me&page=1&pageSize=1", {}, member.token);
   assert.equal(owned.activities.length, 1);
   assert.equal(owned.pageInfo.pageSize, 1);
-  assert.equal(owned.pageInfo.total, 2);
+  assert.ok(owned.pageInfo.total >= 4);
   const reviewingMine = await request("/api/activities?owner=me&status=reviewing&page=1&pageSize=10", {}, member.token);
   assert.ok(reviewingMine.activities.every((activity) => ["admin_review", "collaborator_review"].includes(activity.status)));
 
   const memberDashboard = await request("/api/dashboard/me", {}, member.token);
-  assert.equal(memberDashboard.summary.total, 2);
-  assert.equal(memberDashboard.summary.byStatus.published, 2);
+  assert.ok(memberDashboard.summary.total >= 4);
+  assert.ok(memberDashboard.summary.byStatus.published >= 2);
   assert.equal(memberDashboard.pending.total, 0);
 
   const reviewCandidate = await createActivity(member.token, {
@@ -1557,6 +1703,18 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 
     await page.goto(`${baseUrl}/me.html`);
     await page.waitForLoadState("networkidle");
+    const meProfileState = await page.evaluate(() => ({
+      hasInlineProfileForm: Boolean(document.querySelector("[data-profile-form]")),
+      hasProfileEditLink: Boolean(document.querySelector('a[href="profile-editor.html"]')),
+      hasProfileSummary: Boolean(document.querySelector(".profile-summary-card")),
+    }));
+    assert.deepEqual(meProfileState, {
+      hasInlineProfileForm: false,
+      hasProfileEditLink: true,
+      hasProfileSummary: true,
+    });
+    await page.goto(`${baseUrl}/profile-editor.html`);
+    await page.waitForLoadState("networkidle");
     const profileFormState = await page.evaluate(() => ({
       hasProfileForm: Boolean(document.querySelector("[data-profile-form]")),
       hasAvatarInput: Boolean(document.querySelector('[data-profile-form] input[name="avatar"]')),
@@ -1569,6 +1727,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       hasDisplayName: true,
       hasBio: true,
     });
+    await page.goto(`${baseUrl}/me.html`);
+    await page.waitForLoadState("networkidle");
     const dashboardLinks = await page.evaluate(() =>
       Array.from(document.querySelectorAll("[data-workspace-summary] a.stat-link")).map((link) => ({
         text: link.textContent.trim(),

@@ -10244,6 +10244,69 @@ html[data-theme="dark"] .mobile-sticky-cta {
   }
 }
 
+.co-initiator-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.co-initiator-list small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.co-initiator-list > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.co-initiator-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 5px 10px 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 84%, transparent);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.profile-avatar.tiny-avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 0.68rem;
+}
+
+.invite-accept-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.invite-accept-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 22px;
+  align-items: start;
+}
+
+.activity-editor.is-locked {
+  opacity: 0.68;
+}
+
+.form-message [data-takeover-edit-lock] {
+  margin-top: 10px;
+}
+
+@media (max-width: 820px) {
+  .invite-accept-card {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .motion-press,
   .theme-switch.is-cycling .theme-switch-ring,

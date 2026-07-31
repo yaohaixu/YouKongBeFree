@@ -3288,6 +3288,48 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 2. 把 AI 调用预算做成用量健康页趋势图，并增加接近上限提醒。
 3. 在 CloudBase 控制台补齐 `yk_aiUsageLogs.profileId + createdAt`、`yk_aiUsageLogs.cacheHit + createdAt` 和 `yk_rateEvents.identityId + scope` 索引。
 
+## 2026-07-30 - 0.27.0 共同发起人与编辑协作
+
+### 任务目标
+
+支持一场活动由多人共同发起，同时保持开放匿名发布的低门槛：主发起人可以邀请共同发起人一起维护活动，共同发起人拥有实际运营权限；编辑过程先用软锁和版本号解决并发覆盖，暂不引入腾讯文档式实时协作，避免服务器和状态同步复杂度过高。
+
+### 具体修改
+
+- `lib/store.js`：新增 `activityCoInitiators` 和 `activityCoInitiatorInvites` 存储集合，对应 CloudBase `yk_activityCoInitiators` 和 `yk_activityCoInitiatorInvites`。
+- `lib/app.js`：新增共同发起邀请创建、邀请详情、接受邀请、移除共同发起人、活动编辑锁申请 / 续期 / 释放接口；活动权限判断扩展为主发起人、共同发起人、管理员和管理 token 多维校验；活动保存新增 `activityVersion`。
+- `app.js`：新增共同发起邀请页初始化、我的活动共同发起人渲染、邀请链接复制、共同发起人移除、编辑锁冲突提示 / 接管、锁自动续期和版本冲突提示。
+- `me.html`：公开资料从内嵌表单改成资料摘要入口。
+- `profile-editor.html`：新增独立公开资料编辑页。
+- `co-initiator-invite.html`：新增共同发起邀请接受页。
+- `styles.css`：新增共同发起人 chip、邀请接受卡片和编辑锁提示状态样式。
+- `tests/smoke.test.js`：新增共同发起邀请 / 接受、编辑锁冲突与接管、过期版本拦截、共同发起人权限边界、共同发起人查看报名表 / 反馈，以及公开资料编辑页拆分覆盖。
+- `README.md`、`CHANGELOG.md`、`docs/security.md`、`docs/cloudbase-indexes.md`、`package.json`、`package-lock.json`、`*.html`：同步版本、文档、索引建议和静态资源缓存参数到 `0.27.0`。
+
+### 技术方案选择
+
+- 不做实时多人协同编辑，先采用数据库软锁 + `activityVersion` 乐观锁：进入编辑页先拿锁，提交时校验版本；锁过期或用户选择接管后才能覆盖锁。
+- 保存草稿不触发规则引擎和 AI 分析，也不递增 `analysisVersion`；这能避免共同发起人反复修改草稿时消耗 AI 成本，正式提交才进入安全链路。
+- 共同发起人可操作活动运营动作：编辑、提交、撤回、取消、结束、查看报名表、查看反馈；新增和移除共同发起人只保留给主发起人、管理员或持管理 token 的原发起人。
+- 邀请链接使用一次性随机 token，服务端只保存 hash、状态、过期时间和接受者身份，避免数据库泄露时直接拿到可用邀请链接。
+
+### 当前完成情况
+
+- 代码开发、版本号和文档同步已完成。
+- 本地 `npm test` 通过。
+
+### 遗留问题
+
+- 编辑锁是应用层软锁，不是强事务锁；极端并发下仍依赖 `activityVersion` 兜底阻止覆盖。
+- 共同发起邀请目前是链接制，任何拿到链接且未过期的人都可以接受；后续如需要更强控制，可增加邀请备注、指定手机号 / 指定 Community ID 或一次性确认。
+- 共同发起人角色目前是一种统一权限，不区分“仅编辑”“仅查看报名表”等细分角色；后续如果活动组织变复杂，可以把共同发起权限做成活动内 RBAC。
+
+### 下一步建议
+
+1. 在 CloudBase 控制台补齐 `yk_activityCoInitiators.activityId + status`、`yk_activityCoInitiators.identityId + status`、`yk_activityCoInitiatorInvites.tokenHash` 和 `yk_activityCoInitiatorInvites.activityId + status` 索引。
+2. 给共同发起邀请增加过期提醒、重新生成邀请和复制成功 toast 的更完整可视状态。
+3. 如果共同发起人数量增多，再考虑活动内角色模板和邀请审计详情页。
+
 ## 2026-07-30 - 0.26.0 开放用户体验与发起人主页
 
 ### 任务目标

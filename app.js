@@ -142,7 +142,10 @@ const api = {
     }
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(data.error || "操作失败，请稍后再试");
+      const error = new Error(data.error || "操作失败，请稍后再试");
+      error.status = response.status;
+      error.data = data;
+      throw error;
     }
     if (data.manageToken && data.activity?.id) {
       saveActivityManageToken(data.activity.id, data.manageToken);
@@ -178,6 +181,10 @@ let mePageState = {
   modules: [],
   collaborators: [],
   editingActivity: null,
+  editingActivityVersion: 0,
+  editLockToken: "",
+  editLockActivityId: "",
+  editLockRefreshTimer: null,
   editingTemplate: null,
   editingRole: null,
   richEditor: null,
@@ -546,6 +553,26 @@ function renderInitiatorCard(activity = {}) {
   return url
     ? `<a class="initiator-card" href="${url}">${content}</a>`
     : `<div class="initiator-card">${content}</div>`;
+}
+
+function renderCoInitiatorList(activity = {}, options = {}) {
+  const people = Array.isArray(activity.coInitiators) ? activity.coInitiators : [];
+  if (!people.length) return "";
+  const items = people.map((profile) => {
+    const name = profile.displayName || "共同发起人";
+    const avatar = renderProfileAvatar(profile, name, "profile-avatar tiny-avatar");
+    const url = profileUrl(profile);
+    const content = `${avatar}<span>${escapeHtml(name)}</span>`;
+    return url && !options.plain
+      ? `<a class="co-initiator-chip" href="${url}">${content}</a>`
+      : `<span class="co-initiator-chip">${content}</span>`;
+  }).join("");
+  return `
+    <div class="co-initiator-list">
+      <small>共同发起人</small>
+      <div>${items}</div>
+    </div>
+  `;
 }
 
 function renderInitiatorContact(activity) {
@@ -1213,6 +1240,90 @@ async function initMeDashboardPage() {
   }
 }
 
+async function initProfileEditorPage() {
+  const root = qs("[data-profile-editor-page]");
+  if (!root) return;
+  const user = await getOptionalUser();
+  mePageState.user = user;
+  const profile = await loadMyProfile().catch(() => null);
+  if (profile) {
+    const form = qs("[data-profile-form]", root);
+    if (form) {
+      form.displayName.value = profile.displayName || "";
+      form.bio.value = profile.bio || "";
+    }
+    updateProfilePreview(root, profile);
+  }
+  bindProfileForm(root);
+}
+
+async function initCoInitiatorInvitePage() {
+  const root = qs("[data-co-initiator-invite-page]");
+  if (!root) return;
+  const container = qs("[data-co-invite-content]", root);
+  const token = new URLSearchParams(location.search).get("token") || "";
+  if (!token) {
+    container.innerHTML = `<div class="empty-state"><strong>缺少邀请信息</strong><p>请从主发起人分享的完整链接进入。</p></div>`;
+    return;
+  }
+  try {
+    const result = await api.get(`/api/co-initiator-invites/${encodeURIComponent(token)}`);
+    const activity = result.activity || {};
+    const myProfile = result.myProfile || {};
+    const needsProfile = !myProfile.hasProfile || !myProfile.displayName || myProfile.displayName === "有空朋友";
+    container.innerHTML = `
+      <article class="invite-accept-card">
+        <div>
+          <p class="section-kicker">邀请加入</p>
+          <h2>${escapeHtml(activity.title || "未命名活动")}</h2>
+          <p>${escapeHtml(activity.location || "地点待定")} · ${formatActivityTime(activity)}</p>
+          <div class="event-meta">
+            <span>${escapeHtml(activity.moduleName || "活动")}</span>
+            <span>主发起人：${renderInitiatorName(activity)}</span>
+            <span>角色：共同发起人</span>
+          </div>
+          ${renderInitiatorCard(activity)}
+          ${renderCoInitiatorList(activity)}
+        </div>
+        <aside class="form-note">
+          <h3>${needsProfile ? "先完善公开资料" : "确认接受邀请"}</h3>
+          <p class="muted-text">${needsProfile ? "共同发起人会展示头像和昵称，请先设置一个公开昵称后再回来接受邀请。" : "接受后，这个设备会加入发起团队，可以在「我的活动」里继续协作。"}</p>
+          <div class="button-row">
+            ${needsProfile ? `<a class="button primary" href="profile-editor.html">编辑公开资料</a>` : `<button class="button primary" type="button" data-accept-co-invite>接受邀请</button>`}
+            <a class="button outline" href="activity.html?id=${encodeURIComponent(activity.id || "")}">查看活动</a>
+          </div>
+          <p class="form-message" data-co-invite-message></p>
+        </aside>
+      </article>
+    `;
+    revealDynamicContent(container);
+    qs("[data-accept-co-invite]", container)?.addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      const message = qs("[data-co-invite-message]", container);
+      button.disabled = true;
+      setMessage(message, "正在加入共同发起人...");
+      try {
+        const accepted = await api.post(`/api/co-initiator-invites/${encodeURIComponent(token)}/accept`, {});
+        setMessage(message, "已加入共同发起团队。", "success");
+        showToast("保存成功");
+        setTimeout(() => {
+          location.href = `activity-editor.html?id=${encodeURIComponent(accepted.activity.id)}`;
+        }, 520);
+      } catch (error) {
+        button.disabled = false;
+        if (error.data?.code === "profile_required" || error.message.includes("公开资料")) {
+          setMessage(message, "请先完善公开资料昵称，再回来接受邀请。", "error");
+        } else {
+          setMessage(message, error.message, "error");
+        }
+      }
+    });
+  } catch (error) {
+    container.innerHTML = `<div class="empty-state"><strong>邀请暂时不可用</strong><p>${escapeHtml(error.message)}</p><a class="button ghost" href="me.html">回我的工作台</a></div>`;
+    revealDynamicContent(container);
+  }
+}
+
 async function renderMyRegistrations(root = document) {
   const list = qs("[data-my-registrations]", root);
   if (!list) return;
@@ -1439,6 +1550,76 @@ function workspaceCueSvg() {
   return `<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.19 8.5H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z"></path></svg>`;
 }
 
+function setActivityFormDisabled(form, disabled) {
+  qsa("input, select, textarea, button", form).forEach((field) => {
+    field.disabled = disabled;
+  });
+  form.classList.toggle("is-locked", disabled);
+}
+
+function clearEditLockState() {
+  if (mePageState.editLockRefreshTimer) {
+    clearInterval(mePageState.editLockRefreshTimer);
+  }
+  mePageState.editLockRefreshTimer = null;
+  mePageState.editLockToken = "";
+  mePageState.editLockActivityId = "";
+  mePageState.editingActivityVersion = 0;
+}
+
+async function releaseActivityEditLock() {
+  const activityId = mePageState.editLockActivityId;
+  const token = mePageState.editLockToken;
+  clearEditLockState();
+  if (!activityId || !token) return;
+  try {
+    await api.request(`/api/activities/${encodeURIComponent(activityId)}/edit-lock`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "X-YK-Edit-Lock-Token": token,
+      },
+      body: JSON.stringify({ editLockToken: token }),
+    });
+  } catch {
+    // 锁会自动过期，离开页面时释放失败不打断用户。
+  }
+}
+
+async function acquireActivityEditLock(activityId, options = {}) {
+  const result = await api.post(`/api/activities/${encodeURIComponent(activityId)}/edit-lock`, {
+    takeover: options.takeover === true,
+  });
+  mePageState.editLockToken = result.editLockToken || "";
+  mePageState.editLockActivityId = activityId;
+  mePageState.editingActivityVersion = Number(result.activityVersion || 1);
+  if (mePageState.editLockRefreshTimer) clearInterval(mePageState.editLockRefreshTimer);
+  mePageState.editLockRefreshTimer = setInterval(() => {
+    if (!mePageState.editLockToken || !mePageState.editLockActivityId) return;
+    api.request(`/api/activities/${encodeURIComponent(mePageState.editLockActivityId)}/edit-lock/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-YK-Edit-Lock-Token": mePageState.editLockToken,
+      },
+      body: JSON.stringify({ editLockToken: mePageState.editLockToken }),
+    }).catch(() => {});
+  }, 2 * 60 * 1000);
+  return result;
+}
+
+function renderEditLockConflict(message, lock, onTakeover) {
+  const box = qs("[data-activity-message]");
+  if (!box) return;
+  box.dataset.type = "error";
+  box.innerHTML = `
+    <span>${escapeHtml(message || "这个活动正在被其他共同发起人编辑。")}</span>
+    ${lock?.expiresAt ? `<small>锁定到 ${formatDate(lock.expiresAt)}</small>` : ""}
+    <button class="button outline compact-button" type="button" data-takeover-edit-lock>接管编辑</button>
+  `;
+  qs("[data-takeover-edit-lock]", box)?.addEventListener("click", onTakeover);
+}
+
 async function initActivityEditorPage() {
   const form = qs("[data-activity-form]");
   if (!form) return;
@@ -1464,6 +1645,27 @@ async function initActivityEditorPage() {
     try {
       const { activity } = await api.get(`/api/activities/${editingId}`);
       fillActivityForm(form, activity);
+      try {
+        const lock = await acquireActivityEditLock(editingId);
+        mePageState.editingActivityVersion = Number(lock.activityVersion || activity.activityVersion || activity.analysisVersion || 1);
+        setMessage(qs("[data-activity-message]"), `已进入编辑模式，编辑权限会保留到 ${formatDate(lock.lock?.expiresAt)}。`, "success");
+      } catch (error) {
+        if (error.status === 423) {
+          setActivityFormDisabled(form, true);
+          renderEditLockConflict(error.message, error.data?.lock, async () => {
+            try {
+              const takeover = await acquireActivityEditLock(editingId, { takeover: true });
+              mePageState.editingActivityVersion = Number(takeover.activityVersion || activity.activityVersion || 1);
+              setActivityFormDisabled(form, false);
+              setMessage(qs("[data-activity-message]"), "已接管编辑。保存草稿不会触发安全分析，发布时才会重新分析。", "success");
+            } catch (takeoverError) {
+              setMessage(qs("[data-activity-message]"), takeoverError.message, "error");
+            }
+          });
+        } else {
+          throw error;
+        }
+      }
     } catch (error) {
       setMessage(qs("[data-activity-message]"), error.message, "error");
     }
@@ -1483,6 +1685,10 @@ async function initActivityEditorPage() {
     const editing = mePageState.editingActivity;
     const intent = mePageState.submitIntent || "submit";
     formData.set("intent", intent);
+    if (editing) {
+      formData.set("editLockToken", mePageState.editLockToken || "");
+      formData.set("activityVersion", String(mePageState.editingActivityVersion || editing.activityVersion || editing.analysisVersion || 1));
+    }
     setMessage(message, intent === "draft" ? "正在保存草稿..." : "正在发起活动...");
     try {
       const turnstileToken = await getTurnstileToken(form);
@@ -1501,6 +1707,7 @@ async function initActivityEditorPage() {
             : "草稿已保存。";
       setMessage(message, intent === "draft" ? "草稿已保存。" : submitMessage, "success");
       showToast("保存成功");
+      clearEditLockState();
       resetActivityForm(form);
       setTimeout(() => {
         location.href = "my-activities.html";
@@ -1513,8 +1720,11 @@ async function initActivityEditorPage() {
   });
 
   qs("[data-cancel-edit]")?.addEventListener("click", () => {
-    resetActivityForm(form);
-    setMessage(message, "已取消编辑。");
+    releaseActivityEditLock().finally(() => {
+      resetActivityForm(form);
+      setActivityFormDisabled(form, false);
+      setMessage(message, "已取消编辑。");
+    });
   });
 }
 
@@ -1675,6 +1885,7 @@ async function getTurnstileToken(form) {
 
 function resetActivityForm(form) {
   mePageState.editingActivity = null;
+  mePageState.editingActivityVersion = 0;
   form.reset();
   form.initiator.value = preferredDisplayName();
   if (form.showInitiatorContact) form.showInitiatorContact.value = "no";
@@ -1732,11 +1943,34 @@ function fillActivityForm(form, activity) {
 }
 
 function canEditMine(activity) {
+  if (activity.permissions && "canEdit" in activity.permissions) return Boolean(activity.permissions.canEdit);
   return ["draft", "returned"].includes(activity.status);
 }
 
 function canWithdraw(activity) {
+  if (activity.permissions && "canWithdraw" in activity.permissions) return Boolean(activity.permissions.canWithdraw);
   return ["analysis_pending", "admin_review", "collaborator_review", "published", "full"].includes(activity.status);
+}
+
+function canCancelMine(activity) {
+  if (activity.permissions && "canCancel" in activity.permissions) return Boolean(activity.permissions.canCancel);
+  return !["cancelled", "not_formed_cancelled", "ended", "rejected"].includes(activity.status);
+}
+
+function canEndMine(activity) {
+  if (activity.permissions && "canEnd" in activity.permissions) return Boolean(activity.permissions.canEnd);
+  return ["published", "full"].includes(activity.status);
+}
+
+function canManageCoInitiatorsMine(activity) {
+  return Boolean(activity.permissions?.canManageCoInitiators);
+}
+
+function renderCoInitiatorManageButtons(activity = {}) {
+  if (!canManageCoInitiatorsMine(activity) || !Array.isArray(activity.coInitiators) || !activity.coInitiators.length) return "";
+  return activity.coInitiators.map((profile) => `
+    <button class="button outline danger-soft" type="button" data-remove-co-activity-id="${escapeHtml(activity.id)}" data-remove-co-identity-id="${escapeHtml(profile.id)}">移除 ${escapeHtml(profile.displayName || "共同发起人")}</button>
+  `).join("");
 }
 
 function resetPagedState(key) {
@@ -1888,12 +2122,17 @@ async function renderMineActivities() {
             <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
             <p>${formatActivityTime(activity)} · ${escapeHtml(activity.location)} · ${escapeHtml(activity.statusLabel)} · ${escapeHtml(activity.reviewStepLabel)} · ${activity.registrationCount} 人报名 · ${Number(activity.feedbackCount || 0)} 条反馈</p>
             <p>协作员：${escapeHtml(activity.collaboratorName || "未选择")}</p>
+            ${renderCoInitiatorList(activity, { plain: true })}
           </div>
           <div class="row-actions">
             ${canEditMine(activity) ? `<a class="button outline" href="activity-editor.html?id=${encodeURIComponent(activity.id)}">编辑</a>` : ""}
             ${canWithdraw(activity) ? `<button class="button outline danger-soft" type="button" data-withdraw-activity-id="${activity.id}">撤回</button>` : ""}
+            ${canCancelMine(activity) ? `<button class="button outline danger-soft" type="button" data-cancel-mine-activity-id="${activity.id}">取消</button>` : ""}
+            ${canEndMine(activity) ? `<button class="button outline" type="button" data-end-mine-activity-id="${activity.id}">结束</button>` : ""}
             ${canViewRegistrations(activity) ? `<a class="button outline" href="registrations.html?id=${encodeURIComponent(activity.id)}">查看报名表</a>` : ""}
             <a class="button outline" href="activity-feedback.html?id=${encodeURIComponent(activity.id)}">活动反馈</a>
+            ${canManageCoInitiatorsMine(activity) ? `<button class="button outline" type="button" data-create-co-invite="${activity.id}">邀请共同发起人</button>` : ""}
+            ${renderCoInitiatorManageButtons(activity)}
           </div>
         </article>
       `
@@ -1906,6 +2145,52 @@ async function renderMineActivities() {
       if (!confirm("确定撤回这个活动吗？撤回后会变成草稿。")) return;
       await api.post(`/api/activities/${button.dataset.withdrawActivityId}/withdraw`, {});
       showToast("保存成功");
+      resetPagedState("myActivities");
+      await renderMineActivities();
+    });
+  });
+  qsa("[data-cancel-mine-activity-id]", list).forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!confirm("确定取消这个活动吗？")) return;
+      await api.post(`/api/activities/${button.dataset.cancelMineActivityId}/cancel`, {});
+      showToast("保存成功");
+      resetPagedState("myActivities");
+      await renderMineActivities();
+    });
+  });
+  qsa("[data-end-mine-activity-id]", list).forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!confirm("确定结束这个活动吗？")) return;
+      await api.post(`/api/activities/${button.dataset.endMineActivityId}/end`, {});
+      showToast("保存成功");
+      resetPagedState("myActivities");
+      await renderMineActivities();
+    });
+  });
+  qsa("[data-create-co-invite]", list).forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        const { invite } = await api.post(`/api/activities/${button.dataset.createCoInvite}/co-initiator-invites`, {});
+        const url = invite.inviteUrl || `${location.origin}/${invite.invitePath}`;
+        try {
+          await navigator.clipboard.writeText(url);
+          showToast("邀请链接已复制");
+        } catch {
+          window.prompt("复制共同发起人邀请链接", url);
+        }
+      } catch (error) {
+        showToast(error.message || "暂时不能生成邀请链接");
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
+  qsa("[data-remove-co-activity-id]", list).forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!confirm("确定移除这位共同发起人吗？")) return;
+      await api.delete(`/api/activities/${button.dataset.removeCoActivityId}/co-initiators/${encodeURIComponent(button.dataset.removeCoIdentityId)}`);
+      showToast("删除成功");
       resetPagedState("myActivities");
       await renderMineActivities();
     });
@@ -2106,6 +2391,7 @@ async function initActivityPage() {
         </div>
         ${renderRiskNotice(activity)}
         ${renderInitiatorCard(activity)}
+        ${renderCoInitiatorList(activity)}
         ${renderInitiatorContact(activity)}
         <div class="activity-share-actions" aria-label="活动分享操作">
           <button class="button ghost" type="button" data-download-poster>下载活动邀请函</button>
@@ -5360,7 +5646,7 @@ async function safeInit(task) {
   } catch (error) {
     console.error(error);
     showToast("页面数据读取失败，请刷新后重试");
-    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-profile-page], [data-safety-rules], [data-ai-prompts], [data-ai-console-summary], [data-community-health], [data-ai-model-list], [data-ai-usage-models], [data-ai-usage-errors], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list], [data-friend-list], [data-feedback-list], [data-activity-feedback-list], [data-my-registrations], [data-my-feedbacks]")
+    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-profile-editor-page], [data-co-initiator-invite-page], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-profile-page], [data-safety-rules], [data-ai-prompts], [data-ai-console-summary], [data-community-health], [data-ai-model-list], [data-ai-usage-models], [data-ai-usage-errors], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list], [data-friend-list], [data-feedback-list], [data-activity-feedback-list], [data-my-registrations], [data-my-feedbacks]")
       .filter((element) => /正在|读取|加载/.test(element.textContent || ""))
       .forEach((element) => {
         element.innerHTML = `<div class="empty-state"><strong>暂时没读到数据</strong><p>请刷新页面重试，或稍后再来。</p></div>`;
@@ -5375,6 +5661,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(renderActivityLists),
     safeInit(initPublicActivitiesPage),
     safeInit(initMeDashboardPage),
+    safeInit(initProfileEditorPage),
+    safeInit(initCoInitiatorInvitePage),
     safeInit(initActivityEditorPage),
     safeInit(initMyActivitiesPage),
     safeInit(initRegistrationsPage),
