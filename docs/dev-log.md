@@ -3373,3 +3373,46 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 把 `app.js` 中 profile / activity detail / editor 相关逻辑继续拆到 `assets/js/` 下，降低主文件维护压力。
 2. 给公开发起人主页增加分享卡片和活动来源筛选，让长期发起人更像社区里的真实空间节点。
 3. 在 CloudBase 控制台补齐 `yk_identityProfiles.id`、`yk_identityProfiles.communityId` 和 `yk_identityProfiles.updatedAt` 索引。
+
+## 2026-08-04 - 0.28.0 匿名设备身份网络
+
+### 任务目标
+
+把“一个浏览器就是一个人”的临时匿名身份升级成可长期演进的 Identity Network：手机、电脑和未来微信小程序身份都可以归到同一张匿名身份网络里，让用户在不同设备上继续编辑草稿、查看报名、活动反馈和自己发起 / 共同发起的活动，同时不引入传统注册账号。
+
+### 具体修改
+
+- `lib/store.js`：新增 `identityNetworks`、`identityNetworkDevices`、`identitySyncInvites`、`identityMergeEvents` 和预留的 `identityExternalCredentials` 集合。
+- `lib/app.js`：新增身份网络上下文、设备同步邀请、合并预览、接受同步、移除设备和历史数据 `identityNetworkId` 打标逻辑；`/api/session`、`/api/profile/me` 和「我的」相关接口返回身份同步上下文。
+- `lib/app.js`：我发起的活动、共同发起活动、报名、感兴趣、活动反馈和公开资料读写均改为身份网络优先；未开启同步时继续使用单设备匿名身份。
+- `lib/app.js` / `lib/community-safety/service.js`：共同发起人接受 / 移除支持 `identityNetworkId`；社区举报按身份网络优先去重并记录 `identityNetworkId`。
+- `me.html`：新增“同步设备”区块，展示身份网络状态、设备列表、二维码 / 同步链接。
+- `identity-sync.html`：新增设备同步确认页，支持无 token 的状态说明、有 token 的合并预览、公开资料选择和确认同步。
+- `app.js`：新增身份同步 UI、二维码链接复制、设备移除、同步页合并预览；开放工作台新增“同步设备”入口卡片，并把当前设备文案升级为当前身份。
+- `styles.css`：新增身份同步卡片、二维码区域、设备列表、合并预览、资料选择和移动端响应式样式。
+- `tests/smoke.test.js`：新增两台匿名设备合并流程，覆盖资料选择、跨设备我的活动聚合、我的报名聚合、报名去重和感兴趣去重；浏览器 smoke 覆盖同步入口和 `identity-sync.html` 移动端无横向溢出。
+- `README.md`、`CHANGELOG.md`、`docs/security.md`、`docs/cloudbase-indexes.md`、`package.json`、`package-lock.json`、`*.html`：同步版本、文档、索引建议和静态资源缓存参数到 `0.28.0`。
+
+### 技术方案选择
+
+- 不做传统账号注册，先做 Identity Network：单设备匿名身份仍可独立存在，用户主动扫码 / 打开短期同步链接后才合并。
+- 合并不删除历史数据，只给活动、报名、感兴趣、反馈、举报和分析记录补充 `identityNetworkId`；“保留原身份 / 当前设备资料”只影响公开资料。
+- 同步邀请使用 10 分钟一次性随机 token，服务端只保存 hash；二维码复用 `/api/qr`，不新增前端依赖。
+- 未来微信小程序绑定预留在 `identityExternalCredentials`，但本次不接入微信登录、unionid 或小程序端流程。
+
+### 当前完成情况
+
+- 代码开发、版本号和文档同步已完成。
+- 本地 `npm test` 通过。
+
+### 遗留问题
+
+- 设备同步邀请目前是链接 / 二维码制，任何拿到链接且未过期的人都可以加入目标身份网络；后续建议增加发起端二次确认、邀请撤销列表和合并审计页。
+- 移除设备后，旧设备历史数据仍属于原身份网络；这是“保留历史”的产品选择，但后续如要支持完全拆分身份，需要设计反向迁移流程。
+- Community Trust 事件和徽章仍主要按原匿名身份投影；本版只完成业务数据层身份网络聚合，后续可把 Trust Profile 也迁移为网络优先。
+
+### 下一步建议
+
+1. 在 CloudBase 控制台补齐 `yk_identityNetworkDevices.identityId + status`、`yk_identitySyncInvites.tokenHash`、`yk_activities.identityNetworkId + status + createdAt`、`yk_registrations.activityId + identityNetworkId` 等 `0.28.0` 新增索引。
+2. 给同步设备增加设备重命名、撤销邀请、合并审计详情和“在原设备确认”二次确认机制。
+3. 设计微信小程序 `openid/unionid` 绑定到 Identity Network 的 API 与冲突合并流程。

@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>徽章展示策略｜有空客厅</title>
-    <meta name="description" content="YKadmin 配置社区徽章的公开展示策略。" />
+    <title>同步设备｜有空客厅</title>
+    <meta name="description" content="把手机、电脑和未来小程序身份同步为同一个有空客厅匿名身份网络。" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -28,30 +28,26 @@
       </div>
     </header>
 
-    <main id="main" data-admin-badge-policy-page>
-      <section class="page-hero">
+    <main id="main" data-identity-sync-page>
+      <section class="page-hero compact-hero">
         <div class="wrap">
-          <p class="eyebrow">徽章展示策略</p>
-          <h1>决定徽章在哪里被看见。</h1>
-          <p>同一个徽章可以只在后台展示，也可以在活动卡、活动详情、发起人主页等未来位置展示。</p>
+          <p class="eyebrow">设备同步</p>
+          <h1>把多个设备变成同一个社区身份。</h1>
+          <p>这是匿名身份网络，不是传统账号。合并时不会删除历史活动、报名、反馈或举报，只会让它们归到同一个身份下。</p>
         </div>
       </section>
 
       <section class="section alt">
-        <div class="wrap">
-          <div class="list-toolbar">
-            <span data-badge-policy-count>正在读取徽章展示策略...</span>
-            <a class="button ghost" href="admin-badges.html">管理徽章</a>
-          </div>
-          <div class="event-list rows" data-badge-policy-list></div>
+        <div class="wrap identity-sync-page-layout" data-identity-sync-content>
+          <div class="empty-state"><strong>正在读取同步邀请...</strong><p>如果等待太久，请回到「我的」重新生成二维码。</p></div>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-grid">
-        <div><div class="footer-brand">有空客厅</div><div>展示策略让信任表达更克制，也更准确。</div><div class="credit">网站制作人：海旭</div></div>
-        <nav class="footer-links"><a href="admin-trust.html">社区信用</a><a href="admin-badges.html">社区徽章</a></nav>
+        <div><div class="footer-brand">有空客厅</div><div>身份网络让设备跟着人走，而不是让人迁就设备。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="me.html">我的</a><a href="activity-editor.html">发起活动</a><a href="activities.html">近期活动</a></nav>
       </div>
     </footer>
     <script src="script.js?v=0.28.0"></script>

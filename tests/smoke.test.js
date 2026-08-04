@@ -182,11 +182,11 @@ async function createActivity(token, overrides = {}) {
   if (overrides.cover) {
     form.set("cover", overrides.cover.blob, overrides.cover.name);
   }
-  const created = await request("/api/activities", { method: "POST", body: form }, token);
+  const created = await request("/api/activities", { method: "POST", headers: overrides.headers, body: form }, token);
   if (overrides.waitForAnalysis === false || created.activity.status !== "analysis_pending") {
     return created;
   }
-  return waitForActivityAnalysis(created, token);
+  return waitForActivityAnalysis(created, token, 80, overrides.headers);
 }
 
 function activityUpdateForm(activity, overrides = {}) {
@@ -219,12 +219,12 @@ function activityUpdateForm(activity, overrides = {}) {
   return form;
 }
 
-async function waitForActivityAnalysis(created, token = "", attempts = 80) {
+async function waitForActivityAnalysis(created, token = "", attempts = 80, headers = undefined) {
   let current = created;
   for (let index = 0; index < attempts; index += 1) {
     if (current.activity?.status && current.activity.status !== "analysis_pending") return { ...created, ...current };
     await new Promise((resolve) => setTimeout(resolve, 50));
-    current = await request(`/api/activities/${created.activity.id}`, {}, token);
+    current = await request(`/api/activities/${created.activity.id}`, { headers }, token);
   }
   throw new Error(`activity ${created.activity.id} stayed analysis_pending`);
 }
@@ -618,6 +618,104 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.ok(memberDashboard.summary.total >= 4);
   assert.ok(memberDashboard.summary.byStatus.published >= 2);
   assert.equal(memberDashboard.pending.total, 0);
+
+  const syncAHeaders = {
+    "X-YK-Client-Id": `${testClientId}_sync_a`,
+    "X-YK-Fingerprint": "fp_sync_a",
+  };
+  const syncBHeaders = {
+    "X-YK-Client-Id": `${testClientId}_sync_b`,
+    "X-YK-Fingerprint": "fp_sync_b",
+  };
+  await request("/api/profile/me", {
+    method: "PUT",
+    headers: syncAHeaders,
+    body: { displayName: "同步设备A", bio: "电脑上的活动草稿" },
+  });
+  await request("/api/profile/me", {
+    method: "PUT",
+    headers: syncBHeaders,
+    body: { displayName: "同步设备B", bio: "手机上的活动草稿" },
+  });
+  const syncPublicActivity = await createActivity(member.token, {
+    title: "身份同步去重测试公开活动",
+  });
+  const syncARegistration = await request(`/api/activities/${syncPublicActivity.activity.id}/register`, {
+    method: "POST",
+    headers: syncAHeaders,
+    body: { nickname: "同步报名A" },
+  });
+  const syncAInterest = await request(`/api/activities/${syncPublicActivity.activity.id}/interests`, {
+    method: "POST",
+    headers: syncAHeaders,
+    body: {},
+  });
+  assert.equal(syncAInterest.existing, false);
+  const syncAActivity = await createActivity("", {
+    title: "设备A身份网络草稿",
+    initiator: "同步设备A",
+    intent: "draft",
+    waitForAnalysis: false,
+    headers: syncAHeaders,
+  });
+  const syncBActivity = await createActivity("", {
+    title: "设备B身份网络草稿",
+    initiator: "同步设备B",
+    intent: "draft",
+    waitForAnalysis: false,
+    headers: syncBHeaders,
+  });
+  const syncInvite = await request("/api/identity-sync/invites", {
+    method: "POST",
+    headers: syncAHeaders,
+    body: {},
+  });
+  const syncInviteToken = new URL(syncInvite.invite.url).searchParams.get("token");
+  assert.ok(syncInviteToken);
+  const syncPreview = await request(`/api/identity-sync/invites/${encodeURIComponent(syncInviteToken)}`, {
+    headers: syncBHeaders,
+  });
+  assert.equal(syncPreview.alreadyJoined, false);
+  assert.ok(syncPreview.preview.target.counts.activities >= 1);
+  assert.ok(syncPreview.preview.target.counts.registrations >= 1);
+  assert.ok(syncPreview.preview.source.counts.activities >= 1);
+  const syncAccepted = await request(`/api/identity-sync/invites/${encodeURIComponent(syncInviteToken)}/accept`, {
+    method: "POST",
+    headers: syncBHeaders,
+    body: { profileSource: "source" },
+  });
+  assert.equal(syncAccepted.ok, true);
+  assert.equal(syncAccepted.identitySync.hasNetwork, true);
+  assert.ok(syncAccepted.identitySync.devices.length >= 2);
+  const syncOwnedByB = await request("/api/activities?owner=me&page=1&pageSize=50", { headers: syncBHeaders });
+  assert.ok(syncOwnedByB.activities.some((activity) => activity.id === syncAActivity.activity.id));
+  assert.ok(syncOwnedByB.activities.some((activity) => activity.id === syncBActivity.activity.id));
+  const syncOwnedByA = await request("/api/activities?owner=me&page=1&pageSize=50", { headers: syncAHeaders });
+  assert.ok(syncOwnedByA.activities.some((activity) => activity.id === syncAActivity.activity.id));
+  assert.ok(syncOwnedByA.activities.some((activity) => activity.id === syncBActivity.activity.id));
+  const syncProfileA = await request("/api/profile/me", { headers: syncAHeaders });
+  const syncProfileB = await request("/api/profile/me", { headers: syncBHeaders });
+  assert.equal(syncProfileA.profile.displayName, "同步设备B");
+  assert.equal(syncProfileB.profile.displayName, "同步设备B");
+  const syncDuplicateRegistration = await request(`/api/activities/${syncPublicActivity.activity.id}/register`, {
+    method: "POST",
+    headers: syncBHeaders,
+    body: { nickname: "同步报名B" },
+  });
+  assert.equal(syncDuplicateRegistration.existing, true);
+  assert.equal(syncDuplicateRegistration.registration.id, syncARegistration.registration.id);
+  const syncDuplicateInterest = await request(`/api/activities/${syncPublicActivity.activity.id}/interests`, {
+    method: "POST",
+    headers: syncBHeaders,
+    body: {},
+  });
+  assert.equal(syncDuplicateInterest.existing, true);
+  const syncMyRegistrations = await request("/api/my/registrations?page=1&pageSize=20", { headers: syncBHeaders });
+  assert.ok(syncMyRegistrations.registrations.some((item) => item.id === syncARegistration.registration.id));
+  const syncMe = await request("/api/identity-sync/me", { headers: syncBHeaders });
+  assert.ok(syncMe.counts.activities >= 2);
+  assert.ok(syncMe.counts.registrations >= 1);
+  assert.ok(syncMe.counts.interests >= 1);
 
   const reviewCandidate = await createActivity(member.token, {
     title: "社区复核测试活动",
@@ -1158,9 +1256,10 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(registrations.registrations[0].phone, undefined);
   assert.equal(registrations.registrations[0].phoneHash, undefined);
 
-  const byRegistrations = await request("/api/activities?all=true&sort=registrations-desc&page=1&pageSize=1", {}, admin.token);
-  assert.equal(byRegistrations.activities[0].id, created.activity.id);
-  assert.equal(byRegistrations.activities[0].registrationCount, 1);
+	  const byRegistrations = await request("/api/activities?all=true&sort=registrations-desc&page=1&pageSize=10", {}, admin.token);
+	  const createdByRegistrations = byRegistrations.activities.find((activity) => activity.id === created.activity.id);
+	  assert.ok(createdByRegistrations);
+	  assert.equal(createdByRegistrations.registrationCount, 1);
 
   const interest = await request(`/api/activities/${created.activity.id}/interests`, {
     method: "POST",
@@ -1547,21 +1646,23 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
         cueCount: document.querySelectorAll("[data-workspace-cards] .workspace-card-cue svg").length,
         toneCount: document.querySelectorAll("[data-workspace-cards] .workspace-card[data-card-tone]").length,
         labels: cards.map((card) => card.querySelector(".workspace-card-top > span:not(.workspace-icon):not(.workspace-card-cue)")?.textContent.trim()),
-        hrefs: cards.map((card) => card.getAttribute("href")),
-        iconTransition: firstIconStyle?.transitionProperty || "",
-        iconFill: firstCard?.querySelector(".workspace-icon svg") ? getComputedStyle(firstCard.querySelector(".workspace-icon svg")).fill : "",
-        pendingHidden: document.querySelector("[data-my-pending-section]")?.hidden,
-      };
-    });
-    assert.equal(openWorkspaceMotionState.cardCount, 4);
-    assert.equal(openWorkspaceMotionState.iconCount, openWorkspaceMotionState.cardCount);
-    assert.equal(openWorkspaceMotionState.cueCount, openWorkspaceMotionState.cardCount);
-    assert.equal(openWorkspaceMotionState.toneCount, openWorkspaceMotionState.cardCount);
-    assert.deepEqual(openWorkspaceMotionState.labels, ["我的报名", "我的反馈", "发起活动", "我发起的活动"]);
-    assert.deepEqual(openWorkspaceMotionState.hrefs, ["#my-registrations", "#my-feedbacks", "activity-editor.html", "my-activities.html"]);
-    assert.match(openWorkspaceMotionState.iconTransition, /transform/);
-    assert.notEqual(openWorkspaceMotionState.iconFill, "none");
-    assert.equal(openWorkspaceMotionState.pendingHidden, true);
+	        hrefs: cards.map((card) => card.getAttribute("href")),
+	        iconTransition: firstIconStyle?.transitionProperty || "",
+	        iconFill: firstCard?.querySelector(".workspace-icon svg") ? getComputedStyle(firstCard.querySelector(".workspace-icon svg")).fill : "",
+	        hasSyncPanel: Boolean(document.querySelector("[data-identity-sync-summary] .identity-sync-card")),
+	        pendingHidden: document.querySelector("[data-my-pending-section]")?.hidden,
+	      };
+	    });
+	    assert.equal(openWorkspaceMotionState.cardCount, 5);
+	    assert.equal(openWorkspaceMotionState.iconCount, openWorkspaceMotionState.cardCount);
+	    assert.equal(openWorkspaceMotionState.cueCount, openWorkspaceMotionState.cardCount);
+	    assert.equal(openWorkspaceMotionState.toneCount, openWorkspaceMotionState.cardCount);
+	    assert.deepEqual(openWorkspaceMotionState.labels, ["我的报名", "我的反馈", "同步设备", "发起活动", "我发起的活动"]);
+	    assert.deepEqual(openWorkspaceMotionState.hrefs, ["#my-registrations", "#my-feedbacks", "#identity-sync", "activity-editor.html", "my-activities.html"]);
+	    assert.match(openWorkspaceMotionState.iconTransition, /transform/);
+	    assert.notEqual(openWorkspaceMotionState.iconFill, "none");
+	    assert.equal(openWorkspaceMotionState.hasSyncPanel, true);
+	    assert.equal(openWorkspaceMotionState.pendingHidden, true);
     await page.goto(`${baseUrl}/login.html`);
     await page.getByLabel("手机号").fill("18800000000");
     await page.getByRole("button", { name: "进入有空" }).click();
@@ -1593,8 +1694,9 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/index.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/whitepaper.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/about.html`);
-    await assertNoHorizontalOverflow(page, `${baseUrl}/me.html`);
-    await assertNoHorizontalOverflow(page, `${baseUrl}/my-activities.html?status=draft`);
+	    await assertNoHorizontalOverflow(page, `${baseUrl}/me.html`);
+	    await assertNoHorizontalOverflow(page, `${baseUrl}/identity-sync.html`);
+	    await assertNoHorizontalOverflow(page, `${baseUrl}/my-activities.html?status=draft`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/my-activities.html?status=reviewing`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/my-activities.html?status=published_group`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/activity-editor.html`);

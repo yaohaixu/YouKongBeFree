@@ -221,6 +221,8 @@ let mePageState = {
   aiPrompts: [],
   aiUsage: null,
   profile: null,
+  identitySync: null,
+  identityInvite: null,
   friends: [],
   feedbacks: [],
   activityFeedbacks: [],
@@ -390,6 +392,20 @@ function qs(selector, root = document) {
 
 function qsa(selector, root = document) {
   return Array.from(root.querySelectorAll(selector));
+}
+
+async function copyTextToClipboard(text = "", label = "复制链接") {
+  if (!text) return false;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall back to a prompt so older WebViews can still copy the link.
+  }
+  window.prompt(label, text);
+  return false;
 }
 
 function setMessage(element, text, type = "muted") {
@@ -1121,6 +1137,170 @@ function updateProfilePreview(root = document, profile = mePageState.profile || 
   }
 }
 
+async function loadIdentitySync() {
+  const result = await api.get("/api/identity-sync/me");
+  mePageState.identitySync = result;
+  return result;
+}
+
+function qrApiUrl(text = "") {
+  return `${api.baseUrl}/api/qr?text=${encodeURIComponent(text)}`;
+}
+
+function identityShortId(id = "") {
+  const value = String(id || "");
+  if (value.length <= 12) return value || "-";
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+function renderIdentityCounts(counts = {}) {
+  const items = [
+    ["活动", counts.activities],
+    ["报名", counts.registrations],
+    ["反馈", counts.feedbacks],
+    ["感兴趣", counts.interests],
+    ["举报", counts.reports],
+  ];
+  return `
+    <div class="identity-counts">
+      ${items.map(([label, value]) => `<span><strong>${Number(value || 0)}</strong>${escapeHtml(label)}</span>`).join("")}
+    </div>
+  `;
+}
+
+function syncInviteBlock(invite = null) {
+  if (!invite?.url) return "";
+  return `
+    <div class="identity-sync-invite">
+      <img src="${escapeHtml(qrApiUrl(invite.url))}" alt="设备同步二维码" loading="lazy" />
+      <div>
+        <strong>用另一台设备打开或扫码</strong>
+        <p>${escapeHtml(invite.url)}</p>
+        <small>邀请链接 10 分钟内有效。两边已有数据时，会先显示合并预览。</small>
+        <div class="button-row">
+          <button class="button outline" type="button" data-copy-identity-invite="${escapeHtml(invite.url)}">复制同步链接</button>
+          <a class="button ghost" href="${escapeHtml(invite.url)}">打开同步页</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSyncDeviceList(identitySync = {}) {
+  const devices = identitySync.devices || [];
+  if (!identitySync.hasNetwork || !devices.length) {
+    return `<p class="muted-text">当前只有这个设备。开启同步后，可以把手机、电脑或未来小程序身份连到一起。</p>`;
+  }
+  return `
+    <div class="identity-device-list">
+      ${devices.map((device) => `
+        <article class="identity-device-row">
+          <div>
+            <strong>${escapeHtml(device.label || "未命名设备")}${device.isCurrent ? "（当前）" : ""}</strong>
+            <p>${escapeHtml(device.ipMasked || "IP 已隐藏")} · ${escapeHtml(device.userAgentSample || "浏览器信息已隐藏")}</p>
+            <small>${device.addedAt ? `加入：${formatDate(device.addedAt)}` : "同步设备"}</small>
+          </div>
+          ${device.isCurrent ? `<span class="tag">当前设备</span>` : `<button class="button outline" type="button" data-revoke-sync-device="${escapeHtml(device.id)}">移除</button>`}
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderIdentitySyncSummary(root = document, data = mePageState.identitySync) {
+  const box = qs("[data-identity-sync-summary]", root);
+  if (!box || !data) return;
+  const identitySync = data.identitySync || {};
+  const counts = data.counts || {};
+  const network = identitySync.network || {};
+  const hasNetwork = Boolean(identitySync.hasNetwork);
+  const invite = mePageState.identityInvite;
+  box.innerHTML = `
+    <article class="identity-sync-card${hasNetwork ? " is-active" : ""}">
+      <div class="identity-sync-main">
+        <span class="workspace-icon identity-sync-icon" aria-hidden="true">${workspaceIconSvg("sync")}</span>
+        <div>
+          <p class="section-kicker">身份网络</p>
+          <h3>${hasNetwork ? `已同步 ${Number(network.deviceCount || identitySync.devices?.length || 1)} 台设备` : "这个设备还没有开启同步"}</h3>
+          <p>${hasNetwork ? `Community ID：${escapeHtml(network.communityId || identityShortId(network.id))}` : "开启后，可以把手机和电脑变成同一个匿名身份，继续编辑草稿、查看报名和反馈。"}</p>
+        </div>
+      </div>
+      ${renderIdentityCounts(counts)}
+      <div class="button-row">
+        ${hasNetwork ? `<button class="button primary" type="button" data-create-identity-invite>生成同步二维码</button>` : `<button class="button primary" type="button" data-create-identity-network>开启设备同步</button>`}
+        <a class="button outline" href="identity-sync.html">打开同步页</a>
+      </div>
+      ${syncInviteBlock(invite)}
+      ${renderSyncDeviceList(identitySync)}
+      <p class="form-message" data-identity-sync-message></p>
+    </article>
+  `;
+  bindIdentitySyncSummary(box);
+  revealDynamicContent(box);
+}
+
+function bindIdentitySyncSummary(root = document) {
+  const message = qs("[data-identity-sync-message]", root);
+  qs("[data-create-identity-network]", root)?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    setMessage(message, "正在开启设备同步...");
+    try {
+      const result = await api.post("/api/identity-sync/create", {});
+      mePageState.identityInvite = null;
+      mePageState.identitySync = result;
+      setMessage(message, "已开启设备同步。现在可以生成二维码给另一台设备扫码。", "success");
+      renderIdentitySyncSummary(document, result);
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    } finally {
+      button.disabled = false;
+    }
+  });
+  qs("[data-create-identity-invite]", root)?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    setMessage(message, "正在生成同步二维码...");
+    try {
+      const result = await api.post("/api/identity-sync/invites", {});
+      mePageState.identityInvite = result.invite;
+      mePageState.identitySync = {
+        ...(mePageState.identitySync || {}),
+        identitySync: result.identitySync,
+      };
+      setMessage(message, "同步二维码已生成。", "success");
+      renderIdentitySyncSummary(document, mePageState.identitySync);
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    } finally {
+      button.disabled = false;
+    }
+  });
+  qsa("[data-copy-identity-invite]", root).forEach((button) => {
+    button.addEventListener("click", async () => {
+      await copyTextToClipboard(button.dataset.copyIdentityInvite, "复制设备同步链接");
+      showToast("同步链接已复制");
+    });
+  });
+  qsa("[data-revoke-sync-device]", root).forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!confirm("确定移除这台同步设备吗？它之后将回到独立身份。")) return;
+      try {
+        const result = await api.delete(`/api/identity-sync/devices/${encodeURIComponent(button.dataset.revokeSyncDevice)}`);
+        mePageState.identityInvite = null;
+        mePageState.identitySync = {
+          ...(mePageState.identitySync || {}),
+          identitySync: result.identitySync,
+        };
+        showToast("已移除设备");
+        renderIdentitySyncSummary(document, mePageState.identitySync);
+      } catch (error) {
+        setMessage(message, error.message, "error");
+      }
+    });
+  });
+}
+
 function imageElementFromFile(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -1219,7 +1399,11 @@ async function initMeDashboardPage() {
   bindProfileForm(root);
   qs("[data-user-name]", root).textContent = profile?.displayName || user?.nickname || "朋友";
 
-  const dashboard = await api.get("/api/dashboard/me");
+  const [dashboard, identitySyncData] = await Promise.all([
+    api.get("/api/dashboard/me"),
+    loadIdentitySync().catch(() => null),
+  ]);
+  if (identitySyncData) renderIdentitySyncSummary(root, identitySyncData);
 
   renderWorkspaceCards(root, user, dashboard.summary, dashboard.pending);
   renderDashboardSummary(qs("[data-workspace-summary]", root), dashboard.summary);
@@ -1324,6 +1508,142 @@ async function initCoInitiatorInvitePage() {
   }
 }
 
+function renderIdentityProfileChoice(key, title, profile = {}, checked = false) {
+  const name = profile.displayName || "有空朋友";
+  return `
+    <label class="identity-profile-choice">
+      <input type="radio" name="profileSource" value="${escapeHtml(key)}"${checked ? " checked" : ""} />
+      <span>${renderProfileAvatar(profile, name, "profile-avatar tiny-avatar")}</span>
+      <span>
+        <strong>${escapeHtml(title)}</strong>
+        <small>${escapeHtml(name)} · ${escapeHtml(profile.bio || "暂无个人简介")}</small>
+      </span>
+    </label>
+  `;
+}
+
+function renderIdentityMergeColumn(title, profile = {}, counts = {}, note = "") {
+  const name = profile.displayName || "有空朋友";
+  return `
+    <article class="identity-merge-column">
+      <p class="section-kicker">${escapeHtml(title)}</p>
+      <div class="identity-merge-profile">
+        ${renderProfileAvatar(profile, name, "profile-avatar large-avatar")}
+        <div>
+          <h3>${escapeHtml(name)}</h3>
+          <p>${escapeHtml(profile.bio || note || "这个身份还没有填写公开简介。")}</p>
+        </div>
+      </div>
+      ${renderIdentityCounts(counts)}
+    </article>
+  `;
+}
+
+function renderIdentitySyncSuccess(container, result = {}) {
+  const sync = result.identitySync || {};
+  container.innerHTML = `
+    <article class="success-card identity-sync-success">
+      <p class="section-kicker">同步完成</p>
+      <h2>${result.alreadyJoined ? "这个设备已经在身份网络里。" : "设备已经同步到同一个身份网络。"}</h2>
+      <p>之后在这些设备上进入「我的」，会看到合并后的活动、报名和反馈。未来小程序身份也可以接入同一张身份网络。</p>
+      ${renderIdentityCounts(result.counts || {})}
+      <div class="button-row">
+        <a class="button primary" href="me.html#identity-sync">回我的工作台</a>
+        <a class="button outline" href="activity-editor.html">继续发起活动</a>
+      </div>
+      <small>${sync.network?.communityId ? `Community ID：${escapeHtml(sync.network.communityId)}` : ""}</small>
+    </article>
+  `;
+  revealDynamicContent(container);
+}
+
+async function initIdentitySyncPage() {
+  const root = qs("[data-identity-sync-page]");
+  if (!root) return;
+  const container = qs("[data-identity-sync-content]", root);
+  const token = new URLSearchParams(location.search).get("token") || "";
+  if (!token) {
+    try {
+      const data = await loadIdentitySync();
+      container.innerHTML = `
+        <article class="identity-sync-card">
+          <div class="identity-sync-main">
+            <span class="workspace-icon identity-sync-icon" aria-hidden="true">${workspaceIconSvg("sync")}</span>
+            <div>
+              <p class="section-kicker">当前设备</p>
+              <h2>${data.identitySync?.hasNetwork ? "这个设备已经开启同步。" : "请从另一台设备生成同步二维码。"}</h2>
+              <p>${data.identitySync?.hasNetwork ? "可以回到我的工作台继续生成新的同步邀请。" : "同步需要一个 10 分钟内有效的链接或二维码，避免别人长期持有你的同步入口。"}</p>
+            </div>
+          </div>
+          ${renderIdentityCounts(data.counts || {})}
+          <div class="button-row">
+            <a class="button primary" href="me.html#identity-sync">回我的工作台</a>
+          </div>
+        </article>
+      `;
+    } catch (error) {
+      container.innerHTML = `<div class="empty-state"><strong>暂时不能读取同步状态</strong><p>${escapeHtml(error.message)}</p><a class="button ghost" href="me.html">回我的工作台</a></div>`;
+    }
+    revealDynamicContent(container);
+    return;
+  }
+  try {
+    const result = await api.get(`/api/identity-sync/invites/${encodeURIComponent(token)}`);
+    if (result.alreadyJoined) {
+      renderIdentitySyncSuccess(container, { alreadyJoined: true, identitySync: result.identitySync, counts: result.preview?.merged?.counts || {} });
+      return;
+    }
+    const preview = result.preview || {};
+    container.innerHTML = `
+      <form class="identity-sync-accept-form" data-identity-sync-accept-form>
+        <div class="identity-merge-grid">
+          ${renderIdentityMergeColumn("原身份网络", preview.target?.profile, preview.target?.counts, "将保留原设备网络里的历史数据。")}
+          ${renderIdentityMergeColumn("当前设备", preview.source?.profile, preview.source?.counts, "将把当前设备上的历史数据合并进去。")}
+        </div>
+        <article class="identity-merge-result">
+          <p class="section-kicker">合并后</p>
+          <h2>${Number(preview.merged?.deviceCount || 0)} 台设备会归到同一个身份网络。</h2>
+          ${renderIdentityCounts(preview.merged?.counts || {})}
+          <p>活动、报名、反馈、举报等历史记录都会保留，只是归到同一个身份网络，方便跨设备管理。</p>
+        </article>
+        <aside class="form-note identity-profile-picker">
+          <h3>公开资料保留哪一边？</h3>
+          <p>这个选择只影响头像、昵称和简介，不会删除任何历史数据。</p>
+          ${renderIdentityProfileChoice("target", "保留原身份资料", preview.target?.profile, true)}
+          ${renderIdentityProfileChoice("source", "改用当前设备资料", preview.source?.profile)}
+          <div class="form-actions">
+            <button class="button primary" type="submit">确认同步设备</button>
+            <a class="button outline" href="me.html">暂不合并</a>
+          </div>
+          <p class="form-message" data-identity-sync-page-message></p>
+        </aside>
+      </form>
+    `;
+    revealDynamicContent(container);
+    const form = qs("[data-identity-sync-accept-form]", container);
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const button = form.querySelector("button[type='submit']");
+      const message = qs("[data-identity-sync-page-message]", form);
+      button.disabled = true;
+      setMessage(message, "正在同步设备...");
+      try {
+        const accepted = await api.post(`/api/identity-sync/invites/${encodeURIComponent(token)}/accept`, {
+          profileSource: form.profileSource.value,
+        });
+        showToast("同步完成");
+        renderIdentitySyncSuccess(container, accepted);
+      } catch (error) {
+        button.disabled = false;
+        setMessage(message, error.message, "error");
+      }
+    });
+  } catch (error) {
+    container.innerHTML = `<div class="empty-state"><strong>同步邀请不可用</strong><p>${escapeHtml(error.message)}</p><a class="button ghost" href="me.html#identity-sync">回我的工作台</a></div>`;
+    revealDynamicContent(container);
+  }
+}
+
 async function renderMyRegistrations(root = document) {
   const list = qs("[data-my-registrations]", root);
   if (!list) return;
@@ -1412,8 +1732,8 @@ function renderWorkspaceCards(root, user, summary, pendingSummary) {
     {
       href: "#my-registrations",
       label: "我的报名",
-      title: "查看这个设备参加过的活动",
-      body: "报名成功、活动详情和取消后的状态，都从这里回看。",
+      title: "查看当前身份参加过的活动",
+      body: "报名成功、活动详情和取消后的状态，都从这里回看。同步设备后会合并展示。",
       meta: "活动参与者入口",
       count: "报名",
       icon: "registration",
@@ -1423,11 +1743,21 @@ function renderWorkspaceCards(root, user, summary, pendingSummary) {
       href: "#my-feedbacks",
       label: "我的反馈",
       title: "回看写过的匿名反馈",
-      body: "活动结束后留下的真实感受，会按这个设备保存在这里。",
+      body: "活动结束后留下的真实感受，会按当前身份保存在这里。",
       meta: "匿名反馈入口",
       count: "反馈",
       icon: "feedback",
       tone: "teal",
+    },
+    {
+      href: "#identity-sync",
+      label: "同步设备",
+      title: "把手机和电脑连成同一身份",
+      body: "生成二维码或同步链接，合并不同设备上的草稿、报名和活动反馈。",
+      meta: mePageState.identitySync?.identitySync?.hasNetwork ? "身份网络已开启" : "无需注册",
+      count: mePageState.identitySync?.identitySync?.hasNetwork ? Number(mePageState.identitySync.identitySync.network?.deviceCount || 1) : "同步",
+      icon: "sync",
+      tone: "amber",
     },
     {
       href: "activity-editor.html",
@@ -1500,6 +1830,7 @@ function renderWorkspaceCard(card) {
     registration: "green",
     report: "rose",
     rules: "emerald",
+    sync: "amber",
     template: "purple",
     todo: "urgent",
   };
@@ -1538,6 +1869,7 @@ function workspaceIconSvg(name = "circle") {
     registration: { viewBox: "0 0 24 24", body: `<path d="M5 3.75C5 2.784 5.784 2 6.75 2h10.5c.966 0 1.75.784 1.75 1.75v17.5a.75.75 0 0 1-1.218.586L12 17.21l-5.781 4.625A.75.75 0 0 1 5 21.25Zm1.75-.25a.25.25 0 0 0-.25.25v15.94l5.031-4.026a.749.749 0 0 1 .938 0L17.5 19.69V3.75a.25.25 0 0 0-.25-.25Z"></path>` },
     report: { viewBox: "0 0 24 24", body: `<path d="M1.5 4.25c0-.966.784-1.75 1.75-1.75h17.5c.966 0 1.75.784 1.75 1.75v12.5a1.75 1.75 0 0 1-1.75 1.75h-9.586a.25.25 0 0 0-.177.073l-3.5 3.5A1.458 1.458 0 0 1 5 21.043V18.5H3.25a1.75 1.75 0 0 1-1.75-1.75ZM3.25 4a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 .75.75v3.19l3.427-3.427A1.75 1.75 0 0 1 11.164 17h9.586a.25.25 0 0 0 .25-.25V4.25a.25.25 0 0 0-.25-.25ZM12 6a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 12 6Zm0 9a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path>` },
     rules: { viewBox: "0 0 24 24", body: `<path d="M16.53 9.78a.75.75 0 0 0-1.06-1.06L11 13.19l-1.97-1.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5-5Z"></path><path d="m12.54.637 8.25 2.675A1.75 1.75 0 0 1 22 4.976V10c0 6.19-3.771 10.704-9.401 12.83a1.704 1.704 0 0 1-1.198 0C5.77 20.705 2 16.19 2 10V4.976c0-.758.489-1.43 1.21-1.664L11.46.637a1.748 1.748 0 0 1 1.08 0Zm-.617 1.426-8.25 2.676a.249.249 0 0 0-.173.237V10c0 5.46 3.28 9.483 8.43 11.426a.199.199 0 0 0 .14 0C17.22 19.483 20.5 15.461 20.5 10V4.976a.25.25 0 0 0-.173-.237l-8.25-2.676a.253.253 0 0 0-.154 0Z"></path>` },
+    sync: { viewBox: "0 0 24 24", body: `<path d="M6.5 3a3.5 3.5 0 0 0-1.86 6.466l-1.82 4.55a3.5 3.5 0 1 0 1.394.557l1.82-4.548a3.505 3.505 0 0 0 3.543-1.264l5.22 3.132a3.5 3.5 0 1 0 .772-1.286L10.35 7.475A3.5 3.5 0 0 0 6.5 3Zm0 1.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm11 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM3.5 15.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"></path><path d="M7.845 16.209a.75.75 0 0 1 .946-.478l3.5 1.167a.75.75 0 0 1-.474 1.423l-3.5-1.167a.75.75 0 0 1-.472-.945Zm7.285.066a.75.75 0 0 1 .595.88l-.5 2.5a.75.75 0 0 1-1.47-.294l.5-2.5a.75.75 0 0 1 .875-.586Z"></path>` },
     template: { viewBox: "0 0 24 24", body: `<path d="M3.75 3.5a.25.25 0 0 0-.25.25v2.062a.75.75 0 1 1-1.5 0V3.75C2 2.783 2.783 2 3.75 2h2.062a.75.75 0 1 1 0 1.5Zm13.688-.75a.75.75 0 0 1 .75-.75h2.062c.966 0 1.75.783 1.75 1.75v2.062a.75.75 0 1 1-1.5 0V3.75a.25.25 0 0 0-.25-.25h-2.062a.75.75 0 0 1-.75-.75ZM2.75 17.438a.75.75 0 0 1 .75.75v2.062c0 .138.112.25.25.25h2.062a.75.75 0 1 1 0 1.5H3.75A1.75 1.75 0 0 1 2 20.25v-2.062a.75.75 0 0 1 .75-.75Zm18.5 0a.75.75 0 0 1 .75.75v2.062A1.75 1.75 0 0 1 20.25 22h-2.062a.75.75 0 1 1 0-1.5h2.062a.25.25 0 0 0 .25-.25v-2.062a.75.75 0 0 1 .75-.75Zm-18.5-8.25a.75.75 0 0 1 .75.75v4.124a.75.75 0 1 1-1.5 0V9.938a.75.75 0 0 1 .75-.75ZM9.188 2.75a.75.75 0 0 1 .75-.75h4.124a.75.75 0 1 1 0 1.5H9.938a.75.75 0 0 1-.75-.75Zm0 18.5a.75.75 0 0 1 .75-.75h4.124a.75.75 0 1 1 0 1.5H9.938a.75.75 0 0 1-.75-.75ZM21.25 9.188a.75.75 0 0 1 .75.75v4.124a.75.75 0 1 1-1.5 0V9.938a.75.75 0 0 1 .75-.75ZM3.75 8.25a.75.75 0 0 1 .75-.75h2a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1-.75-.75Zm5.5 0A.75.75 0 0 1 10 7.5h2A.75.75 0 0 1 12 9h-2a.75.75 0 0 1-.75-.75Zm-1-4.5A.75.75 0 0 1 9 4.5v2a.75.75 0 0 1-1.5 0v-2a.75.75 0 0 1 .75-.75Zm0 5.5A.75.75 0 0 1 9 10v2a.75.75 0 0 1-1.5 0v-2a.75.75 0 0 1 .75-.75Zm0 4.75a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4a.75.75 0 0 1 .75-.75ZM14 8.25a.75.75 0 0 1 .75-.75h4a.75.75 0 0 1 0 1.5h-4a.75.75 0 0 1-.75-.75Z"></path>` },
     trust: { viewBox: "0 0 24 24", body: `<path d="M12 2.25a.75.75 0 0 1 .53.22l2.72 2.72 3.806.552a.75.75 0 0 1 .416 1.279l-2.754 2.684.65 3.79a.75.75 0 0 1-1.088.79L12 12.036l-3.404 1.79a.75.75 0 0 1-1.088-.79l.65-3.79-2.754-2.684a.75.75 0 0 1 .416-1.279l3.806-.552 2.72-2.72a.75.75 0 0 1 .53-.22Zm0 1.812-1.812 1.812a.75.75 0 0 1-.422.212l-2.536.368 1.836 1.79a.75.75 0 0 1 .216.664l-.433 2.526 2.269-1.193a.75.75 0 0 1 .698 0l2.269 1.193-.433-2.526a.75.75 0 0 1 .216-.664l1.836-1.79-2.536-.368a.75.75 0 0 1-.422-.212L12 4.062Z"></path><path d="M4.75 17a.75.75 0 0 0 0 1.5h14.5a.75.75 0 0 0 0-1.5H4.75Zm2.5 3.5a.75.75 0 0 0 0 1.5h9.5a.75.75 0 0 0 0-1.5h-9.5Z"></path>` },
     todo: { viewBox: "0 0 24 24", body: `<path d="M3.5 3.75a.25.25 0 0 1 .25-.25h13.5a.25.25 0 0 1 .25.25v10a.75.75 0 0 0 1.5 0v-10A1.75 1.75 0 0 0 17.25 2H3.75A1.75 1.75 0 0 0 2 3.75v16.5c0 .966.784 1.75 1.75 1.75h7a.75.75 0 0 0 0-1.5h-7a.25.25 0 0 1-.25-.25V3.75Z"></path><path d="M6.25 7a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Zm-.75 4.75a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75Zm16.28 4.53a.75.75 0 1 0-1.06-1.06l-4.97 4.97-1.97-1.97a.75.75 0 1 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5.5-5.5Z"></path>` },
@@ -2171,14 +2503,10 @@ async function renderMineActivities() {
     button.addEventListener("click", async () => {
       button.disabled = true;
       try {
-        const { invite } = await api.post(`/api/activities/${button.dataset.createCoInvite}/co-initiator-invites`, {});
-        const url = invite.inviteUrl || `${location.origin}/${invite.invitePath}`;
-        try {
-          await navigator.clipboard.writeText(url);
-          showToast("邀请链接已复制");
-        } catch {
-          window.prompt("复制共同发起人邀请链接", url);
-        }
+	        const { invite } = await api.post(`/api/activities/${button.dataset.createCoInvite}/co-initiator-invites`, {});
+	        const url = invite.inviteUrl || `${location.origin}/${invite.invitePath}`;
+	        await copyTextToClipboard(url, "复制共同发起人邀请链接");
+	        showToast("邀请链接已复制");
       } catch (error) {
         showToast(error.message || "暂时不能生成邀请链接");
       } finally {
@@ -5646,7 +5974,7 @@ async function safeInit(task) {
   } catch (error) {
     console.error(error);
     showToast("页面数据读取失败，请刷新后重试");
-    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-profile-editor-page], [data-co-initiator-invite-page], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-profile-page], [data-safety-rules], [data-ai-prompts], [data-ai-console-summary], [data-community-health], [data-ai-model-list], [data-ai-usage-models], [data-ai-usage-errors], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list], [data-friend-list], [data-feedback-list], [data-activity-feedback-list], [data-my-registrations], [data-my-feedbacks]")
+    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-profile-editor-page], [data-co-initiator-invite-page], [data-identity-sync-page], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-profile-page], [data-safety-rules], [data-ai-prompts], [data-ai-console-summary], [data-community-health], [data-ai-model-list], [data-ai-usage-models], [data-ai-usage-errors], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list], [data-friend-list], [data-feedback-list], [data-activity-feedback-list], [data-my-registrations], [data-my-feedbacks], [data-identity-sync-summary]")
       .filter((element) => /正在|读取|加载/.test(element.textContent || ""))
       .forEach((element) => {
         element.innerHTML = `<div class="empty-state"><strong>暂时没读到数据</strong><p>请刷新页面重试，或稍后再来。</p></div>`;
@@ -5661,9 +5989,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeInit(renderActivityLists),
     safeInit(initPublicActivitiesPage),
     safeInit(initMeDashboardPage),
-    safeInit(initProfileEditorPage),
-    safeInit(initCoInitiatorInvitePage),
-    safeInit(initActivityEditorPage),
+	    safeInit(initProfileEditorPage),
+	    safeInit(initCoInitiatorInvitePage),
+	    safeInit(initIdentitySyncPage),
+	    safeInit(initActivityEditorPage),
     safeInit(initMyActivitiesPage),
     safeInit(initRegistrationsPage),
     safeInit(initReviewTasksPage),

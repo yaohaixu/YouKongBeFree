@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.27.0`
+当前版本：`0.28.0`
 
-状态：`0.27.0` 完成活动共同发起协作第一轮优化：开放工作台只展示头像、昵称和简介摘要，公开资料编辑拆到独立子页面；活动支持主发起人邀请共同发起人，共同发起人可编辑、提交、撤回、取消、结束活动并查看报名 / 反馈；活动编辑新增软锁和版本冲突校验，保存草稿不触发安全分析，正式提交才进入规则 / AI / 策略流程，并补充对应测试、索引和安全说明。
+状态：`0.28.0` 完成匿名设备身份网络第一轮优化：手机、电脑等多个匿名设备可通过 10 分钟同步邀请 / 二维码合并为同一个身份网络；合并前展示两边资料和活动 / 报名 / 反馈 / 感兴趣统计，历史数据不删除，公开资料可选择保留原身份或当前设备；「我的」工作台、我发起的活动、我的报名、我的反馈、报名去重、感兴趣去重和共同发起人权限均改为身份网络优先，并补充对应 smoke 测试、索引和安全说明。
 
 ## 访问地址
 
@@ -16,6 +16,7 @@ CloudBase 动态线上站点：
 - 管理员 / 协作员登录页：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/login.html
 - 后台：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/admin.html
 - 我的：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/me.html
+- 同步设备：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/identity-sync.html
 - 编辑公开资料：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/profile-editor.html
 - 发起人主页：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/profile.html?id=COMMUNITY_ID
 - 近期活动：https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/activities.html
@@ -72,7 +73,8 @@ GitHub Pages 静态展示：
 - YKadmin 子页面：用户新增、编辑、删除和角色分配；角色权限新增、编辑、删除和权限矩阵配置；活动模块新增、编辑、删除；活动描述模板新增、编辑、删除；「客厅的朋友们」新增、编辑、停用和删除；活动反馈检索、展示 / 隐藏 / 恢复展示和 CSV 导出；管理员待办审核；按关键词、模块、状态、时间、报名数筛选全部活动。
 - YKadmin 活动管理：可查看全部状态活动，可取消或结束活动，可进入独立报名表页面。
 - YKadmin 操作日志：记录登录、退出、新增、保存、删除、提交、审核、退回、拒绝、撤回、报名、取消报名、删除报名、取消活动、结束活动和自动归档等关键动作，支持关键词、操作类型、操作人、角色、日期范围筛选和分页加载；日志手机号脱敏保存，仅保留最近 30 天。
-- 「我的」开放工作台：无需登录即可进入发起活动、我的活动、当前设备报名记录和当前设备匿名反馈记录；取消报名后的活动不会继续显示在我的报名里；协作员 / 管理员登录后额外看到审核待办和后台入口；入口卡片与管理员工作台共享 Octicon 风格图标、语义 tone、右侧箭头、指针高光和短时状态动效。
+- 「我的」开放工作台：无需登录即可进入发起活动、我的活动、当前身份报名记录和当前身份匿名反馈记录；取消报名后的活动不会继续显示在我的报名里；协作员 / 管理员登录后额外看到审核待办和后台入口；入口卡片与管理员工作台共享 Octicon 风格图标、语义 tone、右侧箭头、指针高光和短时状态动效。
+- 匿名设备身份网络：在「我的」生成 10 分钟同步二维码 / 链接后，手机、电脑和未来小程序身份可以合并为同一个匿名身份网络；合并前展示两边活动、报名、反馈、感兴趣和举报统计，确认后历史数据不删除，公开资料可选择保留原身份或当前设备。
 - 我的公开资料：每个浏览器匿名身份都可以维护公开头像、昵称和个人简介；「我的」页只展示资料摘要，点击头像或编辑入口进入独立 `profile-editor.html`；资料只展示发起人主动填写的公开内容，不展示手机号、管理 token 或 Community Trust 分数；活动卡片、活动详情和报名成功页可点击进入公开发起人主页。
 - 活动共同发起：主发起人可生成共同发起邀请链接；受邀者在同一浏览器匿名身份下接受后成为共同发起人，可编辑、提交、撤回、取消、结束活动，并查看该活动报名表和活动反馈；只有主发起人、管理员或持管理 token 的原发起人可以新增 / 移除共同发起人。
 - 活动发起管理：保存活动草稿、可选选择协作员、发布活动、查看自己活动状态、邀请共同发起人、撤回活动、取消 / 结束活动、查看独立报名表和活动反馈；共同发起活动也会出现在「我的活动」中。正式提交会先显示「安全分析中」并立即回到我的活动，后台任务完成后再变为已发布、管理员关注或管理员审核。
@@ -148,6 +150,7 @@ GitHub Pages 静态展示：
 ├── about.html              # 关于与联系页面
 ├── login.html              # 管理员 / 协作员登录页面
 ├── me.html                 # 开放工作台：公开资料、概览和入口卡片
+├── identity-sync.html      # 匿名设备同步邀请、合并预览和确认
 ├── profile.html            # 发起人公开主页
 ├── activity-editor.html    # 发起 / 编辑活动页面
 ├── my-activities.html      # 我发起的活动：筛选、撤回、报名表
@@ -280,7 +283,7 @@ YK_DB_FILE=
 
 - `.env` 不允许提交到 Git。
 - 本地默认使用 `STORE_DRIVER=json`，数据写入 `data/youkong-db.json`。
-- 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_templates`、`yk_livingRoomFriends`、`yk_activities`、`yk_registrations`、`yk_activityInterests`、`yk_activityFeedbacks`、`yk_identityProfiles`、`yk_sessions`、`yk_logs`、`yk_safetyRules`、`yk_systemConfigs`、`yk_anonymousIdentities`、`yk_communityEvents`、`yk_trustProfiles`、`yk_trustEvents`、`yk_trustPolicies`、`yk_communityBadges`、`yk_identityBadges`、`yk_badgePolicies`、`yk_rateEvents`、`yk_analysisReports`、`yk_communityReports`、`yk_aiModelProfiles`、`yk_aiPrompts`、`yk_aiCache`、`yk_aiUsageLogs`。
+- 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_templates`、`yk_livingRoomFriends`、`yk_activities`、`yk_registrations`、`yk_activityInterests`、`yk_activityFeedbacks`、`yk_activityCoInitiators`、`yk_activityCoInitiatorInvites`、`yk_identityNetworks`、`yk_identityNetworkDevices`、`yk_identitySyncInvites`、`yk_identityMergeEvents`、`yk_identityExternalCredentials`、`yk_identityProfiles`、`yk_sessions`、`yk_logs`、`yk_safetyRules`、`yk_systemConfigs`、`yk_anonymousIdentities`、`yk_communityEvents`、`yk_trustProfiles`、`yk_trustEvents`、`yk_trustPolicies`、`yk_communityBadges`、`yk_identityBadges`、`yk_badgePolicies`、`yk_rateEvents`、`yk_analysisReports`、`yk_communityReports`、`yk_aiModelProfiles`、`yk_aiPrompts`、`yk_aiCache`、`yk_aiUsageLogs`。
 - `CORS_ORIGINS` 用英文逗号分隔允许跨域访问 API 的前端域名；`SESSION_MAX_AGE_DAYS` 会被限制在 1 到 30 天之间。
 - `ACTIVITY_AUTO_END_INTERVAL_MS` 控制本地 / 常驻服务的自动结束轮询间隔，默认 15 分钟；`ACTIVITY_AUTO_END_MIN_SWEEP_MS` 控制请求兜底 sweep 的最小间隔；`DISABLE_ACTIVITY_AUTO_END=true` 可关闭后台轮询。
 - `API_TIMING_LOGS=false` 可关闭 API 耗时日志；`API_SLOW_LOG_MS` 控制慢请求阈值，默认 1200ms。
@@ -324,8 +327,8 @@ npm test
 
 - 语法检查：核心前后端脚本和构建脚本。
 - 安全回归：富文本 XSS 清洗、服务端签名匿名身份防篡改、活动管理 token 过期 / 撤销 / 身份绑定、AI Base URL 内网拦截、Prompt Injection 隔离、AI 每日调用预算和备份脱敏。
-- API 冒烟：登录安全头、协作员新增、匿名/登录发起活动、规则引擎、活动置信度、AI 设置脱敏、AI stub 真实调用、AI 关闭中高风险兜底审核、匿名公开资料保存 / 读取、公开发起人主页资料、社区反馈、社区治理事件流、信用策略、社区徽章、徽章展示策略、社区信用、活动模板增删改、客厅朋友新增与活动来源筛选、正文图片上传和伪图片拒绝、兜底双岗复核、富文本清洗、正文图片不计入描述长度校验、昵称报名、报名确认 token、无 token 访问 / 取消拦截、取消报名不进入当前设备我的报名、重复报名刷新 token、一人名额并发保护、报名昵称公示、感兴趣去重、最低报名未成团取消、历史活动按客厅 / 客厅朋友筛选、匿名活动反馈、反馈 AI 展示判断、反馈管理员待办、反馈展示 / 隐藏 / 恢复展示、反馈 CSV 导出、报名表、删除报名日志、删除协作员日志、取消活动日志、模板日志、日志脱敏、日志字段筛选、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
-- Playwright 浏览器冒烟：管理员登录跳转、工作台概览卡片跳转、开放工作台公开资料表单、活动编辑分段步骤、活动详情发起人卡片和主页链接、公开发起人主页、移动端关键页面无横向溢出、社区治理新页面、客厅朋友 / 活动反馈新后台页面、近期 / 历史活动页、活动反馈二维码 JPG 下载、匿名反馈问卷页、活动编辑页模板下拉和 H1 工具、发起形式和反馈展示字段、富文本 H1 重复点击恢复正文、粘贴文本清洗、活动模板管理页富文本编辑器、活动邀请函 JPG 下载、报名成功页 token 访问、CSV 防公式注入、审核默认「请选择」、反馈审核待办、后台分组图标动效挂载和审核封面图 / 正文图片展示。
+- API 冒烟：登录安全头、协作员新增、匿名/登录发起活动、规则引擎、活动置信度、AI 设置脱敏、AI stub 真实调用、AI 关闭中高风险兜底审核、匿名公开资料保存 / 读取、匿名设备身份网络创建 / 同步邀请 / 合并预览 / 跨设备活动聚合 / 报名去重 / 感兴趣去重、公开发起人主页资料、社区反馈、社区治理事件流、信用策略、社区徽章、徽章展示策略、社区信用、活动模板增删改、客厅朋友新增与活动来源筛选、正文图片上传和伪图片拒绝、兜底双岗复核、富文本清洗、正文图片不计入描述长度校验、昵称报名、报名确认 token、无 token 访问 / 取消拦截、取消报名不进入当前身份我的报名、重复报名刷新 token、一人名额并发保护、报名昵称公示、感兴趣去重、最低报名未成团取消、历史活动按客厅 / 客厅朋友筛选、匿名活动反馈、反馈 AI 展示判断、反馈管理员待办、反馈展示 / 隐藏 / 恢复展示、反馈 CSV 导出、报名表、删除报名日志、删除协作员日志、取消活动日志、模板日志、日志脱敏、日志字段筛选、报名人数排序、过期活动自动归档、手动归档触发和跨天活动保留。
+- Playwright 浏览器冒烟：管理员登录跳转、工作台概览卡片跳转、开放工作台资料摘要与同步设备入口、`identity-sync.html` 移动端无横向溢出、活动编辑分段步骤、活动详情发起人卡片和主页链接、公开发起人主页、移动端关键页面无横向溢出、社区治理新页面、客厅朋友 / 活动反馈新后台页面、近期 / 历史活动页、活动反馈二维码 JPG 下载、匿名反馈问卷页、活动编辑页模板下拉和 H1 工具、发起形式和反馈展示字段、富文本 H1 重复点击恢复正文、粘贴文本清洗、活动模板管理页富文本编辑器、活动邀请函 JPG 下载、报名成功页 token 访问、CSV 防公式注入、审核默认「请选择」、反馈审核待办、后台分组图标动效挂载和审核封面图 / 正文图片展示。
 
 CloudBase 部署 dry-run：
 
@@ -472,6 +475,7 @@ npm run deploy:cloudbase
 
 ## 已验证
 
+- `0.28.0` 本地验证通过：`npm test` 通过；新增覆盖匿名设备身份网络创建、同步邀请预览、跨设备合并、公开资料保留选择、身份网络下我的活动聚合、报名 / 感兴趣去重和 `identity-sync.html` 移动端无横向溢出。
 - `0.27.0` 本地验证通过：`npm test` 通过；新增覆盖共同发起邀请 / 接受、编辑锁冲突与接管、过期版本提交拦截、共同发起人权限边界、共同发起人查看报名表 / 活动反馈，以及公开资料编辑页拆分。
 - `0.26.0` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖匿名公开资料 API、公开发起人主页、活动卡 / 详情 / 成功页发起人展示、活动编辑分段步骤和 AI 控制台社区健康概览。
 - `0.25.1` 本地验证通过：`npm test` 和 `npm run deploy:dry-run` 通过；新增覆盖富文本 XSS、服务端签名匿名身份、管理 token 过期 / 撤销 / 身份绑定、AI Base URL SSRF、Prompt Injection 隔离、AI 每日调用预算、备份脱敏，以及新安全加固后的 CloudBase 构建检查。
