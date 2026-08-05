@@ -123,6 +123,7 @@ async function main() {
     await screenshot(desktop, baseUrl, "/login.html", "desktop-login.png");
     await loginAsAdmin(desktop, baseUrl);
     await screenshot(desktop, baseUrl, "/me.html", "desktop-me.png");
+    await screenshot(desktop, baseUrl, "/my-feedbacks.html", "desktop-my-feedbacks.png");
     await screenshot(desktop, baseUrl, "/admin.html", "desktop-admin.png");
     await screenshot(desktop, baseUrl, "/review-tasks.html", "desktop-review-tasks.png");
     await screenshot(desktop, baseUrl, "/activity-editor.html", "desktop-activity-editor.png");
@@ -137,6 +138,7 @@ async function main() {
     await screenshot(mobile, baseUrl, "/about.html", "mobile-about.png");
     await loginAsAdmin(mobile, baseUrl);
     await screenshot(mobile, baseUrl, "/me.html", "mobile-me.png");
+    await screenshot(mobile, baseUrl, "/my-feedbacks.html", "mobile-my-feedbacks.png");
     await screenshot(mobile, baseUrl, "/admin-activities.html", "mobile-admin-activities.png");
     await screenshot(mobile, baseUrl, "/review-tasks.html", "mobile-review-tasks.png");
     await screenshot(mobile, baseUrl, "/activity-editor.html", "mobile-activity-editor.png");

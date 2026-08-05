@@ -493,6 +493,39 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     },
   });
   assert.equal(coProfile.profile.displayName, "共同发起人B");
+  const coDraftActivity = await createActivity(member.token, {
+    title: "草稿共同发起人协作测试",
+    intent: "draft",
+  });
+  assert.equal(coDraftActivity.activity.status, "draft");
+  const draftInvite = await request(`/api/activities/${coDraftActivity.activity.id}/co-initiator-invites`, {
+    method: "POST",
+    body: {},
+  }, member.token);
+  const draftInviteToken = new URL(draftInvite.invite.inviteUrl).searchParams.get("token");
+  const acceptedDraftInvite = await request(`/api/co-initiator-invites/${encodeURIComponent(draftInviteToken)}/accept`, {
+    method: "POST",
+    headers: coHeaders,
+    body: {},
+  });
+  assert.ok(acceptedDraftInvite.activity.coInitiators.some((profile) => profile.displayName === "共同发起人B"));
+  const coDraftLock = await request(`/api/activities/${coDraftActivity.activity.id}/edit-lock`, {
+    method: "POST",
+    headers: coHeaders,
+    body: {},
+  });
+  const coDraftSubmit = await request(`/api/activities/${coDraftActivity.activity.id}`, {
+    method: "PUT",
+    headers: coHeaders,
+    body: activityUpdateForm(acceptedDraftInvite.activity, {
+      title: "共同发起人提交发布测试",
+      intent: "submit",
+      editLockToken: coDraftLock.editLockToken,
+      activityVersion: coDraftLock.activityVersion,
+    }),
+  });
+  assert.equal(coDraftSubmit.activity.status, "analysis_pending");
+  assert.equal(coDraftSubmit.activity.reviewStep, "analysis");
   const coActivity = await createActivity(member.token, {
     title: "共同发起人协作测试活动",
   });
@@ -517,6 +550,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     body: {},
   }, member.token);
   assert.ok(ownerLock.editLockToken);
+  assert.ok(new Date(ownerLock.lock.expiresAt).getTime() - new Date(ownerLock.lock.lockedAt).getTime() >= 30 * 60 * 1000);
   const coLockConflict = await fetch(`${baseUrl}/api/activities/${coActivity.activity.id}/edit-lock`, {
     method: "POST",
     headers: {
@@ -618,6 +652,10 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.ok(memberDashboard.summary.total >= 4);
   assert.ok(memberDashboard.summary.byStatus.published >= 2);
   assert.equal(memberDashboard.pending.total, 0);
+  const memberSummary = await request("/api/me/summary", {}, member.token);
+  assert.ok(memberSummary.profile);
+  assert.ok(memberSummary.dashboard.summary.total >= 4);
+  assert.ok(Array.isArray(memberSummary.registrations));
 
   const syncAHeaders = {
     "X-YK-Client-Id": `${testClientId}_sync_a`,
@@ -1650,6 +1688,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 	        iconTransition: firstIconStyle?.transitionProperty || "",
 	        iconFill: firstCard?.querySelector(".workspace-icon svg") ? getComputedStyle(firstCard.querySelector(".workspace-icon svg")).fill : "",
 	        hasSyncPanel: Boolean(document.querySelector("[data-identity-sync-summary] .identity-sync-card")),
+	        hasFeedbackPanel: Boolean(document.querySelector("[data-my-feedbacks]")),
 	        pendingHidden: document.querySelector("[data-my-pending-section]")?.hidden,
 	      };
 	    });
@@ -1657,12 +1696,37 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 	    assert.equal(openWorkspaceMotionState.iconCount, openWorkspaceMotionState.cardCount);
 	    assert.equal(openWorkspaceMotionState.cueCount, openWorkspaceMotionState.cardCount);
 	    assert.equal(openWorkspaceMotionState.toneCount, openWorkspaceMotionState.cardCount);
-	    assert.deepEqual(openWorkspaceMotionState.labels, ["我的报名", "我的反馈", "同步设备", "发起活动", "我发起的活动"]);
-	    assert.deepEqual(openWorkspaceMotionState.hrefs, ["#my-registrations", "#my-feedbacks", "#identity-sync", "activity-editor.html", "my-activities.html"]);
+	    assert.deepEqual(openWorkspaceMotionState.labels, ["我的报名", "我的反馈", "身份网络", "发起活动", "我发起的活动"]);
+	    assert.deepEqual(openWorkspaceMotionState.hrefs, ["#my-registrations", "my-feedbacks.html", "identity-sync.html", "activity-editor.html", "my-activities.html"]);
 	    assert.match(openWorkspaceMotionState.iconTransition, /transform/);
 	    assert.notEqual(openWorkspaceMotionState.iconFill, "none");
-	    assert.equal(openWorkspaceMotionState.hasSyncPanel, true);
+	    assert.equal(openWorkspaceMotionState.hasSyncPanel, false);
+	    assert.equal(openWorkspaceMotionState.hasFeedbackPanel, false);
 	    assert.equal(openWorkspaceMotionState.pendingHidden, true);
+    await page.goto(`${baseUrl}/my-feedbacks.html`);
+    await page.waitForSelector("[data-my-feedbacks-page] [data-my-feedbacks]");
+    const myFeedbacksPageState = await page.evaluate(() => ({
+      hasPage: Boolean(document.querySelector("[data-my-feedbacks-page]")),
+      title: document.querySelector("[data-my-feedbacks-title]")?.textContent.trim() || "",
+      hasCount: Boolean(document.querySelector("[data-my-feedback-count]")),
+      hasList: Boolean(document.querySelector("[data-my-feedbacks]")),
+      backHref: document.querySelector("[data-my-feedbacks-page] a.button.outline")?.getAttribute("href") || "",
+    }));
+    assert.equal(myFeedbacksPageState.hasPage, true);
+    assert.match(myFeedbacksPageState.title, /当前身份/);
+    assert.equal(myFeedbacksPageState.hasCount, true);
+    assert.equal(myFeedbacksPageState.hasList, true);
+    assert.equal(myFeedbacksPageState.backHref, "me.html#my-tools");
+    await page.goto(`${baseUrl}/identity-sync.html`);
+    await page.waitForSelector("[data-identity-sync-summary] .identity-sync-card");
+    const identityNetworkPageState = await page.evaluate(() => ({
+      hasManagementPanel: Boolean(document.querySelector("[data-identity-sync-summary] .identity-sync-card")),
+      hasCreateAction: Boolean(document.querySelector("[data-create-identity-network], [data-create-identity-invite]")),
+      returnHref: document.querySelector("[data-identity-sync-summary] a.button.outline")?.getAttribute("href") || "",
+    }));
+    assert.equal(identityNetworkPageState.hasManagementPanel, true);
+    assert.equal(identityNetworkPageState.hasCreateAction, true);
+    assert.equal(identityNetworkPageState.returnHref, "me.html#my-tools");
     await page.goto(`${baseUrl}/login.html`);
     await page.getByLabel("手机号").fill("18800000000");
     await page.getByRole("button", { name: "进入有空" }).click();
@@ -1695,6 +1759,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await assertNoHorizontalOverflow(page, `${baseUrl}/whitepaper.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/about.html`);
 	    await assertNoHorizontalOverflow(page, `${baseUrl}/me.html`);
+	    await assertNoHorizontalOverflow(page, `${baseUrl}/my-feedbacks.html`);
 	    await assertNoHorizontalOverflow(page, `${baseUrl}/identity-sync.html`);
 	    await assertNoHorizontalOverflow(page, `${baseUrl}/my-activities.html?status=draft`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/my-activities.html?status=reviewing`);
@@ -1854,6 +1919,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       hasSourceType: Boolean(document.querySelector("[data-source-type-toggle]")),
       hasFriendField: Boolean(document.querySelector("[data-friend-field]")),
       hasFeedbackDisplay: Boolean(document.querySelector('select[name="showFeedbacks"]')),
+      hasCoInvite: Boolean(document.querySelector("[data-editor-co-invite]")),
       stepper: Array.from(document.querySelectorAll("[data-editor-step-target]")).map((button) => button.textContent.trim()),
       sectionCount: document.querySelectorAll("[data-editor-section]").length,
     }));
@@ -1866,6 +1932,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.equal(editorState.hasSourceType, true);
     assert.equal(editorState.hasFriendField, true);
     assert.equal(editorState.hasFeedbackDisplay, true);
+    assert.equal(editorState.hasCoInvite, true);
     assert.deepEqual(editorState.stepper, ["基本", "介绍", "报名", "发布"]);
     assert.equal(editorState.sectionCount, 4);
     const richEditorCommandState = await page.evaluate(() => {

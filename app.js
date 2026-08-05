@@ -2,8 +2,18 @@ const CLIENT_ID_KEY = "yk_client_id";
 const ACTIVITY_TOKEN_KEY = "yk_activity_tokens";
 const ACTIVITY_INTEREST_KEY = "yk_activity_interests";
 const REGISTRATION_TOKEN_KEY = "yk_registration_tokens";
+const UI_CACHE_PREFIX = "yk_ui_cache_v2:";
 const PROFILE_AVATAR_MAX_BYTES = 4 * 1024 * 1024;
 const PROFILE_AVATAR_COMPRESSED_BYTES = 900 * 1024;
+const UI_CACHE_TTL = {
+  meSummary: 60 * 1000,
+  myActivities: 90 * 1000,
+  myRegistrations: 2 * 60 * 1000,
+  myFeedbacks: 2 * 60 * 1000,
+  profile: 5 * 60 * 1000,
+  identitySync: 5 * 60 * 1000,
+  selectOptions: 10 * 60 * 1000,
+};
 
 function randomToken() {
   const webCrypto = window.crypto || window.msCrypto;
@@ -45,6 +55,56 @@ function getFingerprint() {
     Intl.DateTimeFormat().resolvedOptions().timeZone || "",
   ];
   return `fp_${simpleHash(parts.join("|"))}`;
+}
+
+function scopedCacheKey(key = "") {
+  return `${UI_CACHE_PREFIX}${getClientId()}:${key}`;
+}
+
+function readUiCache(key = "", maxStaleMs = 24 * 60 * 60 * 1000) {
+  try {
+    const item = JSON.parse(localStorage.getItem(scopedCacheKey(key)) || "null");
+    if (!item || typeof item !== "object") return null;
+    const storedAt = Number(item.storedAt || 0);
+    if (!storedAt || Date.now() - storedAt > maxStaleMs) return null;
+    return {
+      data: item.data,
+      fresh: Date.now() < Number(item.expiresAt || 0),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeUiCache(key = "", data = null, ttlMs = 60 * 1000) {
+  try {
+    localStorage.setItem(scopedCacheKey(key), JSON.stringify({
+      data,
+      storedAt: Date.now(),
+      expiresAt: Date.now() + ttlMs,
+    }));
+  } catch {
+    // localStorage may be unavailable in private mode; fresh network data still works.
+  }
+}
+
+function clearUiCache() {
+  try {
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index);
+      if (key?.startsWith(UI_CACHE_PREFIX)) localStorage.removeItem(key);
+    }
+  } catch {
+    // Cache invalidation should never block a user action.
+  }
+}
+
+async function cachedGet(path, cacheKey, ttlMs = 60 * 1000) {
+  const cached = readUiCache(cacheKey);
+  if (cached?.fresh) return cached.data;
+  const data = await api.get(path);
+  writeUiCache(cacheKey, data, ttlMs);
+  return data;
 }
 
 function readActivityTokens() {
@@ -149,6 +209,9 @@ const api = {
     }
     if (data.manageToken && data.activity?.id) {
       saveActivityManageToken(data.activity.id, data.manageToken);
+    }
+    if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+      clearUiCache();
     }
     return data;
   },
@@ -591,6 +654,48 @@ function renderCoInitiatorList(activity = {}, options = {}) {
   `;
 }
 
+function canInviteCoInitiators(activity = {}) {
+  const terminal = ["cancelled", "not_formed_cancelled", "ended", "rejected"].includes(activity.status);
+  return Boolean(activity.permissions?.canManageCoInitiators && !terminal);
+}
+
+function renderCoInitiatorManagementSection(activity = {}) {
+  if (!activity.permissions?.canManageCoInitiators) return "";
+  const people = Array.isArray(activity.coInitiators) ? activity.coInitiators : [];
+  const rows = people.length
+    ? people.map((profile) => {
+      const name = profile.displayName || "共同发起人";
+      return `
+        <article class="co-manager-item">
+          <div>
+            ${renderProfileAvatar(profile, name, "profile-avatar tiny-avatar")}
+            <span>
+              <strong>${escapeHtml(name)}</strong>
+              <small>${escapeHtml(profile.bio || profile.communityId || "共同发起人")}</small>
+            </span>
+          </div>
+          <button class="button outline danger-soft" type="button" data-detail-remove-co-identity="${escapeHtml(profile.id)}">移除</button>
+        </article>
+      `;
+    }).join("")
+    : `<div class="empty-state slim"><strong>还没有共同发起人</strong><p>可以复制邀请链接给一起筹备的朋友。</p></div>`;
+  return `
+    <section class="section tight co-initiator-management-section">
+      <div class="wrap">
+        <div class="section-head compact-head">
+          <div>
+            <p class="section-kicker">共同发起团队</p>
+            <h2>管理这场活动的协作者。</h2>
+          </div>
+          ${canInviteCoInitiators(activity) ? `<button class="button outline" type="button" data-detail-create-co-invite="${escapeHtml(activity.id)}">邀请共同发起人</button>` : ""}
+        </div>
+        <div class="co-manager-list">${rows}</div>
+        <p class="form-message" data-detail-co-message></p>
+      </div>
+    </section>
+  `;
+}
+
 function renderInitiatorContact(activity) {
   if (!activity?.showInitiatorContact || !activity.initiatorContact) return "";
   const contact = escapeHtml(activity.initiatorContact);
@@ -859,14 +964,14 @@ async function initLoginPage() {
 
 async function fillModuleSelect(select) {
   if (!select) return [];
-  const { modules } = await api.get("/api/modules");
+  const { modules } = await cachedGet("/api/modules", "select:modules", UI_CACHE_TTL.selectOptions);
   select.innerHTML = modules.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("");
   return modules;
 }
 
 async function fillCollaboratorSelect(select) {
   if (!select) return [];
-  const { collaborators } = await api.get("/api/collaborators");
+  const { collaborators } = await cachedGet("/api/collaborators", "select:collaborators", UI_CACHE_TTL.selectOptions);
   select.innerHTML = collaborators.length
     ? `<option value="">可不选择，必要时由社区接住</option>${collaborators.map((item) => `<option value="${item.id}">${escapeHtml(item.nickname)}</option>`).join("")}`
     : `<option value="">暂无协作员，可先直接发起</option>`;
@@ -875,7 +980,7 @@ async function fillCollaboratorSelect(select) {
 
 async function fillFriendSelect(select) {
   if (!select) return [];
-  const { friends } = await api.get("/api/living-room-friends?enabled=true&page=1&pageSize=100");
+  const { friends } = await cachedGet("/api/living-room-friends?enabled=true&page=1&pageSize=100", "select:living-room-friends", UI_CACHE_TTL.selectOptions);
   select.innerHTML = friends.length
     ? `<option value="">请选择客厅朋友</option>${friends.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("")}`
     : `<option value="">暂无已启用的客厅朋友</option>`;
@@ -902,14 +1007,14 @@ function bindSourceTypeToggle(form) {
 
 async function fillModuleFilterSelect(select) {
   if (!select) return [];
-  const { modules } = await api.get("/api/modules");
+  const { modules } = await cachedGet("/api/modules", "select:modules", UI_CACHE_TTL.selectOptions);
   select.innerHTML = `<option value="">全部模块</option>${modules.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("")}`;
   return modules;
 }
 
 async function fillTemplateSelect(select) {
   if (!select) return [];
-  const { templates } = await api.get("/api/templates?page=1&pageSize=100");
+  const { templates } = await cachedGet("/api/templates?page=1&pageSize=100", "select:templates", UI_CACHE_TTL.selectOptions);
   select.innerHTML = [
     `<option value="">无，自己写</option>`,
     ...templates.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`),
@@ -1110,8 +1215,14 @@ async function getOptionalUser() {
 }
 
 async function loadMyProfile() {
-  const { profile } = await api.get("/api/profile/me");
+  const { profile, identitySync } = await cachedGet("/api/profile/me", "profile:me", UI_CACHE_TTL.profile);
   mePageState.profile = profile || null;
+  if (identitySync) {
+    mePageState.identitySync = {
+      ...(mePageState.identitySync || {}),
+      identitySync,
+    };
+  }
   return mePageState.profile;
 }
 
@@ -1138,7 +1249,7 @@ function updateProfilePreview(root = document, profile = mePageState.profile || 
 }
 
 async function loadIdentitySync() {
-  const result = await api.get("/api/identity-sync/me");
+  const result = await cachedGet("/api/identity-sync/me", "identity-sync:me", UI_CACHE_TTL.identitySync);
   mePageState.identitySync = result;
   return result;
 }
@@ -1210,6 +1321,7 @@ function renderSyncDeviceList(identitySync = {}) {
 function renderIdentitySyncSummary(root = document, data = mePageState.identitySync) {
   const box = qs("[data-identity-sync-summary]", root);
   if (!box || !data) return;
+  const isStandalonePage = Boolean(box.closest("[data-identity-sync-page]"));
   const identitySync = data.identitySync || {};
   const counts = data.counts || {};
   const network = identitySync.network || {};
@@ -1228,7 +1340,7 @@ function renderIdentitySyncSummary(root = document, data = mePageState.identityS
       ${renderIdentityCounts(counts)}
       <div class="button-row">
         ${hasNetwork ? `<button class="button primary" type="button" data-create-identity-invite>生成同步二维码</button>` : `<button class="button primary" type="button" data-create-identity-network>开启设备同步</button>`}
-        <a class="button outline" href="identity-sync.html">打开同步页</a>
+        <a class="button outline" href="${isStandalonePage ? "me.html#my-tools" : "identity-sync.html"}">${isStandalonePage ? "回我的" : "管理身份网络"}</a>
       </div>
       ${syncInviteBlock(invite)}
       ${renderSyncDeviceList(identitySync)}
@@ -1382,12 +1494,16 @@ function bindProfileForm(root = document) {
   form.dataset.bound = "true";
 }
 
-async function initMeDashboardPage() {
-  const root = qs("[data-me-dashboard]");
-  if (!root) return;
-  const user = await getOptionalUser();
+async function renderMeDashboardFromSummary(root, data = {}, options = {}) {
+  const user = data.user || mePageState.user || getCachedUser();
+  const profile = data.profile || mePageState.profile || null;
+  const dashboard = data.dashboard || {};
   mePageState.user = user;
-  const profile = await loadMyProfile().catch(() => null);
+  mePageState.profile = profile;
+  if (data.identitySync) {
+    mePageState.identitySync = { identitySync: data.identitySync };
+  }
+  if (!options.fromCache) cacheUser(user || null);
   if (profile) {
     const form = qs("[data-profile-form]", root);
     if (form) {
@@ -1396,21 +1512,11 @@ async function initMeDashboardPage() {
     }
     updateProfilePreview(root, profile);
   }
-  bindProfileForm(root);
   qs("[data-user-name]", root).textContent = profile?.displayName || user?.nickname || "朋友";
 
-  const [dashboard, identitySyncData] = await Promise.all([
-    api.get("/api/dashboard/me"),
-    loadIdentitySync().catch(() => null),
-  ]);
-  if (identitySyncData) renderIdentitySyncSummary(root, identitySyncData);
-
-  renderWorkspaceCards(root, user, dashboard.summary, dashboard.pending);
-  renderDashboardSummary(qs("[data-workspace-summary]", root), dashboard.summary);
-  await Promise.all([
-    renderMyRegistrations(root),
-    renderMyFeedbacks(root),
-  ]);
+  renderWorkspaceCards(root, user, dashboard.summary || {}, dashboard.pending || {});
+  renderDashboardSummary(qs("[data-workspace-summary]", root), dashboard.summary || {});
+  renderMyRegistrationRows(qs("[data-my-registrations]", root), data.registrations || []);
 
   const pendingPreview = qs("[data-my-pending]", root);
   const pendingSection = qs("[data-my-pending-section]", root);
@@ -1418,9 +1524,33 @@ async function initMeDashboardPage() {
   if (pendingSection && !canSeePending) {
     pendingSection.hidden = true;
   } else if (hasPermission(user, "activities", "review") || hasPermission(user, "feedbacks", "view")) {
-    await renderMyPendingTasks();
+    pendingSection && (pendingSection.hidden = false);
+    if (options.refreshPending) {
+      await renderMyPendingTasks();
+    } else {
+      renderPendingTasks(pendingPreview, (dashboard.pending?.activities || []).slice(0, 3), { compact: true });
+    }
   } else {
     renderPendingTasks(pendingPreview, (dashboard.pending?.activities || []).slice(0, 3), { compact: true });
+  }
+}
+
+async function initMeDashboardPage() {
+  const root = qs("[data-me-dashboard]");
+  if (!root) return;
+  bindProfileForm(root);
+  const cached = readUiCache("me-summary");
+  if (cached?.data) {
+    await renderMeDashboardFromSummary(root, cached.data, { fromCache: true });
+  }
+  try {
+    const data = await api.get("/api/me/summary");
+    writeUiCache("me-summary", data, UI_CACHE_TTL.meSummary);
+    await renderMeDashboardFromSummary(root, data, { refreshPending: true });
+  } catch (error) {
+    if (!cached?.data) {
+      qs("[data-workspace-cards]", root).innerHTML = `<div class="empty-state slim"><strong>暂时没读到工作台</strong><p>${escapeHtml(error.message)}</p></div>`;
+    }
   }
 }
 
@@ -1548,8 +1678,8 @@ function renderIdentitySyncSuccess(container, result = {}) {
       <p>之后在这些设备上进入「我的」，会看到合并后的活动、报名和反馈。未来小程序身份也可以接入同一张身份网络。</p>
       ${renderIdentityCounts(result.counts || {})}
       <div class="button-row">
-        <a class="button primary" href="me.html#identity-sync">回我的工作台</a>
-        <a class="button outline" href="activity-editor.html">继续发起活动</a>
+        <a class="button primary" href="identity-sync.html">查看身份网络</a>
+        <a class="button outline" href="me.html#my-tools">回我的</a>
       </div>
       <small>${sync.network?.communityId ? `Community ID：${escapeHtml(sync.network.communityId)}` : ""}</small>
     </article>
@@ -1565,24 +1695,10 @@ async function initIdentitySyncPage() {
   if (!token) {
     try {
       const data = await loadIdentitySync();
-      container.innerHTML = `
-        <article class="identity-sync-card">
-          <div class="identity-sync-main">
-            <span class="workspace-icon identity-sync-icon" aria-hidden="true">${workspaceIconSvg("sync")}</span>
-            <div>
-              <p class="section-kicker">当前设备</p>
-              <h2>${data.identitySync?.hasNetwork ? "这个设备已经开启同步。" : "请从另一台设备生成同步二维码。"}</h2>
-              <p>${data.identitySync?.hasNetwork ? "可以回到我的工作台继续生成新的同步邀请。" : "同步需要一个 10 分钟内有效的链接或二维码，避免别人长期持有你的同步入口。"}</p>
-            </div>
-          </div>
-          ${renderIdentityCounts(data.counts || {})}
-          <div class="button-row">
-            <a class="button primary" href="me.html#identity-sync">回我的工作台</a>
-          </div>
-        </article>
-      `;
+      container.innerHTML = `<div data-identity-sync-summary></div>`;
+      renderIdentitySyncSummary(container, data);
     } catch (error) {
-      container.innerHTML = `<div class="empty-state"><strong>暂时不能读取同步状态</strong><p>${escapeHtml(error.message)}</p><a class="button ghost" href="me.html">回我的工作台</a></div>`;
+      container.innerHTML = `<div class="empty-state"><strong>暂时不能读取身份网络</strong><p>${escapeHtml(error.message)}</p><a class="button ghost" href="me.html#my-tools">回我的</a></div>`;
     }
     revealDynamicContent(container);
     return;
@@ -1639,15 +1755,13 @@ async function initIdentitySyncPage() {
       }
     });
   } catch (error) {
-    container.innerHTML = `<div class="empty-state"><strong>同步邀请不可用</strong><p>${escapeHtml(error.message)}</p><a class="button ghost" href="me.html#identity-sync">回我的工作台</a></div>`;
+    container.innerHTML = `<div class="empty-state"><strong>同步邀请不可用</strong><p>${escapeHtml(error.message)}</p><a class="button ghost" href="identity-sync.html">回身份网络</a></div>`;
     revealDynamicContent(container);
   }
 }
 
-async function renderMyRegistrations(root = document) {
-  const list = qs("[data-my-registrations]", root);
+function renderMyRegistrationRows(list, registrations = []) {
   if (!list) return;
-  const { registrations } = await api.get("/api/my/registrations?page=1&pageSize=6");
   if (!registrations.length) {
     list.innerHTML = `<div class="empty-state slim"><strong>还没有报名记录</strong><p>报名参加过的活动会留在这里，取消报名后不再显示。</p></div>`;
     revealDynamicContent(list);
@@ -1675,16 +1789,23 @@ async function renderMyRegistrations(root = document) {
   revealDynamicContent(list);
 }
 
-async function renderMyFeedbacks(root = document) {
-  const list = qs("[data-my-feedbacks]", root);
+async function renderMyRegistrations(root = document, provided = null) {
+  const list = qs("[data-my-registrations]", root);
   if (!list) return;
-  const { feedbacks } = await api.get("/api/my/feedbacks?page=1&pageSize=6");
-  if (!feedbacks.length) {
-    list.innerHTML = `<div class="empty-state slim"><strong>还没有写过反馈</strong><p>活动开始后可以匿名留下真实感受。</p></div>`;
-    revealDynamicContent(list);
+  if (provided) {
+    renderMyRegistrationRows(list, provided.registrations || []);
     return;
   }
-  list.innerHTML = feedbacks.map((feedback) => `
+  const cacheKey = "my-registrations:page=1&pageSize=6";
+  const cached = readUiCache(cacheKey);
+  if (cached?.data?.registrations) renderMyRegistrationRows(list, cached.data.registrations);
+  const data = await api.get("/api/my/registrations?page=1&pageSize=6");
+  writeUiCache(cacheKey, data, UI_CACHE_TTL.myRegistrations);
+  renderMyRegistrationRows(list, data.registrations || []);
+}
+
+function renderMyFeedbackRow(feedback = {}) {
+  return `
     <article class="event-row compact-row">
       <div>
         <span class="tag">${escapeHtml(feedback.statusLabel || feedbackStatusLabel(feedback.status))}</span>
@@ -1695,7 +1816,38 @@ async function renderMyFeedbacks(root = document) {
         <a class="button outline" href="activity.html?id=${encodeURIComponent(feedback.activityId)}">查看活动</a>
       </div>
     </article>
-  `).join("");
+  `;
+}
+
+async function renderMyFeedbacks(root = document, options = {}) {
+  const list = qs("[data-my-feedbacks]", root);
+  if (!list) return;
+  const pageSize = Number(options.pageSize || mePageState.pageSize || 12);
+  const page = Number(options.page || mePageState.myFeedbackPage || 1);
+  const cacheKey = `my-feedbacks:page=${page}&pageSize=${pageSize}`;
+  const cached = page === 1 ? readUiCache(cacheKey) : null;
+  if (cached?.data?.feedbacks) {
+    resetPagedState("myFeedbacks");
+    const cachedLoaded = mergePageItems("myFeedbacks", page, cached.data.feedbacks);
+    updatePagedCount(qs("[data-my-feedback-count]", root), cachedLoaded.length, cached.data.pageInfo);
+    updateLoadMore(qs("[data-load-more-my-feedbacks]", root), cachedLoaded.length, cached.data.pageInfo?.total || cachedLoaded.length);
+    list.innerHTML = cachedLoaded.length
+      ? cachedLoaded.map((feedback) => renderMyFeedbackRow(feedback)).join("")
+      : `<div class="empty-state slim"><strong>还没有写过反馈</strong><p>活动开始后可以匿名留下真实感受。</p></div>`;
+    revealDynamicContent(list);
+  }
+  const data = await api.get(`/api/my/feedbacks?page=${page}&pageSize=${pageSize}`);
+  if (page === 1) writeUiCache(cacheKey, data, UI_CACHE_TTL.myFeedbacks);
+  const { feedbacks, pageInfo } = data;
+  const loaded = mergePageItems("myFeedbacks", page, feedbacks);
+  updatePagedCount(qs("[data-my-feedback-count]", root), loaded.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-my-feedbacks]", root), loaded.length, pageInfo?.total || loaded.length);
+  if (!loaded.length) {
+    list.innerHTML = `<div class="empty-state slim"><strong>还没有写过反馈</strong><p>活动开始后可以匿名留下真实感受。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = loaded.map((feedback) => renderMyFeedbackRow(feedback)).join("");
   revealDynamicContent(list);
 }
 
@@ -1740,20 +1892,20 @@ function renderWorkspaceCards(root, user, summary, pendingSummary) {
       tone: "green",
     },
     {
-      href: "#my-feedbacks",
+      href: "my-feedbacks.html",
       label: "我的反馈",
       title: "回看写过的匿名反馈",
-      body: "活动结束后留下的真实感受，会按当前身份保存在这里。",
+      body: "在独立页面回看当前身份写过的匿名反馈记录。",
       meta: "匿名反馈入口",
       count: "反馈",
       icon: "feedback",
       tone: "teal",
     },
     {
-      href: "#identity-sync",
-      label: "同步设备",
-      title: "把手机和电脑连成同一身份",
-      body: "生成二维码或同步链接，合并不同设备上的草稿、报名和活动反馈。",
+      href: "identity-sync.html",
+      label: "身份网络",
+      title: "同步手机、电脑和未来小程序",
+      body: "在独立页面生成二维码或同步链接，合并不同设备上的草稿、报名和活动反馈。",
       meta: mePageState.identitySync?.identitySync?.hasNetwork ? "身份网络已开启" : "无需注册",
       count: mePageState.identitySync?.identitySync?.hasNetwork ? Number(mePageState.identitySync.identitySync.network?.deviceCount || 1) : "同步",
       icon: "sync",
@@ -1952,6 +2104,103 @@ function renderEditLockConflict(message, lock, onTakeover) {
   qs("[data-takeover-edit-lock]", box)?.addEventListener("click", onTakeover);
 }
 
+function renderEditorCollaborationPanel(invite = {}, activity = {}) {
+  const panel = qs("[data-editor-collaboration-panel]");
+  if (!panel) return;
+  const url = invite.inviteUrl || (invite.invitePath ? `${location.origin}/${invite.invitePath}` : "");
+  const isDraft = activity.status === "draft";
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div>
+      <span class="tag">共同发起</span>
+      <h3>${escapeHtml(activity.title || "未命名协作草稿")}</h3>
+      <p>${isDraft ? "草稿已保存。" : "活动邀请已生成。"}对方接受后，可以和你一起编辑、提交发布、撤回、取消或结束活动。</p>
+      ${invite.expiresAt ? `<small>邀请链接有效期至 ${formatDate(invite.expiresAt)}</small>` : ""}
+    </div>
+    <div class="row-actions">
+      <button class="button outline" type="button" data-copy-editor-co-invite>复制链接</button>
+      <a class="button ghost" href="activity.html?id=${encodeURIComponent(activity.id || "")}">去活动详情管理</a>
+    </div>
+  `;
+  qs("[data-copy-editor-co-invite]", panel)?.addEventListener("click", () => {
+    copyTextToClipboard(url, "复制共同发起人邀请链接").catch(() => {});
+  });
+}
+
+function syncEditorCoInviteVisibility(form, activity = null) {
+  const button = qs("[data-editor-co-invite]", form);
+  if (!button) return;
+  button.hidden = Boolean(activity && activity.permissions && !activity.permissions.canManageCoInitiators);
+}
+
+async function saveDraftBeforeCoInvite(form, message) {
+  window.youkongRichEditor?.sync(form);
+  const titleInput = form.elements.title;
+  const initiatorInput = form.elements.initiator;
+  if (titleInput && !titleInput.value.trim()) {
+    titleInput.value = "未命名协作草稿";
+  }
+  if (initiatorInput && !initiatorInput.value.trim()) {
+    initiatorInput.value = preferredDisplayName() || "有空朋友";
+  }
+  const editing = mePageState.editingActivity;
+  if (editing && editing.status !== "draft") {
+    return { activity: editing, savedDraft: false };
+  }
+
+  const formData = new FormData(form);
+  formData.set("intent", "draft");
+  if (editing) {
+    formData.set("editLockToken", mePageState.editLockToken || "");
+    formData.set("activityVersion", String(mePageState.editingActivityVersion || editing.activityVersion || editing.analysisVersion || 1));
+  }
+  const turnstileToken = await getTurnstileToken(form);
+  if (turnstileToken) formData.set("turnstileToken", turnstileToken);
+  const { activity } = editing
+    ? await api.put(`/api/activities/${editing.id}`, formData)
+    : await api.post("/api/activities", formData);
+  mePageState.editingActivity = activity;
+  if (!editing && activity?.id) {
+    history.replaceState(null, "", `activity-editor.html?id=${encodeURIComponent(activity.id)}`);
+  }
+  clearEditLockState();
+  if (activity?.id) {
+    const lock = await acquireActivityEditLock(activity.id);
+    mePageState.editingActivityVersion = Number(lock.activityVersion || activity.activityVersion || activity.analysisVersion || 1);
+  }
+  syncEditorCoInviteVisibility(form, activity);
+  setMessage(message, "草稿已保存，可以邀请共同发起人。", "success");
+  return { activity, savedDraft: true };
+}
+
+function bindEditorCoInvite(form) {
+  const button = qs("[data-editor-co-invite]", form);
+  const message = qs("[data-activity-message]");
+  if (!button || button.dataset.bound === "true") return;
+  button.dataset.bound = "true";
+  button.addEventListener("click", async () => {
+    if (button.disabled) return;
+    button.disabled = true;
+    setMessage(message, "正在保存草稿并生成协作邀请...");
+    try {
+      const { activity, savedDraft } = await saveDraftBeforeCoInvite(form, message);
+      if (!activity?.id) throw new Error("还没有可协作的活动草稿");
+      const { invite } = await api.post(`/api/activities/${encodeURIComponent(activity.id)}/co-initiator-invites`, {});
+      const url = invite.inviteUrl || `${location.origin}/${invite.invitePath}`;
+      await copyTextToClipboard(url, "复制共同发起人邀请链接");
+      renderEditorCollaborationPanel(invite, activity);
+      setMessage(message, savedDraft
+        ? "协作邀请已生成并复制。你可以继续编辑草稿。"
+        : "协作邀请已生成并复制。当前页面改动需点击发布活动后生效。", "success");
+      showToast("邀请链接已复制");
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
 async function initActivityEditorPage() {
   const form = qs("[data-activity-form]");
   if (!form) return;
@@ -1964,6 +2213,7 @@ async function initActivityEditorPage() {
   bindInitiatorContactToggle(form);
   bindMinRegistrationToggle(form);
   bindSourceTypeToggle(form);
+  bindEditorCoInvite(form);
   mePageState.richEditor = window.youkongRichEditor ? window.youkongRichEditor.mount(form) : null;
   mePageState.modules = await fillModuleSelect(form.moduleId);
   mePageState.collaborators = await fillCollaboratorSelect(form.collaboratorId);
@@ -1977,10 +2227,11 @@ async function initActivityEditorPage() {
     try {
       const { activity } = await api.get(`/api/activities/${editingId}`);
       fillActivityForm(form, activity);
+      syncEditorCoInviteVisibility(form, activity);
       try {
         const lock = await acquireActivityEditLock(editingId);
         mePageState.editingActivityVersion = Number(lock.activityVersion || activity.activityVersion || activity.analysisVersion || 1);
-        setMessage(qs("[data-activity-message]"), `已进入编辑模式，编辑权限会保留到 ${formatDate(lock.lock?.expiresAt)}。`, "success");
+        setMessage(qs("[data-activity-message]"), "已进入协作编辑模式。关闭页面后，其他共同发起人也可以接管继续写。", "success");
       } catch (error) {
         if (error.status === 423) {
           setActivityFormDisabled(form, true);
@@ -2294,17 +2545,6 @@ function canEndMine(activity) {
   return ["published", "full"].includes(activity.status);
 }
 
-function canManageCoInitiatorsMine(activity) {
-  return Boolean(activity.permissions?.canManageCoInitiators);
-}
-
-function renderCoInitiatorManageButtons(activity = {}) {
-  if (!canManageCoInitiatorsMine(activity) || !Array.isArray(activity.coInitiators) || !activity.coInitiators.length) return "";
-  return activity.coInitiators.map((profile) => `
-    <button class="button outline danger-soft" type="button" data-remove-co-activity-id="${escapeHtml(activity.id)}" data-remove-co-identity-id="${escapeHtml(profile.id)}">移除 ${escapeHtml(profile.displayName || "共同发起人")}</button>
-  `).join("");
-}
-
 function resetPagedState(key) {
   const pageKeys = {
     myActivities: "myActivityPage",
@@ -2435,17 +2675,30 @@ async function renderMineActivities() {
     page: mePageState.myActivityPage,
     pageSize: mePageState.pageSize,
   });
-  const { activities, pageInfo } = await api.get(`/api/activities${query}`);
+  const cacheKey = `my-activities:${query}`;
+  const cached = mePageState.myActivityPage === 1 ? readUiCache(cacheKey) : null;
+  if (cached?.data?.activities) {
+    resetPagedState("myActivities");
+    const cachedLoaded = mergePageItems("myActivities", mePageState.myActivityPage, cached.data.activities);
+    renderMineActivityRows(list, cachedLoaded, cached.data.pageInfo);
+  }
+  const data = await api.get(`/api/activities${query}`);
+  if (mePageState.myActivityPage === 1) writeUiCache(cacheKey, data, UI_CACHE_TTL.myActivities);
+  const { activities, pageInfo } = data;
   const loaded = mergePageItems("myActivities", mePageState.myActivityPage, activities);
-  updatePagedCount(qs("[data-my-activity-count]"), loaded.length, pageInfo);
-  updateLoadMore(qs("[data-load-more-my-activities]"), loaded.length, pageInfo?.total || loaded.length);
+  renderMineActivityRows(list, loaded, pageInfo);
+}
 
-  if (!loaded.length) {
+function renderMineActivityRows(list, activities = [], pageInfo = {}) {
+  updatePagedCount(qs("[data-my-activity-count]"), activities.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-my-activities]"), activities.length, pageInfo?.total || activities.length);
+
+  if (!activities.length) {
     list.innerHTML = `<div class="empty-state"><strong>还没有发起过活动</strong><p>写下一个小想法，客厅就多一张新纸条。</p></div>`;
     revealDynamicContent(list);
     return;
   }
-  list.innerHTML = loaded
+  list.innerHTML = activities
     .map(
       (activity) => `
         <article class="event-row">
@@ -2463,8 +2716,6 @@ async function renderMineActivities() {
             ${canEndMine(activity) ? `<button class="button outline" type="button" data-end-mine-activity-id="${activity.id}">结束</button>` : ""}
             ${canViewRegistrations(activity) ? `<a class="button outline" href="registrations.html?id=${encodeURIComponent(activity.id)}">查看报名表</a>` : ""}
             <a class="button outline" href="activity-feedback.html?id=${encodeURIComponent(activity.id)}">活动反馈</a>
-            ${canManageCoInitiatorsMine(activity) ? `<button class="button outline" type="button" data-create-co-invite="${activity.id}">邀请共同发起人</button>` : ""}
-            ${renderCoInitiatorManageButtons(activity)}
           </div>
         </article>
       `
@@ -2495,30 +2746,6 @@ async function renderMineActivities() {
       if (!confirm("确定结束这个活动吗？")) return;
       await api.post(`/api/activities/${button.dataset.endMineActivityId}/end`, {});
       showToast("保存成功");
-      resetPagedState("myActivities");
-      await renderMineActivities();
-    });
-  });
-  qsa("[data-create-co-invite]", list).forEach((button) => {
-    button.addEventListener("click", async () => {
-      button.disabled = true;
-      try {
-	        const { invite } = await api.post(`/api/activities/${button.dataset.createCoInvite}/co-initiator-invites`, {});
-	        const url = invite.inviteUrl || `${location.origin}/${invite.invitePath}`;
-	        await copyTextToClipboard(url, "复制共同发起人邀请链接");
-	        showToast("邀请链接已复制");
-      } catch (error) {
-        showToast(error.message || "暂时不能生成邀请链接");
-      } finally {
-        button.disabled = false;
-      }
-    });
-  });
-  qsa("[data-remove-co-activity-id]", list).forEach((button) => {
-    button.addEventListener("click", async () => {
-      if (!confirm("确定移除这位共同发起人吗？")) return;
-      await api.delete(`/api/activities/${button.dataset.removeCoActivityId}/co-initiators/${encodeURIComponent(button.dataset.removeCoIdentityId)}`);
-      showToast("删除成功");
       resetPagedState("myActivities");
       await renderMineActivities();
     });
@@ -2633,6 +2860,23 @@ async function initRegistrationsPage() {
   }
 }
 
+async function initMyFeedbacksPage() {
+  const root = qs("[data-my-feedbacks-page]");
+  if (!root) return;
+  const user = await getOptionalUser();
+  mePageState.user = user;
+  resetPagedState("myFeedbacks");
+  const title = qs("[data-my-feedbacks-title]", root);
+  const summary = qs("[data-my-feedbacks-summary]", root);
+  if (title) title.textContent = "查看当前身份写过的匿名反馈。";
+  if (summary) summary.textContent = "这里会按当前匿名身份展示写过的全部反馈。同步设备后会合并展示。";
+  await renderMyFeedbacks(root, { pageSize: mePageState.pageSize });
+  qs("[data-load-more-my-feedbacks]", root)?.addEventListener("click", async () => {
+    mePageState.myFeedbackPage += 1;
+    await renderMyFeedbacks(root, { pageSize: mePageState.pageSize });
+  });
+}
+
 function renderRegistrationTable(container, activityId, registrations) {
   if (!container) return;
   if (!registrations.length) {
@@ -2692,6 +2936,42 @@ function downloadRegistrationsCsv(activity, registrations) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function bindActivityDetailCoInitiators(root, activity = {}) {
+  const message = qs("[data-detail-co-message]", root);
+  qsa("[data-detail-create-co-invite]", root).forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      setMessage(message, "正在生成共同发起人邀请...");
+      try {
+        const { invite } = await api.post(`/api/activities/${encodeURIComponent(button.dataset.detailCreateCoInvite)}/co-initiator-invites`, {});
+        const url = invite.inviteUrl || `${location.origin}/${invite.invitePath}`;
+        await copyTextToClipboard(url, "复制共同发起人邀请链接");
+        setMessage(message, "邀请链接已复制。", "success");
+        showToast("邀请链接已复制");
+      } catch (error) {
+        setMessage(message, error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
+  qsa("[data-detail-remove-co-identity]", root).forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!confirm("确定移除这位共同发起人吗？")) return;
+      button.disabled = true;
+      setMessage(message, "正在移除共同发起人...");
+      try {
+        await api.delete(`/api/activities/${encodeURIComponent(activity.id)}/co-initiators/${encodeURIComponent(button.dataset.detailRemoveCoIdentity)}`);
+        showToast("已移除共同发起人");
+        await initActivityPage();
+      } catch (error) {
+        setMessage(message, error.message, "error");
+        button.disabled = false;
+      }
+    });
+  });
 }
 
 async function initActivityPage() {
@@ -2762,6 +3042,7 @@ async function initActivityPage() {
     ${canRegisterActivity(activity) ? `<a class="mobile-sticky-cta" href="#activity-registration">报名这个活动</a>` : ""}
     ${renderPublicRegistrationNames(activity)}
     ${renderPublicFeedbacks(activity)}
+    ${renderCoInitiatorManagementSection(activity)}
   `;
   revealDynamicContent(root);
   window.youkongActivityShare?.mount(root, activity, {
@@ -2774,6 +3055,7 @@ async function initActivityPage() {
       };
     },
   });
+  bindActivityDetailCoInitiators(root, activity);
 
   const reportForm = qs("[data-report-form]", root);
   reportForm?.addEventListener("submit", async (event) => {
@@ -5974,7 +6256,7 @@ async function safeInit(task) {
   } catch (error) {
     console.error(error);
     showToast("页面数据读取失败，请刷新后重试");
-    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-profile-editor-page], [data-co-initiator-invite-page], [data-identity-sync-page], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-profile-page], [data-safety-rules], [data-ai-prompts], [data-ai-console-summary], [data-community-health], [data-ai-model-list], [data-ai-usage-models], [data-ai-usage-errors], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list], [data-friend-list], [data-feedback-list], [data-activity-feedback-list], [data-my-registrations], [data-my-feedbacks], [data-identity-sync-summary]")
+    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-profile-editor-page], [data-co-initiator-invite-page], [data-identity-sync-page], [data-my-feedbacks-page], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-profile-page], [data-safety-rules], [data-ai-prompts], [data-ai-console-summary], [data-community-health], [data-ai-model-list], [data-ai-usage-models], [data-ai-usage-errors], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list], [data-friend-list], [data-feedback-list], [data-activity-feedback-list], [data-my-registrations], [data-my-feedbacks], [data-identity-sync-summary]")
       .filter((element) => /正在|读取|加载/.test(element.textContent || ""))
       .forEach((element) => {
         element.innerHTML = `<div class="empty-state"><strong>暂时没读到数据</strong><p>请刷新页面重试，或稍后再来。</p></div>`;
@@ -5992,6 +6274,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	    safeInit(initProfileEditorPage),
 	    safeInit(initCoInitiatorInvitePage),
 	    safeInit(initIdentitySyncPage),
+	    safeInit(initMyFeedbacksPage),
 	    safeInit(initActivityEditorPage),
     safeInit(initMyActivitiesPage),
     safeInit(initRegistrationsPage),

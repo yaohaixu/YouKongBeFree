@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>活动模板｜有空客厅</title>
-    <meta name="description" content="YKadmin 新增、搜索、编辑和删除活动描述模板。" />
+    <title>我的活动反馈｜有空客厅</title>
+    <meta name="description" content="查看当前匿名身份写过的活动反馈。" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -28,42 +28,36 @@
       </div>
     </header>
 
-    <main id="main" data-admin-templates-page>
+    <main id="main" data-my-feedbacks-page>
       <section class="page-hero">
         <div class="wrap">
-          <p class="eyebrow">活动模板</p>
-          <h1>把常用活动描述，整理成可以一键套用的底稿。</h1>
-          <p>模板只会填充「活动描述」正文，不会影响标题、时间、地点、模块和协作员。成员选择模板时，若已有正文会先询问是否覆盖。</p>
+          <p class="eyebrow">我的活动反馈</p>
+          <h1 data-my-feedbacks-title>查看当前身份写过的匿名反馈。</h1>
+          <p data-my-feedbacks-summary>这里会按当前匿名身份展示写过的全部反馈。同步设备后会合并展示。</p>
         </div>
       </section>
 
       <section class="section alt">
         <div class="wrap">
-          <form class="filter-panel" data-template-filters>
-            <label>搜索<input name="q" placeholder="模板名称 / 说明 / 正文" /></label>
-            <button class="button ghost" type="submit">筛选</button>
-          </form>
           <div class="list-toolbar">
-            <span data-template-count>正在读取模板...</span>
-            <div class="button-row">
-              <a class="button primary" href="admin-template-editor.html">新增活动模板</a>
-              <a class="button ghost" href="admin.html">回后台</a>
+            <span data-my-feedback-count>正在读取活动反馈...</span>
+            <div class="row-actions">
+              <button class="button ghost load-more" type="button" data-load-more-my-feedbacks hidden>加载更多</button>
+              <a class="button outline" href="me.html#my-tools">回我的</a>
             </div>
           </div>
-          <div class="event-list rows" data-template-list></div>
-          <button class="button ghost load-more" type="button" data-load-more-templates hidden>加载更多</button>
+          <div class="event-list rows compact-list" data-my-feedbacks>正在读取活动反馈...</div>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-grid">
-        <div><div class="footer-brand">有空客厅</div><div>模板只是底稿，真正的活动还要长出自己的样子。</div><div class="credit">网站制作人：海旭</div></div>
-        <nav class="footer-links"><a href="admin.html">后台</a><a href="admin-activities.html">全部活动</a><a href="admin-members.html">用户管理</a><a href="admin-modules.html">模块管理</a><a href="admin-logs.html">操作日志</a></nav>
+        <div><div class="footer-brand">有空客厅</div><div>匿名反馈会按当前身份统一回看。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="me.html">工作台</a><a href="my-activities.html">我的活动</a><a href="activities.html">近期活动</a></nav>
       </div>
     </footer>
     <script src="script.js?v=0.28.3"></script>
-    <script src="assets/js/rich-editor.js?v=0.28.3"></script>
     <script src="app.js?v=0.28.3"></script>
   </body>
 </html>

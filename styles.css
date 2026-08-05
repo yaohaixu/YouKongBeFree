@@ -10229,6 +10229,16 @@ html[data-theme="dark"] .mobile-sticky-cta {
     text-align: left;
   }
 
+  .editor-collaboration-panel,
+  .co-manager-item {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-collaboration-panel .row-actions,
+  .co-manager-item .button {
+    width: 100%;
+  }
+
   .mobile-sticky-cta {
     display: flex;
   }
@@ -10277,6 +10287,83 @@ html[data-theme="dark"] .mobile-sticky-cta {
   background: color-mix(in srgb, var(--panel) 84%, transparent);
   color: var(--text);
   text-decoration: none;
+}
+
+.editor-collaboration-panel,
+.co-manager-list {
+  display: grid;
+  gap: 12px;
+}
+
+.editor-collaboration-panel {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  margin-top: 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: var(--radius);
+  padding: 16px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 58%),
+    color-mix(in srgb, var(--panel) 86%, transparent);
+}
+
+.editor-collaboration-panel h3 {
+  margin: 6px 0 4px;
+}
+
+.editor-collaboration-panel p,
+.editor-collaboration-panel small {
+  color: var(--muted);
+}
+
+.co-initiator-management-section .section-head {
+  align-items: center;
+}
+
+.co-manager-list {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px;
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+}
+
+.co-manager-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border-radius: calc(var(--radius) - 2px);
+  padding: 10px;
+  transition: background 180ms ease, transform 180ms var(--ease-out);
+}
+
+.co-manager-item:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--surface-strong) 72%, transparent);
+}
+
+.co-manager-item > div {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.co-manager-item strong,
+.co-manager-item small {
+  display: block;
+}
+
+.co-manager-item strong {
+  color: var(--ink);
+}
+
+.co-manager-item small {
+  max-width: 48vw;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile-avatar.tiny-avatar {

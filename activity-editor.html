@@ -8,8 +8,8 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <script src="theme.js?v=0.28.0"></script>
-    <link rel="stylesheet" href="styles.css?v=0.28.0" />
+    <script src="theme.js?v=0.28.3"></script>
+    <link rel="stylesheet" href="styles.css?v=0.28.3" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
@@ -129,16 +129,18 @@
             </fieldset>
             <div class="form-actions">
               <button class="button ghost" type="submit" data-submit-intent="draft">存草稿</button>
+              <button class="button outline" type="button" data-editor-co-invite>发起协作</button>
               <button class="button primary" type="submit" data-activity-submit data-submit-intent="submit">发布活动</button>
               <button class="button outline" type="button" data-cancel-edit hidden>取消</button>
             </div>
             <p class="form-message" data-activity-message></p>
+            <div class="editor-collaboration-panel" data-editor-collaboration-panel hidden></div>
           </form>
 
           <aside class="panel-block sticky-panel">
             <p class="section-kicker">处理建议</p>
             <h3>先写到能被别人接住。</h3>
-            <p class="muted-text">标题、时间、地点和活动描述越清楚，活动置信度越高。存草稿不会公开，发布后可以在「我的活动」查看状态。</p>
+            <p class="muted-text">标题、时间、地点和活动描述越清楚，活动置信度越高。存草稿不会公开，草稿也可以邀请共同发起人一起补完整。</p>
             <div class="button-row">
               <a class="button ghost" href="my-activities.html">我的活动</a>
               <a class="button outline" href="me.html">回工作台</a>
@@ -154,8 +156,8 @@
         <nav class="footer-links"><a href="me.html">工作台</a><a href="my-activities.html">我的活动</a><a href="participate.html">活动与参与</a></nav>
       </div>
     </footer>
-    <script src="script.js?v=0.28.0"></script>
-    <script src="assets/js/rich-editor.js?v=0.28.0"></script>
-    <script src="app.js?v=0.28.0"></script>
+    <script src="script.js?v=0.28.3"></script>
+    <script src="assets/js/rich-editor.js?v=0.28.3"></script>
+    <script src="app.js?v=0.28.3"></script>
   </body>
 </html>
