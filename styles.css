@@ -1860,6 +1860,7 @@ select:disabled {
   display: grid;
   align-items: start;
   gap: 28px;
+  min-width: 0;
 }
 
 .editor-layout {
@@ -4011,6 +4012,46 @@ a:hover {
     padding: 22px;
   }
 
+  body:has(main[data-activity-editor-page]) .editor-layout {
+    gap: 22px;
+  }
+
+  body:has(main[data-activity-editor-page]) .form-note,
+  body:has(main[data-activity-editor-page]) .panel-block {
+    width: 100%;
+    overflow: visible;
+  }
+
+  body:has(main[data-activity-editor-page]) .editor-section {
+    padding: 18px;
+  }
+
+  body:has(main[data-activity-editor-page]) .rich-toolbar {
+    margin-inline: -2px;
+    padding: 8px 6px;
+  }
+
+  body:has(main[data-activity-editor-page]) .sticky-panel {
+    position: static;
+    top: auto;
+    margin-top: 0;
+  }
+
+  body:has(main[data-activity-editor-page]) .quick-home {
+    right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    justify-content: center;
+    width: 46px;
+    min-width: 46px;
+    min-height: 46px;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  body:has(main[data-activity-editor-page]) .quick-home span:not(.quick-home-icon) {
+    display: none;
+  }
+
   .form-note form > .button,
   .form-note form > button,
   .form-note > .button,
@@ -5002,6 +5043,8 @@ body:has(main[data-me-dashboard]) .workspace-card,
 body:has(main[data-me-dashboard]) .empty-state,
 body:has(main[data-activity-editor-page]) .form-note,
 body:has(main[data-activity-editor-page]) .panel-block {
+  min-width: 0;
+  max-width: 100%;
   border-color: var(--line);
   background: #fffefa;
   color: var(--ink);
@@ -6424,6 +6467,10 @@ html[data-theme="light"] body.product-surface .row-actions .muted-text {
 }
 
 .rich-editor {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   margin-top: 12px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -6432,6 +6479,9 @@ html[data-theme="light"] body.product-surface .row-actions .muted-text {
 }
 
 .rich-toolbar {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -7000,6 +7050,10 @@ html[data-theme="light"] body.public-surface .page-hero p:not(.eyebrow) {
 }
 
 .rich-canvas {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   overflow-wrap: anywhere;
   -webkit-user-select: text;
   user-select: text;
@@ -10102,6 +10156,11 @@ html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-my-pending] .eve
 }
 
 .editor-section {
+  width: 100%;
+  min-width: 0;
+  min-inline-size: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   margin: 0 0 18px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -10131,6 +10190,9 @@ html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-my-pending] .eve
 }
 
 .editor-advanced {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   margin-top: 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
