@@ -2,6 +2,26 @@
 
 所有重要变更都会记录在此文件中。格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循语义化版本思路。
 
+## [Unreleased]
+
+## [0.29.0] - 2026-08-10
+
+### Added
+
+- 新增活动系列基础能力：默认种子包含日常活动、有空放映、读书讨论、城市漫游、共创工作坊和公益互助；发起 / 编辑活动可选择系列，PC 与小程序活动列表、卡片、详情和我的活动同步展示系列标签。
+- 新增 `GET /api/activity-series` 和活动列表 `seriesId` 筛选，PC / 小程序近期活动和历史活动都可按活动系列筛选。
+- 新增活动复盘接口 `GET /api/activities/:id/recap`，活动发起人、共同发起人和管理员可查看报名数、感兴趣数、反馈状态、成团状态、精选反馈和自动生成的复盘摘要。
+- PC 活动反馈详情页新增活动复盘卡片；小程序活动反馈管理页同步展示复盘摘要和关键指标。
+- 新增小程序通知配置接口 `GET /api/miniprogram/config` 和活动提醒订阅偏好接口 `POST /api/activities/:id/notification-subscriptions`；小程序活动详情页新增“订阅提醒”入口，通知能力仅在小程序端展示，PC 不新增提醒按钮。
+- 小程序「同步设备」支持可选绑定微信小程序身份，服务端通过 `wx.login` code 换取 openid 后仅保存哈希凭证，用于跨设备找回和自动合并身份网络。
+- 新增 `PUBLIC_SITE_ORIGIN`、`WECHAT_MP_APPID`、`WECHAT_MP_SECRET` 和 `WECHAT_MP_ACTIVITY_REMINDER_TEMPLATE_IDS` 环境变量说明。
+
+### Changed
+
+- 小程序身份同步邀请链接改为使用公开静态站点域名，避免从 CloudBase API 服务域名打开时报 `INVALID_PATH`。
+- 小程序首页、活动卡、活动列表、活动详情、活动反馈管理和身份网络页完成第一轮视觉统一，减少厚重卡片阴影，提升信息层级和操作入口清晰度。
+- README、开发日志、冒烟测试和小程序说明同步到 `0.29.0`。
+
 ## [0.28.3] - 2026-08-05
 
 ### Added

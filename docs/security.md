@@ -13,7 +13,8 @@
 - 服务端会下发 `HttpOnly` 签名匿名身份 Cookie `yk_anon`，并与本地 UUID、浏览器 fingerprint、UA、IP 摘要组合成限流 key；单纯清空或篡改 LocalStorage 不能完全重置服务端识别信号。
 - 匿名设备同步采用 Identity Network：手机、电脑等设备可通过 10 分钟同步邀请 / 二维码合并为同一个身份网络；合并前展示两边公开资料和活动 / 报名 / 反馈 / 感兴趣 / 举报统计，合并时只补充 `identityNetworkId` 归属，不删除任一设备历史数据。
 - 设备同步邀请 token 只在创建响应和二维码链接中出现，服务端仅保存 `tokenHash`、目标身份网络、状态、过期时间和接受者身份；过期或接受后不可再次使用。
-- Identity Network 预留 `identityExternalCredentials`，未来可把微信小程序 `openid/unionid` 等平台凭证绑定到同一身份网络；现阶段不启用平台登录，不公开完整匿名 UUID。
+- Identity Network 支持可选绑定微信小程序身份：小程序端只提交 `wx.login()` 产生的一次性 code，服务端使用 `WECHAT_MP_APPID` / `WECHAT_MP_SECRET` 换取 openid，并仅保存哈希后的外部凭证；微信绑定只作为身份网络找回与跨设备合并锚点，不取代匿名身份，也不公开完整匿名 UUID、openid 或 unionid。
+- 小程序活动提醒仅在小程序端展示入口：服务端通过 `WECHAT_MP_ACTIVITY_REMINDER_TEMPLATE_IDS` 返回订阅模板配置，订阅偏好按匿名身份 / 身份网络写入 `activityNotificationSubscriptions`；当前不在 PC 端展示提醒入口，也不公开 openid、完整 UUID 或订阅授权原始页面数据。
 - 活动发起后的管理 token 使用随机值 + hash 存储，默认 180 天过期，并绑定本地 UUID、服务端匿名 Cookie 和 fingerprint 中至少一个身份信号；撤回、编辑、查看报名表等管理操作会校验 token、过期时间和身份绑定。默认不再接受 query string 中的管理 token，避免链接外泄。
 - 共同发起邀请使用一次性随机 token，服务端仅保存 `tokenHash`、状态、过期时间和活动 / 邀请人身份；明文 token 只在创建邀请时返回给主发起人，接受后立即标记为已使用。
 - 共同发起人权限采用活动维度校验：共同发起人可编辑、提交、撤回、取消、结束活动，并查看报名表和反馈；新增 / 移除共同发起人只允许主发起人、管理员或持管理 token 的原发起人操作。

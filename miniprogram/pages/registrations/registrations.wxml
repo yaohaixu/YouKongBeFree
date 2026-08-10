@@ -1,0 +1,27 @@
+<view class="page">
+  <view class="hero compact">
+    <view class="eyebrow">我的报名</view>
+    <view class="title">参加过的活动会留在这里。</view>
+    <view class="body">同步设备后，不同设备上的报名记录会合并展示。</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="panel muted">正在读取报名记录...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <block wx:elif="{{registrations.length}}">
+    <view class="record-card" wx:for="{{registrations}}" wx:key="id" data-id="{{item.activity.id}}" bindtap="openActivity">
+      <view class="tag-row">
+        <text class="tag">{{item.activity.statusLabel || "活动"}}</text>
+        <text class="tag soft">报名昵称：{{item.nickname}}</text>
+      </view>
+      <view class="record-title">{{item.activity.title || "未命名活动"}}</view>
+      <view class="record-text">{{item.activity.location || "地点待定"}} · {{item.activity.displayTime}}</view>
+      <view class="record-foot">报名时间：{{item.displayCreatedAt || "刚刚"}}</view>
+      <view wx:if="{{item.canCancel}}" class="record-actions">
+        <view class="mini-action danger" data-item="{{item}}" catchtap="cancelRegistration">取消报名</view>
+      </view>
+    </view>
+    <view wx:if="{{loadingMore}}" class="loading-more">继续读取中...</view>
+    <view wx:elif="{{!hasMore}}" class="loading-more">已经到底了</view>
+  </block>
+  <empty-state wx:else title="还没有报名记录" text="报名参加过的活动会留在这里，取消报名后不再显示。" />
+</view>

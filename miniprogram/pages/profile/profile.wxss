@@ -1,0 +1,93 @@
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border-radius: 24rpx;
+  padding: 38rpx 28rpx;
+  background: #fffefa;
+}
+
+.avatar {
+  width: 152rpx;
+  height: 152rpx;
+  border-radius: 52rpx;
+  background: #dfe8dc;
+}
+
+.avatar.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #101714;
+  font-size: 56rpx;
+  font-weight: 880;
+}
+
+.profile-name {
+  margin-top: 22rpx;
+  color: #101714;
+  font-size: 42rpx;
+  font-weight: 880;
+}
+
+.profile-id {
+  margin-top: 8rpx;
+  color: #69746d;
+  font-size: 24rpx;
+}
+
+.profile-bio {
+  margin-top: 18rpx;
+  color: #4d5b53;
+  text-align: center;
+  font-size: 28rpx;
+  line-height: 1.65;
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10rpx;
+  margin-top: 20rpx;
+}
+
+.badge {
+  border-radius: 999rpx;
+  padding: 8rpx 16rpx;
+  background: #101714;
+  color: #fffefa;
+  font-size: 23rpx;
+  font-weight: 760;
+}
+
+.badge.soft {
+  background: #e8eee6;
+  color: #314036;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12rpx;
+  margin-top: 22rpx;
+}
+
+.stat {
+  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border-radius: 22rpx;
+  padding: 20rpx 8rpx;
+  background: #fffefa;
+  color: #69746d;
+  text-align: center;
+  font-size: 22rpx;
+}
+
+.num {
+  display: block;
+  margin-bottom: 6rpx;
+  color: #101714;
+  font-size: 34rpx;
+  font-weight: 880;
+}

@@ -1,0 +1,31 @@
+<view class="page profile-editor-page">
+  <view class="hero compact">
+    <view class="eyebrow">公开资料</view>
+    <view class="title">让别人知道是谁在发起活动。</view>
+    <view class="body">昵称和简介会展示在公开主页、活动详情和共同发起人列表中。</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="panel muted">正在读取公开资料...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <view wx:else class="form-card">
+    <view class="avatar-editor" bindtap="chooseAvatar">
+      <image wx:if="{{avatarTempFilePath}}" src="{{avatarTempFilePath}}" mode="aspectFill" />
+      <view wx:else class="avatar-placeholder">{{avatarInitial}}</view>
+      <view class="avatar-action">更换头像</view>
+    </view>
+
+    <view class="field">
+      <view class="field-label">昵称</view>
+      <input class="input" value="{{form.displayName}}" maxlength="32" placeholder="例如：海旭" data-field="displayName" bindinput="handleInput" />
+    </view>
+
+    <view class="field">
+      <view class="field-label">个人简介</view>
+      <textarea class="textarea" value="{{form.bio}}" maxlength="240" auto-height placeholder="一句话介绍你常发起什么、喜欢怎样的公共生活。" data-field="bio" bindinput="handleInput" />
+    </view>
+
+    <view class="button-row">
+      <view class="button" bindtap="saveProfile">{{saving ? "保存中..." : "保存资料"}}</view>
+    </view>
+  </view>
+</view>

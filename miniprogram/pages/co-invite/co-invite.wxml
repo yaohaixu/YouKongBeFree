@@ -1,0 +1,31 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="panel muted">正在读取邀请...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <view wx:else>
+    <view class="hero compact">
+      <view class="eyebrow">共同发起人邀请</view>
+      <view class="title">{{activity.title || "有空客厅活动"}}</view>
+      <view class="body">{{inviterName}} 邀请你一起发起这场活动。</view>
+    </view>
+
+    <view class="invite-card">
+      <view class="info-row">
+        <text>活动时间</text>
+        <strong>{{activity.displayTime || "时间待定"}}</strong>
+      </view>
+      <view class="info-row">
+        <text>活动地点</text>
+        <strong>{{activity.location || "地点待定"}}</strong>
+      </view>
+      <view class="info-row">
+        <text>你的身份</text>
+        <strong>{{myProfile.displayName || "尚未填写公开昵称"}}</strong>
+      </view>
+      <view class="hint">接受后，你可以编辑、提交发布、撤回、取消或结束活动；主发起人仍负责添加和移除共同发起人。</view>
+      <view class="button-row">
+        <view wx:if="{{!profileReady}}" class="button" bindtap="goProfileEditor">先填写公开资料</view>
+        <view wx:else class="button" bindtap="acceptInvite">{{accepting ? "加入中..." : "接受邀请"}}</view>
+      </view>
+    </view>
+  </view>
+</view>

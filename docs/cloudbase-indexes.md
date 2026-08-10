@@ -1,10 +1,10 @@
 # CloudBase 查询与索引建议
 
-本项目 `0.7.0` 起，活动、协作员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。`0.8.0` 起，活动自动结束任务也会按 `status + startsAt` 查询过期待归档活动。`0.9.0` 起，跨天活动可填写 `endsAt`，但 sweep 仍用 `status + startsAt` 缩小候选，再用 `endsAt` 做最终判断，暂不要求新增 `endsAt` 索引。`0.10.0` 起，报名记录新增 `phoneHash` 用于重复报名识别，操作日志手机号改为脱敏保存。`0.13.4` 起，登录态、手机号登录和工作台 dashboard 也使用字段查询与计数接口，建议同步补齐对应索引。`0.13.5` 起，API 慢请求会写入 CloudBase 云函数日志，可用日志中的 `path` 对照本文档补索引。`0.14.0` 起，操作日志页支持操作类型、操作人、角色和日期范围组合筛选，建议补充 `yk_logs` 组合索引。`0.15.0` 起新增活动描述模板集合 `yk_templates`，发起活动时会读取模板列表，管理员模板管理页会按更新时间分页和关键词搜索。`0.18.0` 起新增 Community OS 安全架构集合，规则引擎、匿名身份、Community Trust、社区反馈、活动置信度和 AI Analysis Engine 均建议按本文补充索引。`0.19.0` 起新增 Community Governance 集合，Trust Policy、Community Badge、Badge Policy 和统一 Community Event 时间线建议按本文补齐索引。`0.20.0` 起活动发布改为异步安全分析，并新增社区举报后台，建议补齐 `yk_activityAnalysisJobs` 和 `yk_communityReports.status + createdAt` 相关索引。`0.20.1` 起分析队列会恢复超时 `running` 任务，建议补齐 `yk_activityAnalysisJobs.status + startedAt` 索引。`0.20.2` 已通过 CloudBase CLI 在生产环境补齐本文档核心推荐索引，并额外补充常用业务 `id` 字段索引。`0.21.0` 起公开报名改为匿名身份去重，并新增最低报名成团、报名截止和「感兴趣」集合，建议补齐 `yk_activities.status + minRegistrationEnabled + registrationDeadline`、`yk_registrations.activityId + identityId` 和 `yk_activityInterests` 相关索引。`0.22.0` 起新增「客厅的朋友们」和匿名活动反馈集合，建议补齐 `yk_livingRoomFriends`、`yk_activityFeedbacks`、`yk_activities.sourceType / friendId` 相关索引。`0.25.1` 起 AI 每日调用预算会按 `yk_aiUsageLogs.createdAt` 和 `yk_aiUsageLogs.profileId + createdAt` 计数，建议补齐模型用量索引。`0.26.0` 起新增匿名公开资料集合 `yk_identityProfiles`，活动卡、活动详情和发起人主页会按匿名身份 / Community ID 读取公开资料。`0.27.0` 起新增共同发起人和共同发起邀请集合，并为活动增加 `activityVersion` 与编辑软锁字段；建议补齐共同发起相关索引，避免「我的活动」合并查询和邀请接受变慢。`0.28.0` 起新增匿名设备身份网络集合，活动、报名、感兴趣、反馈、举报和共同发起查询均会优先按 `identityNetworkId` 聚合，建议补齐身份网络相关索引。
+本项目 `0.7.0` 起，活动、协作员、模块和操作日志列表通过 `store.query()` 进入存储层查询。JSON 本地模式会模拟同样的筛选、排序和分页语义；CloudBase 模式会使用 `where`、`orderBy`、`skip`、`limit` 和 `count` 下推到数据库查询层。`0.8.0` 起，活动自动结束任务也会按 `status + startsAt` 查询过期待归档活动。`0.9.0` 起，跨天活动可填写 `endsAt`，但 sweep 仍用 `status + startsAt` 缩小候选，再用 `endsAt` 做最终判断，暂不要求新增 `endsAt` 索引。`0.10.0` 起，报名记录新增 `phoneHash` 用于重复报名识别，操作日志手机号改为脱敏保存。`0.13.4` 起，登录态、手机号登录和工作台 dashboard 也使用字段查询与计数接口，建议同步补齐对应索引。`0.13.5` 起，API 慢请求会写入 CloudBase 云函数日志，可用日志中的 `path` 对照本文档补索引。`0.14.0` 起，操作日志页支持操作类型、操作人、角色和日期范围组合筛选，建议补充 `yk_logs` 组合索引。`0.15.0` 起新增活动描述模板集合 `yk_templates`，发起活动时会读取模板列表，管理员模板管理页会按更新时间分页和关键词搜索。`0.18.0` 起新增 Community OS 安全架构集合，规则引擎、匿名身份、Community Trust、社区反馈、活动置信度和 AI Analysis Engine 均建议按本文补充索引。`0.19.0` 起新增 Community Governance 集合，Trust Policy、Community Badge、Badge Policy 和统一 Community Event 时间线建议按本文补齐索引。`0.20.0` 起活动发布改为异步安全分析，并新增社区举报后台，建议补齐 `yk_activityAnalysisJobs` 和 `yk_communityReports.status + createdAt` 相关索引。`0.20.1` 起分析队列会恢复超时 `running` 任务，建议补齐 `yk_activityAnalysisJobs.status + startedAt` 索引。`0.20.2` 已通过 CloudBase CLI 在生产环境补齐本文档核心推荐索引，并额外补充常用业务 `id` 字段索引。`0.21.0` 起公开报名改为匿名身份去重，并新增最低报名成团、报名截止和「感兴趣」集合，建议补齐 `yk_activities.status + minRegistrationEnabled + registrationDeadline`、`yk_registrations.activityId + identityId` 和 `yk_activityInterests` 相关索引。`0.22.0` 起新增「客厅的朋友们」和匿名活动反馈集合，建议补齐 `yk_livingRoomFriends`、`yk_activityFeedbacks`、`yk_activities.sourceType / friendId` 相关索引。`0.25.1` 起 AI 每日调用预算会按 `yk_aiUsageLogs.createdAt` 和 `yk_aiUsageLogs.profileId + createdAt` 计数，建议补齐模型用量索引。`0.26.0` 起新增匿名公开资料集合 `yk_identityProfiles`，活动卡、活动详情和发起人主页会按匿名身份 / Community ID 读取公开资料。`0.27.0` 起新增共同发起人和共同发起邀请集合，并为活动增加 `activityVersion` 与编辑软锁字段；建议补齐共同发起相关索引，避免「我的活动」合并查询和邀请接受变慢。`0.28.0` 起新增匿名设备身份网络集合，活动、报名、感兴趣、反馈、举报和共同发起查询均会优先按 `identityNetworkId` 聚合，建议补齐身份网络相关索引。`0.29.0` 起新增活动系列与小程序订阅提醒集合，公开活动列表支持 `seriesId` 筛选，发起人复盘会同时读取报名、感兴趣和反馈状态，建议补齐 `yk_activitySeries`、`yk_activities.seriesId`、`yk_activityNotificationSubscriptions` 和反馈复盘相关组合索引。
 
 ## 推荐索引
 
-建议在 CloudBase 控制台或 CloudBase CLI 为以下集合建立索引，避免数据量增长后列表筛选变慢。`0.20.2` 已在环境 `youkong-d5gh4x0ayc29a2187` 创建并抽样验证；`0.21.0`、`0.22.0`、`0.26.0`、`0.27.0` 和 `0.28.0` 新增字段和集合需要继续补充下方新增索引。
+建议在 CloudBase 控制台或 CloudBase CLI 为以下集合建立索引，避免数据量增长后列表筛选变慢。`0.20.2` 已在环境 `youkong-d5gh4x0ayc29a2187` 创建并抽样验证；`0.21.0`、`0.22.0`、`0.26.0`、`0.27.0`、`0.28.0` 和 `0.29.0` 新增字段和集合需要继续补充下方新增索引。
 
 ### `yk_activities`
 
@@ -22,6 +22,8 @@
 - `status + reviewFlag + createdAt`：管理员待办中公开但需要关注的活动。
 - `moduleId + startsAt`：按模块和活动时间筛选。
 - `status + moduleId + startsAt`：公开活动列表按状态、模块和活动时间组合筛选。
+- `seriesId + startsAt`：公开近期 / 历史活动按活动系列筛选。
+- `status + seriesId + startsAt`：公开活动列表按状态与活动系列组合筛选。
 - `status + minRegistrationEnabled + registrationDeadline`：最低报名限度活动到期后自动「未成团取消」 sweep。
 - `status + interestCount + createdAt`：后续按感兴趣热度推荐或排查公开活动时复用。
 - `sourceType + startsAt`：历史活动页按「客厅 / 客厅的朋友们」来源筛选。
@@ -49,6 +51,12 @@
 
 - `createdAt`：模块管理默认排序。
 - `name`：模块搜索。
+
+### `yk_activitySeries`
+
+- `id`：活动创建 / 编辑校验系列是否存在，以及活动详情补齐系列信息。
+- `enabled + order`：发起活动页、小程序和公开列表读取已启用系列。
+- `order + createdAt`：系列默认排序。
 
 ### `yk_templates`
 
@@ -99,8 +107,17 @@
 - `activityId + identityNetworkId`：同步设备后同一身份网络匿名反馈去重。
 - `identityNetworkId + createdAt`：同步设备后「我的活动反馈」聚合查询。
 - `activityId + status + feedbackWeight`：活动详情读取公开展示的前三条高权重反馈。
+- `activityId + status + createdAt`：活动复盘按状态计数和读取最近反馈。
 - `activityId + createdAt`：发起人活动反馈详情页读取全部反馈。
 - `status + createdAt`：管理员反馈列表按待复核 / 已展示 / 不展示筛选。
+
+### `yk_activityNotificationSubscriptions`
+
+- `id`：同一活动 + 同一身份网络 + 同一订阅场景幂等保存。
+- `activityId + scene`：后续定时任务按活动和提醒场景读取订阅人。
+- `identityId + createdAt`：排查某个匿名设备订阅历史。
+- `identityNetworkId + createdAt`：同步设备后按身份网络排查订阅历史。
+- `status + updatedAt`：后续发送任务按已授权 / 已拒绝状态过滤。
 
 ### `yk_identityProfiles`
 
@@ -157,8 +174,8 @@
 
 ### `yk_identityExternalCredentials`
 
-- `provider + subjectHash`：未来微信小程序、微信登录或其他平台凭证绑定同一身份网络时定位外部身份。
-- `networkId + provider`：身份网络详情展示已绑定平台凭证。
+- `provider + credentialHash`：微信小程序、微信登录或其他平台凭证绑定同一身份网络时定位外部身份。
+- `identityNetworkId + provider`：身份网络详情展示已绑定平台凭证。
 - `status + updatedAt`：凭证解绑、撤销和异常排查。
 
 ### `yk_safetyRules`

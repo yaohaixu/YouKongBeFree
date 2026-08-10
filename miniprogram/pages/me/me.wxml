@@ -1,0 +1,86 @@
+<view class="page">
+  <view class="hero compact">
+    <view class="profile-hero-row">
+      <view class="profile-avatar" data-url="/pages/profile-editor/profile-editor" bindtap="openEntry">
+        <image wx:if="{{profile.avatarUrl}}" src="{{profile.avatarUrl}}" mode="aspectFill" />
+        <view wx:else>{{avatarInitial}}</view>
+      </view>
+      <view class="profile-copy">
+        <view class="eyebrow">我的</view>
+        <view class="title">{{profile.displayName || "有空朋友"}}</view>
+        <view class="body">{{profile.bio || "点击头像，可以编辑头像、昵称和个人简介。"}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="panel muted">正在读取我的信息...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <view wx:else>
+    <view class="stats">
+      <view class="stat">
+        <text class="num">{{dashboard.summary.total || 0}}</text>
+        <text>我发起的活动</text>
+      </view>
+      <view class="stat">
+        <text class="num">{{registrations.length || 0}}</text>
+        <text>最近报名</text>
+      </view>
+      <view class="stat">
+        <text class="num">{{identitySync.counts.devices || 1}}</text>
+        <text>同步设备</text>
+      </view>
+    </view>
+
+    <view class="entry-list">
+      <view class="entry-card primary-entry" data-url="/pages/activity-editor/activity-editor" bindtap="openEntry">
+        <view class="entry-icon">＋</view>
+        <view class="entry-content">
+          <view class="entry-title">发起活动</view>
+          <view class="entry-text">写下一个新的活动想法</view>
+        </view>
+        <view class="entry-arrow">›</view>
+      </view>
+      <view class="entry-card" data-url="/pages/registrations/registrations" bindtap="openEntry">
+        <view class="entry-icon">报</view>
+        <view class="entry-content">
+          <view class="entry-title">我的报名</view>
+          <view class="entry-text">查看当前身份参加过的活动</view>
+        </view>
+        <view class="entry-arrow">›</view>
+      </view>
+      <view class="entry-card" data-url="/pages/my-activities/my-activities" bindtap="openEntry">
+        <view class="entry-icon">发</view>
+        <view class="entry-content">
+          <view class="entry-title">我的活动</view>
+          <view class="entry-text">管理这个身份发起过的活动</view>
+        </view>
+        <view class="entry-arrow">›</view>
+      </view>
+      <view class="entry-card" data-url="/pages/my-feedbacks/my-feedbacks" bindtap="openEntry">
+        <view class="entry-icon">评</view>
+        <view class="entry-content">
+          <view class="entry-title">我的反馈</view>
+          <view class="entry-text">回看写过的匿名活动反馈</view>
+        </view>
+        <view class="entry-arrow">›</view>
+      </view>
+      <view class="entry-card" data-url="/pages/identity-sync/identity-sync" bindtap="openEntry">
+        <view class="entry-icon">同</view>
+        <view class="entry-content">
+          <view class="entry-title">同步设备</view>
+          <view class="entry-text">把手机和电脑连成同一身份</view>
+        </view>
+        <view class="entry-arrow">›</view>
+      </view>
+    </view>
+
+    <view class="section-title">最近报名</view>
+    <block wx:if="{{registrations.length}}">
+      <view class="panel registration" wx:for="{{registrations}}" wx:key="id">
+        <view class="registration-title">{{item.activity.title}}</view>
+        <view class="muted">{{item.activity.location}} · {{item.activity.statusLabel}}</view>
+      </view>
+    </block>
+    <view wx:else class="panel muted">这个设备还没有报名记录。</view>
+  </view>
+</view>

@@ -1,0 +1,114 @@
+<view class="page">
+  <view class="hero compact">
+    <view class="eyebrow">同步设备</view>
+    <view class="title">把不同设备连成同一个身份。</view>
+    <view class="body">同步后，草稿、报名、反馈和发起记录会按同一个匿名身份合并展示；也可以绑定微信，方便以后换手机找回。</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="panel muted">正在读取身份网络...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <view wx:else>
+    <view class="identity-card {{identitySync.hasNetwork ? 'active' : ''}}">
+      <view class="identity-top">
+        <view class="identity-icon">ID</view>
+        <view>
+          <view class="identity-title">{{identitySync.hasNetwork ? "身份网络已开启" : "当前设备未开启同步"}}</view>
+          <view class="identity-text">{{identitySync.displayNetworkText}}</view>
+        </view>
+      </view>
+      <view class="count-grid">
+        <view class="count" wx:for="{{countItems}}" wx:key="label">
+          <text class="count-num">{{item.value}}</text>
+          <text>{{item.label}}</text>
+        </view>
+      </view>
+      <view class="button-row">
+        <view wx:if="{{!identitySync.hasNetwork}}" class="button" bindtap="createNetwork">{{syncing ? "处理中..." : "开启同步"}}</view>
+        <view wx:else class="button" bindtap="createInvite">{{syncing ? "处理中..." : "生成同步链接"}}</view>
+        <view class="button secondary" bindtap="scanInvite">扫码同步</view>
+      </view>
+    </view>
+
+    <view class="identity-card wechat-card {{identitySync.hasWechatBinding ? 'active' : ''}}">
+      <view class="identity-top">
+        <view class="identity-icon wechat">微</view>
+        <view>
+          <view class="identity-title">{{identitySync.hasWechatBinding ? "已绑定微信" : "绑定微信找回身份"}}</view>
+          <view class="identity-text">{{identitySync.wechatText}}</view>
+        </view>
+      </view>
+      <view wx:if="{{identitySync.externalBindings.length}}" class="binding-list">
+        <view class="binding-row" wx:for="{{identitySync.externalBindings}}" wx:key="id">
+          <text>{{item.providerLabel}}</text>
+          <text>{{item.displayBoundAt || "已绑定"}}</text>
+        </view>
+      </view>
+      <view class="button-row">
+        <view class="button secondary" bindtap="bindWechat">{{wechatBinding ? "绑定中..." : identitySync.hasWechatBinding ? "重新确认微信绑定" : "绑定微信"}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{invite}}" class="identity-card">
+      <view class="section-label">给另一台设备</view>
+      <view class="invite-url">{{invite.url}}</view>
+      <view class="button-row">
+        <view class="button secondary" bindtap="copyInvite">复制同步链接</view>
+      </view>
+      <view class="hint">邀请链接 10 分钟内有效。另一台设备可以扫码，也可以把链接粘贴到下方输入框。</view>
+    </view>
+
+    <view class="identity-card">
+      <view class="section-label">加入已有身份网络</view>
+      <textarea class="token-input" value="{{inviteToken}}" auto-height placeholder="粘贴同步链接或 token" bindinput="handleTokenInput" />
+      <view class="button-row">
+        <view class="button secondary" bindtap="loadInputPreview">{{syncing ? "读取中..." : "读取合并预览"}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{preview}}" class="identity-card">
+      <view class="section-label">合并预览</view>
+      <view class="merge-grid">
+        <view class="merge-column">
+          <view class="merge-title">原身份网络</view>
+          <view class="merge-name">{{preview.target.profile.displayName || "有空朋友"}}</view>
+          <view class="mini-counts">
+            <text wx:for="{{preview.targetCountItems}}" wx:key="label">{{item.label}} {{item.value}}</text>
+          </view>
+        </view>
+        <view class="merge-column">
+          <view class="merge-title">当前设备</view>
+          <view class="merge-name">{{preview.source.profile.displayName || "有空朋友"}}</view>
+          <view class="mini-counts">
+            <text wx:for="{{preview.sourceCountItems}}" wx:key="label">{{item.label}} {{item.value}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="merged-result">
+        <view class="merge-title">合并后</view>
+        <view class="merge-name">{{preview.merged.deviceCount || 1}} 台设备会归到同一个身份网络</view>
+        <view class="mini-counts">
+          <text wx:for="{{preview.mergedCountItems}}" wx:key="label">{{item.label}} {{item.value}}</text>
+        </view>
+      </view>
+
+      <view class="section-label">公开资料保留哪一边</view>
+      <view class="choice {{profileSource === 'target' ? 'active' : ''}}" data-value="target" bindtap="chooseProfileSource">保留原身份资料</view>
+      <view class="choice {{profileSource === 'source' ? 'active' : ''}}" data-value="source" bindtap="chooseProfileSource">改用当前设备资料</view>
+      <view class="button-row">
+        <view class="button" bindtap="acceptInvite">{{syncing ? "同步中..." : "确认同步设备"}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{identitySync.devices.length}}" class="section-title">已同步设备</view>
+    <view wx:if="{{identitySync.devices.length}}" class="device-list">
+      <view class="device-row" wx:for="{{identitySync.devices}}" wx:key="id">
+        <view>
+          <view class="device-name">{{item.label || "未命名设备"}}{{item.isCurrent ? "（当前）" : ""}}</view>
+          <view class="device-text">{{item.ipMasked || "IP 已隐藏"}} · {{item.userAgentSample || "设备信息已隐藏"}}</view>
+        </view>
+        <view wx:if="{{item.isCurrent}}" class="device-tag">当前</view>
+      </view>
+    </view>
+  </view>
+</view>

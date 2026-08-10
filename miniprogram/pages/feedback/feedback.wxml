@@ -1,0 +1,32 @@
+<view class="page feedback-page">
+  <view wx:if="{{loading}}" class="panel muted">正在读取活动...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <view wx:else>
+    <view class="hero compact">
+      <view class="eyebrow">匿名反馈</view>
+      <view class="title">{{activity.title || "活动反馈"}}</view>
+      <view class="body">{{activity.displayTime}} · {{activity.location || "地点待定"}}</view>
+    </view>
+
+    <view class="form-card">
+      <view class="field">
+        <view class="field-label">最喜欢的部分</view>
+        <textarea class="textarea" value="{{form.favorite}}" maxlength="1000" auto-height placeholder="哪一刻让你觉得值得来？" data-field="favorite" bindinput="handleInput" />
+      </view>
+
+      <view class="field">
+        <view class="field-label">可以改进的地方</view>
+        <textarea class="textarea" value="{{form.improvement}}" maxlength="1000" auto-height placeholder="下次可以怎么变得更好？" data-field="improvement" bindinput="handleInput" />
+      </view>
+
+      <view class="field">
+        <view class="field-label">其他想说的</view>
+        <textarea class="textarea" value="{{form.other}}" maxlength="1000" auto-height placeholder="可以写给发起人，也可以写给未来参与的人。" data-field="other" bindinput="handleInput" />
+      </view>
+    </view>
+
+    <view class="sticky-actions single">
+      <view class="button" bindtap="submitFeedback">{{submitting ? "提交中..." : "提交匿名反馈"}}</view>
+    </view>
+  </view>
+</view>

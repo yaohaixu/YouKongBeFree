@@ -1,0 +1,25 @@
+<view class="page">
+  <view class="hero compact">
+    <view class="eyebrow">我的反馈</view>
+    <view class="title">匿名留下的感受，也可以回看。</view>
+    <view class="body">这里只有当前身份写过的活动反馈；同步设备后会合并展示。</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="panel muted">正在读取活动反馈...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <block wx:elif="{{feedbacks.length}}">
+    <view class="feedback-card" wx:for="{{feedbacks}}" wx:key="id" data-id="{{item.activityId}}" bindtap="openActivity">
+      <view class="tag-row">
+        <text class="tag">{{item.statusLabel || "反馈"}}</text>
+        <text class="tag soft">权重 {{item.feedbackWeight || 0}}</text>
+      </view>
+      <view class="feedback-title">{{item.activityTitle || "未命名活动"}}</view>
+      <view class="feedback-text">{{item.displayText}}</view>
+      <view class="feedback-foot">{{item.activityLocation || "地点待定"}} · {{item.activityDisplayTime || "时间待定"}}</view>
+      <view class="feedback-foot">提交时间：{{item.displayCreatedAt || "刚刚"}}</view>
+    </view>
+    <view wx:if="{{loadingMore}}" class="loading-more">继续读取中...</view>
+    <view wx:elif="{{!hasMore}}" class="loading-more">已经到底了</view>
+  </block>
+  <empty-state wx:else title="还没有写过反馈" text="活动结束后留下的真实感受，会保存在这里。" />
+</view>

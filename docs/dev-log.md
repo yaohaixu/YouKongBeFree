@@ -1,5 +1,31 @@
 # 开发日志
 
+## 2026-08-10 - 活动系列、活动复盘与小程序订阅提醒
+
+### 任务目标
+
+在保持 PC 与小程序普通用户能力同步的前提下，补齐活动系列、发起人复盘和小程序专属通知能力；通知只做微信小程序订阅提醒，不在 PC 端加入无法触发微信授权的入口。
+
+### 具体修改内容
+
+- 新增 `activitySeries` 默认数据和公开 `/api/activity-series` 接口，活动创建、编辑、详情和列表 payload 支持 `seriesId`、`seriesName` 和 `seriesColor`。
+- 新增 `/api/activities/:id/recap`，按活动管理权限返回报名、感兴趣、反馈状态、成团状态、精选反馈和复盘摘要。
+- 新增 `activityNotificationSubscriptions` 集合、`/api/miniprogram/config` 和 `/api/activities/:id/notification-subscriptions`，记录小程序活动提醒订阅偏好。
+- PC 发起页新增活动系列下拉；近期 / 历史活动列表新增系列筛选；活动卡、活动详情、我的活动和活动反馈页同步展示系列 / 复盘。
+- 小程序发起页、活动列表、活动卡、活动详情和活动反馈管理页同步活动系列与复盘；活动详情页新增订阅提醒入口。
+- README、CHANGELOG、小程序说明、安全说明和 smoke 测试同步更新到 `0.29.0`。
+
+### 设计决策原因
+
+- 活动系列用于长期栏目化整理活动，不替代原有「模块」和「客厅 / 客厅的朋友们」来源，因此默认可不选择。
+- 活动复盘先基于现有结构化数据生成，避免引入新的 AI 成本和等待；后续可扩展为 AI 公众号式复盘。
+- 微信订阅消息必须由小程序用户点击授权，因此只在小程序端展示；PC 端只同步活动系列和复盘等普通业务能力。
+
+### 遗留问题
+
+- 当前订阅提醒先记录授权偏好，尚未接入定时发送任务；如需真实推送，需要补充模板字段映射、加密 openid 发送凭证和 CloudBase 定时触发器。
+- 活动系列目前为默认种子和公开读取，后台可维护系列的管理页可在下一轮再做。
+
 ## 2026-07-08 - 开启 GitHub Pages 静态外网访问
 
 ### 任务目标
@@ -3416,6 +3442,31 @@ CloudBase 线上部署验证已完成，待提交并合并稳定分支。
 1. 在 CloudBase 控制台补齐 `yk_identityNetworkDevices.identityId + status`、`yk_identitySyncInvites.tokenHash`、`yk_activities.identityNetworkId + status + createdAt`、`yk_registrations.activityId + identityNetworkId` 等 `0.28.0` 新增索引。
 2. 给同步设备增加设备重命名、撤销邀请、合并审计详情和“在原设备确认”二次确认机制。
 3. 设计微信小程序 `openid/unionid` 绑定到 Identity Network 的 API 与冲突合并流程。
+
+## 2026-08-07 - 小程序微信身份绑定与视觉统一
+
+### 任务目标
+
+让小程序身份网络支持微信小程序身份锚点，同时修复小程序生成的同步链接在浏览器打开时落到 CloudBase API 域名导致 `INVALID_PATH` 的问题；顺手把首页、活动卡和身份网络页做第一轮视觉统一。
+
+### 具体修改
+
+- `lib/app.js`：新增 `/api/identity-sync/wechat/bind`，小程序提交 `wx.login()` code 后由服务端换取 openid，并仅保存哈希后的外部凭证。
+- `lib/app.js`：同步邀请返回的 `url` 改为使用 `PUBLIC_SITE_ORIGIN` 对应的静态站域名，同时保留 `miniPath` 给小程序内使用。
+- `miniprogram/pages/identity-sync/*`：新增“绑定微信找回身份”模块；再次绑定同一微信时可自动合并到已有身份网络。
+- `miniprogram/app.wxss`、`pages/home/*`、`components/activity-card/*`：统一小程序视觉，弱化重阴影，增强首页行动入口和活动卡信息层级。
+- `.env.example`、`README.md`、`CHANGELOG.md`、`docs/security.md`、`docs/cloudbase-indexes.md`：补充微信绑定、公开站点域名和外部凭证索引说明。
+
+### 技术方案选择
+
+- 微信身份不取代匿名身份，只作为 Identity Network 的外部凭证锚点；所有活动发起、报名、反馈仍可匿名完成。
+- openid / unionid 不明文落库，统一通过服务端 HMAC 哈希保存；AppSecret 只允许配置在服务端环境变量。
+- 微信绑定和扫码同步复用同一套身份网络合并函数，避免数据迁移逻辑出现两套实现。
+
+### 遗留问题
+
+- 需要在 CloudBase 环境变量中配置 `WECHAT_MP_SECRET` 后，真机才能完成微信绑定。
+- 后续可以继续把活动详情、编辑页、我的页面按同一套小程序视觉语言再做第二轮 polish。
 
 ## 2026-08-04 - 0.28.1 身份网络子页面拆分
 

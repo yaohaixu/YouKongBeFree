@@ -4,9 +4,9 @@
 
 ## 当前开发状态
 
-当前版本：`0.28.3`
+当前版本：`0.29.0`
 
-状态：`0.28.3` 优化共同发起和个人工作台加载：新活动页可直接“发起协作”，系统会自动保存一个未公开草稿并复制共同发起邀请；共同发起团队管理集中到活动详情底部。「我的」页新增 `/api/me/summary` 聚合接口和浏览器短缓存，先显示本地缓存再后台刷新，减少 CloudBase 多次往返造成的等待。
+状态：`0.29.0` 同步补齐 PC 与小程序活动系列、活动复盘和小程序订阅提醒：发起活动可选活动系列，近期 / 历史活动列表可按系列筛选；活动反馈页新增活动复盘摘要、报名 / 感兴趣 / 反馈指标和精选反馈；小程序活动详情新增“订阅提醒”入口，通知能力仅在小程序端展示。
 
 ## 访问地址
 
@@ -87,6 +87,7 @@ GitHub Pages 静态展示：
 - 活动富文本编辑：发起活动页提供轻量富文本工具栏，支持正文段落、一级/二级/三级标题、加粗、引用、列表、分隔线和正文图片插入；正文图片可选择 10MB 以内原图，浏览器会压缩到约 1MB 后上传，图片保存为稳定代理链接，图片标签不计入 50000 字描述上限；服务端会对白名单标签做二次清洗；活动正文中的超长链接会在移动端自动换行，不会撑出页面。
 - 活动描述模板：YKadmin 可维护常用活动描述模板；模板列表页负责搜索、编辑入口和删除，新增 / 编辑进入独立详情页；发起活动时默认「无，自己写」，选择模板只覆盖活动描述，若已有正文会先确认是否覆盖。
 - 活动来源：发起活动可选择「客厅」或「客厅的朋友们」；选择朋友来源时需要选择一个已启用的客厅朋友，活动卡片、详情和历史列表会展示对应来源信息。
+- 活动系列：系统默认提供日常活动、有空放映、读书讨论、城市漫游、共创工作坊和公益互助等系列；发起活动可选系列，PC 与小程序的活动卡片、活动详情、我的活动和近期 / 历史列表会同步展示，活动列表支持按系列筛选。
 - 客厅的朋友们：YKadmin 可维护名称、简介、头像 / Logo、地址、联系人、联系方式和启用状态；已有活动使用的朋友空间不能直接删除，可先停用。
 - 普通访客只看到发起活动和同一浏览器自己的活动管理；协作员才会看到自己的审核待办。
 - 兜底复核：活动发布先走规则引擎，再按 AI 调用策略决定是否分析，最后由策略引擎决定低风险直接发布、中风险发布并提示、疑似营销公开但进入管理员关注、高风险隐藏并进入管理员兜底复核；任一岗位可退回，拒绝后不可编辑。
@@ -97,6 +98,8 @@ GitHub Pages 静态展示：
 - 活动反馈：活动开始后，参与者可通过活动反馈二维码匿名提交「最喜欢 / 可以改进 / 其他想说的」，不填写姓名、不打分；同一浏览器匿名身份每个活动只能提交一次。
 - 反馈展示与复核：发起人可选择活动详情是否展示已通过反馈；默认展示权重最高的 3 条通过反馈。反馈使用独立 `feedback` Prompt 走 AI 分析引擎，AI 只判断展示适宜性和排序权重，疑似垃圾、攻击、广告或敏感内容进入管理员复核。
 - 活动反馈管理：发起人可进入活动反馈页下载 JPG 格式反馈二维码、查看全部反馈；YKadmin 可在全站反馈管理页筛选、展示 / 隐藏 / 恢复展示反馈，并导出活动 + 反馈 CSV；AI 拦截或 AI 不可用兜底进入复核的反馈会同步出现在管理员审核待办。
+- 活动复盘：发起人、共同发起人和管理员可在活动反馈页查看复盘摘要，汇总报名人数、感兴趣人数、反馈总数、已展示 / 待审核 / 不展示反馈、成团状态和权重最高的精选反馈；小程序活动反馈管理页同步展示同一份复盘数据。
+- 小程序订阅提醒：微信小程序活动详情页支持活动提醒订阅入口；订阅消息模板 ID 通过 `WECHAT_MP_ACTIVITY_REMINDER_TEMPLATE_IDS` 配置，未配置时会友好提示。PC 端不展示通知按钮，避免出现无法实际触发微信订阅的伪入口。
 - 活动详情页：白天模式下地点与时间信息保持高对比度；活动详情支持下载 JPG 活动邀请函、复制报名链接和下载 `.ics` 日历文件。
 - 发起人主页：公开展示发起人的头像、昵称、简介、公开徽章和最近公开活动摘要，帮助参与者判断活动来源；页面不公开后台手机号和匿名身份完整 UUID。
 - 活动邀请函：完整展示活动封面，不裁切长图；邀请函包含「模块丨标题」、发起人、放大的诚邀昵称、地址、完整日期时间和右下角活动二维码；不展示报名手机号和明文活动网址；地址严格使用活动填写地点，地点为空时默认展示「有空客厅」。报名成功页也可下载带报名人昵称的活动邀请函。
@@ -260,6 +263,10 @@ YKADMIN_PHONE=请在本地 .env 或 CloudBase 控制台配置
 STORE_DRIVER=json
 CLOUDBASE_ENV_ID=youkong-d5gh4x0ayc29a2187
 CORS_ORIGINS=https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com
+PUBLIC_SITE_ORIGIN=https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com
+WECHAT_MP_APPID=wx5020d6431cfac041
+WECHAT_MP_SECRET=请在 CloudBase 环境变量中配置小程序 AppSecret
+WECHAT_MP_ACTIVITY_REMINDER_TEMPLATE_IDS=
 SESSION_MAX_AGE_DAYS=14
 SESSION_SECRET=请替换为长随机字符串
 ACTIVITY_AUTO_END_INTERVAL_MS=900000
@@ -288,8 +295,11 @@ YK_DB_FILE=
 
 - `.env` 不允许提交到 Git。
 - 本地默认使用 `STORE_DRIVER=json`，数据写入 `data/youkong-db.json`。
-- 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_modules`、`yk_templates`、`yk_livingRoomFriends`、`yk_activities`、`yk_registrations`、`yk_activityInterests`、`yk_activityFeedbacks`、`yk_activityCoInitiators`、`yk_activityCoInitiatorInvites`、`yk_identityNetworks`、`yk_identityNetworkDevices`、`yk_identitySyncInvites`、`yk_identityMergeEvents`、`yk_identityExternalCredentials`、`yk_identityProfiles`、`yk_sessions`、`yk_logs`、`yk_safetyRules`、`yk_systemConfigs`、`yk_anonymousIdentities`、`yk_communityEvents`、`yk_trustProfiles`、`yk_trustEvents`、`yk_trustPolicies`、`yk_communityBadges`、`yk_identityBadges`、`yk_badgePolicies`、`yk_rateEvents`、`yk_analysisReports`、`yk_communityReports`、`yk_aiModelProfiles`、`yk_aiPrompts`、`yk_aiCache`、`yk_aiUsageLogs`。
-- `CORS_ORIGINS` 用英文逗号分隔允许跨域访问 API 的前端域名；`SESSION_MAX_AGE_DAYS` 会被限制在 1 到 30 天之间。
+- 云端使用 `STORE_DRIVER=cloudbase`，数据写入 CloudBase NoSQL 集合：`yk_users`、`yk_roles`、`yk_modules`、`yk_activitySeries`、`yk_templates`、`yk_livingRoomFriends`、`yk_activities`、`yk_registrations`、`yk_activityInterests`、`yk_activityFeedbacks`、`yk_activityNotificationSubscriptions`、`yk_activityCoInitiators`、`yk_activityCoInitiatorInvites`、`yk_identityNetworks`、`yk_identityNetworkDevices`、`yk_identitySyncInvites`、`yk_identityMergeEvents`、`yk_identityExternalCredentials`、`yk_identityProfiles`、`yk_sessions`、`yk_logs`、`yk_safetyRules`、`yk_systemConfigs`、`yk_anonymousIdentities`、`yk_communityEvents`、`yk_trustProfiles`、`yk_trustEvents`、`yk_trustPolicies`、`yk_communityBadges`、`yk_identityBadges`、`yk_badgePolicies`、`yk_rateEvents`、`yk_analysisReports`、`yk_activityAnalysisJobs`、`yk_communityReports`、`yk_aiModelProfiles`、`yk_aiPrompts`、`yk_aiCache`、`yk_aiUsageLogs`。
+- `CORS_ORIGINS` 用英文逗号分隔允许跨域访问 API 的前端域名；`PUBLIC_SITE_ORIGIN` 用于 API 生成可在浏览器打开的公开站点链接，例如身份同步链接。
+- `WECHAT_MP_APPID` / `WECHAT_MP_SECRET` 用于小程序端 `wx.login()` 后服务端换取 openid；AppSecret 只能放在 `.env` 或 CloudBase 环境变量，不能写入小程序前端代码。
+- `WECHAT_MP_ACTIVITY_REMINDER_TEMPLATE_IDS` 用于小程序订阅消息模板 ID，多个模板用英文逗号分隔；未配置时活动详情会提示暂未开启提醒。
+- `SESSION_MAX_AGE_DAYS` 会被限制在 1 到 30 天之间。
 - `ACTIVITY_AUTO_END_INTERVAL_MS` 控制本地 / 常驻服务的自动结束轮询间隔，默认 15 分钟；`ACTIVITY_AUTO_END_MIN_SWEEP_MS` 控制请求兜底 sweep 的最小间隔；`ACTIVITY_EDIT_LOCK_TTL_MINUTES` 控制活动编辑锁异常兜底过期时间，默认 360 分钟，页面打开时会自动续期；`DISABLE_ACTIVITY_AUTO_END=true` 可关闭后台轮询。
 - `API_TIMING_LOGS=false` 可关闭 API 耗时日志；`API_SLOW_LOG_MS` 控制慢请求阈值，默认 1200ms。
 - `SESSION_SECRET` 用于登录 session HMAC 哈希；`IDENTITY_HASH_SALT` 用于匿名身份、指纹和管理 token 哈希；`ANONYMOUS_ID_SECRET` 用于服务端匿名身份 Cookie 签名。生产环境必须保持稳定且不提交 Git。
@@ -480,7 +490,7 @@ npm run deploy:cloudbase
 
 ## 已验证
 
-- `0.28.3` 本地验证通过：新活动 / 草稿可自动保存后生成共同发起邀请；共同发起人可提交发布；活动详情页承载共同发起团队管理；`/api/me/summary` 聚合接口和个人侧短缓存可用。
+- `0.29.0` 本地验证通过：`npm run miniprogram:check`、`npm test`、`npm run deploy:dry-run` 通过；新增覆盖活动系列默认数据、系列筛选、活动复盘接口、小程序通知配置和订阅偏好；PC 与小程序活动系列 / 复盘展示同步。
 - `0.28.2` 本地验证通过：`my-feedbacks.html` 新增为独立子页面；「我的」工作台不再内嵌活动反馈列表，入口卡片直接跳转；冒烟覆盖页面打开、计数节点、返回路径和移动端无横向溢出。
 - `0.28.1` 本地验证通过：工作台不再内嵌身份网络管理面板，“身份网络”入口跳转独立子页面；浏览器冒烟覆盖子页面开启 / 邀请动作入口和返回路径。
 - `0.28.0` 本地验证通过：`npm test` 通过；新增覆盖匿名设备身份网络创建、同步邀请预览、跨设备合并、公开资料保留选择、身份网络下我的活动聚合、报名 / 感兴趣去重和 `identity-sync.html` 移动端无横向溢出。

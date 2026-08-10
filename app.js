@@ -1012,6 +1012,52 @@ async function fillModuleFilterSelect(select) {
   return modules;
 }
 
+async function fillActivitySeriesSelect(select, options = {}) {
+  const { series } = await cachedGet("/api/activity-series", "select:activity-series", UI_CACHE_TTL.selectOptions);
+  if (!select) return series;
+  const placeholder = options.placeholder || "不归入系列";
+  select.innerHTML = [
+    `<option value="">${escapeHtml(placeholder)}</option>`,
+    ...series.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`),
+  ].join("");
+  return series;
+}
+
+function renderActivitySeriesTag(activity = {}) {
+  const name = activity.seriesName || activity.series?.name || "";
+  if (!name) return "";
+  const color = /^#[0-9a-f]{6}$/i.test(String(activity.seriesColor || activity.series?.color || ""))
+    ? activity.seriesColor || activity.series?.color
+    : "#4f6f58";
+  return `<span class="tag soft series-tag" style="--series-color:${escapeHtml(color)}">${escapeHtml(name)}</span>`;
+}
+
+function seriesFilterHref(seriesId = "") {
+  const params = new URLSearchParams(location.search);
+  if (seriesId) params.set("seriesId", seriesId);
+  else params.delete("seriesId");
+  const query = params.toString();
+  return `activities.html${query ? `?${query}` : ""}`;
+}
+
+async function renderPublicSeriesTabs(root) {
+  const tabs = qs("[data-public-series-tabs]", root);
+  if (!tabs) return [];
+  const series = await fillActivitySeriesSelect(null);
+  if (!series.length) {
+    tabs.hidden = true;
+    return series;
+  }
+  const params = new URLSearchParams(location.search);
+  const active = params.get("seriesId") || "";
+  tabs.innerHTML = [
+    `<a class="${!active ? "active" : ""}" href="${seriesFilterHref("")}" data-public-series-tab="">全部系列</a>`,
+    ...series.map((item) => `<a class="${active === item.id ? "active" : ""}" href="${seriesFilterHref(item.id)}" data-public-series-tab="${escapeHtml(item.id)}">${escapeHtml(item.name)}</a>`),
+  ].join("");
+  tabs.hidden = false;
+  return series;
+}
+
 async function fillTemplateSelect(select) {
   if (!select) return [];
   const { templates } = await cachedGet("/api/templates?page=1&pageSize=100", "select:templates", UI_CACHE_TTL.selectOptions);
@@ -1057,7 +1103,7 @@ function renderActivityCard(activity) {
     <article class="event-card">
       <a class="event-cover" href="activity.html?id=${activity.id}">${cover}</a>
       <div class="event-body">
-        <div class="tag-row"><span class="tag">${escapeHtml(activity.moduleName)}</span><span class="tag soft">${escapeHtml(activity.sourceName || activity.sourceLabel || "客厅")}</span></div>
+        <div class="tag-row"><span class="tag">${escapeHtml(activity.moduleName)}</span>${renderActivitySeriesTag(activity)}<span class="tag soft">${escapeHtml(activity.sourceName || activity.sourceLabel || "客厅")}</span></div>
         <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
         <p>${escapeHtml(activity.location)} · ${formatActivityTime(activity)}</p>
         <div class="event-meta">
@@ -2216,6 +2262,7 @@ async function initActivityEditorPage() {
   bindEditorCoInvite(form);
   mePageState.richEditor = window.youkongRichEditor ? window.youkongRichEditor.mount(form) : null;
   mePageState.modules = await fillModuleSelect(form.moduleId);
+  mePageState.activitySeries = await fillActivitySeriesSelect(form.seriesId);
   mePageState.collaborators = await fillCollaboratorSelect(form.collaboratorId);
   mePageState.friends = await fillFriendSelect(form.friendId);
   mePageState.templates = await fillTemplateSelect(qs("[data-template-select]", form));
@@ -2476,6 +2523,7 @@ function resetActivityForm(form) {
   bindInitiatorContactToggle(form);
   if (form.showRegistrationNames) form.showRegistrationNames.value = "no";
   if (form.showFeedbacks) form.showFeedbacks.value = "yes";
+  if (form.seriesId) form.seriesId.value = "";
   if (form.sourceType) form.sourceType.value = "living_room";
   if (form.friendId) form.friendId.value = "";
   bindSourceTypeToggle(form);
@@ -2497,6 +2545,7 @@ function resetActivityForm(form) {
 function fillActivityForm(form, activity) {
   mePageState.editingActivity = activity;
   form.moduleId.value = activity.moduleId;
+  if (form.seriesId) form.seriesId.value = activity.seriesId || "";
   form.title.value = activity.title;
   form.initiator.value = activity.initiator;
   if (form.showInitiatorContact) form.showInitiatorContact.value = activity.showInitiatorContact ? "yes" : "no";
@@ -2587,13 +2636,22 @@ async function initPublicActivitiesPage() {
     : "这里显示已经发布、还没有结束的活动。未登录也可以点进活动页报名。";
   qsa("[data-public-activity-tab]", root).forEach((link) => {
     link.classList.toggle("active", link.dataset.publicActivityTab === view);
+    const next = new URLSearchParams();
+    if (link.dataset.publicActivityTab === "history") next.set("view", "history");
+    if (params.get("seriesId")) next.set("seriesId", params.get("seriesId"));
+    link.href = `activities.html${next.toString() ? `?${next.toString()}` : ""}`;
   });
   qsa("[data-public-source-tab]", root).forEach((link) => {
     const sourceType = params.get("sourceType") || "";
     link.classList.toggle("active", (link.dataset.publicSourceTab || "") === sourceType);
+    const next = new URLSearchParams({ view: "history" });
+    if (link.dataset.publicSourceTab) next.set("sourceType", link.dataset.publicSourceTab);
+    if (params.get("seriesId")) next.set("seriesId", params.get("seriesId"));
+    link.href = `activities.html?${next.toString()}`;
   });
   const sourceTabs = qs(".history-source-tabs", root);
   if (sourceTabs) sourceTabs.hidden = view !== "history";
+  await renderPublicSeriesTabs(root);
   qs("[data-load-more-public-activities]", root)?.addEventListener("click", () => {
     mePageState.publicActivityPage += 1;
     renderPublicActivities();
@@ -2614,7 +2672,9 @@ async function renderPublicActivities() {
   });
   const urlParams = new URLSearchParams(location.search);
   const sourceType = urlParams.get("sourceType") || "";
+  const seriesId = urlParams.get("seriesId") || "";
   if (view === "history" && sourceType) params.set("sourceType", sourceType);
+  if (seriesId) params.set("seriesId", seriesId);
   const { activities, pageInfo } = await api.get(`/api/activities?${params.toString()}`);
   const loaded = mergePageItems("publicActivities", mePageState.publicActivityPage, activities);
   updatePagedCount(qs("[data-public-activity-count]"), loaded.length, pageInfo);
@@ -2703,7 +2763,7 @@ function renderMineActivityRows(list, activities = [], pageInfo = {}) {
       (activity) => `
         <article class="event-row">
           <div>
-            <div class="tag-row"><span class="tag">${escapeHtml(activity.moduleName)}</span><span class="tag soft">${escapeHtml(activity.sourceName || activity.sourceLabel || "客厅")}</span></div>
+            <div class="tag-row"><span class="tag">${escapeHtml(activity.moduleName)}</span>${renderActivitySeriesTag(activity)}<span class="tag soft">${escapeHtml(activity.sourceName || activity.sourceLabel || "客厅")}</span></div>
             <h3><a href="activity.html?id=${activity.id}">${escapeHtml(activity.title)}</a></h3>
             <p>${formatActivityTime(activity)} · ${escapeHtml(activity.location)} · ${escapeHtml(activity.statusLabel)} · ${escapeHtml(activity.reviewStepLabel)} · ${activity.registrationCount} 人报名 · ${Number(activity.feedbackCount || 0)} 条反馈</p>
             <p>协作员：${escapeHtml(activity.collaboratorName || "未选择")}</p>
@@ -2987,7 +3047,7 @@ async function initActivityPage() {
   root.innerHTML = `
     <section class="activity-hero">
       <div>
-        <div class="tag-row"><span class="tag">${escapeHtml(activity.moduleName)}</span><span class="tag soft">${escapeHtml(activity.sourceName || activity.sourceLabel || "客厅")}</span></div>
+        <div class="tag-row"><span class="tag">${escapeHtml(activity.moduleName)}</span>${renderActivitySeriesTag(activity)}<span class="tag soft">${escapeHtml(activity.sourceName || activity.sourceLabel || "客厅")}</span></div>
         <h1>${escapeHtml(activity.title)}</h1>
         <p>${escapeHtml(activity.location)} · ${formatActivityTime(activity)}</p>
         <div class="event-meta">
@@ -6137,7 +6197,48 @@ async function renderActivityFeedbackPage(root, id) {
   } catch (error) {
     qrBox.innerHTML = `<div class="empty-state slim"><strong>二维码生成失败</strong><p>${escapeHtml(error.message)}</p></div>`;
   }
+  await renderActivityFeedbackRecap(root, id);
   await renderActivityFeedbackList(root, id);
+}
+
+async function renderActivityFeedbackRecap(root, id) {
+  const box = qs("[data-activity-feedback-recap]", root);
+  if (!box) return;
+  try {
+    const recap = await api.get(`/api/activities/${encodeURIComponent(id)}/recap`);
+    const metrics = recap.metrics || {};
+    const feedbacks = Array.isArray(recap.topFeedbacks) ? recap.topFeedbacks : [];
+    box.hidden = false;
+    box.innerHTML = `
+      <div class="feedback-recap-head">
+        <div>
+          <p class="section-kicker">活动复盘</p>
+          <h3>${escapeHtml(metrics.formation?.label || "活动数据已汇总")}</h3>
+        </div>
+        <span class="tag soft">${escapeHtml(recap.activity?.statusLabel || "活动")}</span>
+      </div>
+      <p class="muted-text">${escapeHtml(recap.summaryText || "复盘数据会根据报名、感兴趣和活动反馈实时更新。")}</p>
+      <div class="recap-metrics-grid">
+        <span><strong>${Number(metrics.registrationCount || 0)}</strong>报名</span>
+        <span><strong>${Number(metrics.interestCount || 0)}</strong>感兴趣</span>
+        <span><strong>${Number(metrics.approvedFeedbackCount || 0)}</strong>已展示反馈</span>
+        <span><strong>${Number(metrics.adminReviewFeedbackCount || 0)}</strong>待审核反馈</span>
+      </div>
+      ${
+        feedbacks.length
+          ? `<div class="recap-feedback-list">${feedbacks.map((feedback) => `
+              <article>
+                <strong>精选反馈</strong>
+                <p>${escapeHtml(feedback.favorite || feedback.improvement || feedback.other || "这条反馈暂时没有正文")}</p>
+              </article>
+            `).join("")}</div>`
+          : `<div class="empty-state slim"><strong>还没有精选反馈</strong><p>通过展示的反馈会按权重排在这里。</p></div>`
+      }
+    `;
+  } catch (error) {
+    box.hidden = false;
+    box.innerHTML = `<div class="empty-state slim"><strong>复盘暂时不可用</strong><p>${escapeHtml(error.message || "请稍后再试")}</p></div>`;
+  }
 }
 
 async function renderActivityFeedbackList(root, id) {

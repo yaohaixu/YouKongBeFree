@@ -71,7 +71,7 @@ function mountThemeSwitch() {
     void switcher.offsetWidth;
     switcher.classList.add("is-cycling");
     clearTimeout(switcher.motionTimer);
-    switcher.motionTimer = setTimeout(() => switcher.classList.remove("is-cycling"), 360);
+    switcher.motionTimer = setTimeout(() => switcher.classList.remove("is-cycling"), 900);
     window.youkongTheme.setMode(nextMode);
   });
 

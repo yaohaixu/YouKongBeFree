@@ -23,6 +23,8 @@ yarn-error.log*
 Thumbs.db
 .vscode/
 .idea/
+miniprogram/project.private.config.json
+miniprogram/miniprogram_npm/
 
 # Test and temporary artifacts
 coverage/

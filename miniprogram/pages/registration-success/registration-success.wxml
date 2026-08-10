@@ -1,0 +1,35 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="panel muted">正在读取报名结果...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <view wx:else>
+    <view class="success-hero {{cancelled ? 'is-cancelled' : ''}}">
+      <view class="success-mark">{{cancelled ? "已取消" : "已报名"}}</view>
+      <view class="title">{{cancelled ? "这次报名已经取消。" : "你的报名已经记录下来。"}}</view>
+      <view class="body">{{cancelled ? "如果之后还想参加，可以回到活动页重新报名。" : "活动开始前，可以从这里回看报名信息、保存邀请函或取消报名。"}}</view>
+    </view>
+
+    <view class="info-card">
+      <view class="info-title">{{activity.title || "有空活动"}}</view>
+      <view class="info-line">昵称：{{registration.nickname || "有空朋友"}}</view>
+      <view class="info-line">地点：{{activity.location || "地点待定"}}</view>
+      <view class="info-line">时间：{{activity.displayTime || "时间待定"}}</view>
+      <view wx:if="{{activity.displayFormation}}" class="info-line muted-line">{{activity.displayFormation}}</view>
+    </view>
+
+    <view class="button-row">
+      <view class="button" bindtap="openActivity">查看活动</view>
+      <view class="button secondary" bindtap="goMyRegistrations">我的报名</view>
+      <view class="button secondary" bindtap="downloadInvitationPoster">{{shareImageLoading ? "生成中..." : "下载活动邀请函"}}</view>
+      <view class="button secondary" bindtap="copyActivityLink">复制活动链接</view>
+    </view>
+
+    <view wx:if="{{!cancelled}}" class="danger-card">
+      <view>
+        <view class="danger-title">不能来了？</view>
+        <view class="danger-body">取消后会释放名额，需要参加时可以重新报名。</view>
+      </view>
+      <view class="danger-action" bindtap="cancelRegistration">{{cancelling ? "取消中..." : "取消报名"}}</view>
+    </view>
+  </view>
+  <canvas canvas-id="shareCanvas" class="share-canvas" style="width: {{shareCanvasWidth}}px; height: {{shareCanvasHeight}}px;"></canvas>
+</view>

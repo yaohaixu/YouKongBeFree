@@ -1,0 +1,147 @@
+.compact {
+  padding-bottom: 16rpx;
+}
+
+.profile-hero-row {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.profile-avatar {
+  flex: 0 0 auto;
+  overflow: hidden;
+  width: 124rpx;
+  height: 124rpx;
+  border-radius: 42rpx;
+  background: #dfe8dc;
+}
+
+.profile-avatar image,
+.profile-avatar view {
+  width: 100%;
+  height: 100%;
+}
+
+.profile-avatar view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #101714;
+  font-size: 46rpx;
+  font-weight: 880;
+}
+
+.profile-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14rpx;
+}
+
+.stat {
+  min-height: 150rpx;
+  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border-radius: 26rpx;
+  padding: 22rpx 14rpx;
+  background: #fffefa;
+  color: #69746d;
+  text-align: center;
+  font-size: 23rpx;
+}
+
+.num {
+  display: block;
+  margin-bottom: 8rpx;
+  color: #101714;
+  font-size: 42rpx;
+  font-weight: 880;
+}
+
+.registration {
+  margin-bottom: 16rpx;
+}
+
+.registration-title {
+  margin-bottom: 8rpx;
+  color: #101714;
+  font-size: 30rpx;
+  font-weight: 820;
+}
+
+.entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 28rpx;
+}
+
+.entry-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  min-height: 130rpx;
+  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border-radius: 26rpx;
+  padding: 22rpx;
+  background: #fffefa;
+}
+
+.primary-entry {
+  background: #101714;
+  color: #fffefa;
+}
+
+.primary-entry .entry-icon {
+  background: #fffefa;
+}
+
+.primary-entry .entry-title {
+  color: #fffefa;
+}
+
+.primary-entry .entry-text,
+.primary-entry .entry-arrow {
+  color: rgba(255, 254, 250, 0.72);
+}
+
+.entry-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 24rpx;
+  background: #dfe8dc;
+  color: #101714;
+  font-size: 28rpx;
+  font-weight: 850;
+}
+
+.entry-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-title {
+  color: #101714;
+  font-size: 31rpx;
+  font-weight: 840;
+}
+
+.entry-text {
+  margin-top: 6rpx;
+  color: #69746d;
+  font-size: 25rpx;
+  line-height: 1.45;
+}
+
+.entry-arrow {
+  color: #8a928c;
+  font-size: 42rpx;
+  line-height: 1;
+}

@@ -1,0 +1,36 @@
+<view class="page">
+  <view class="hero compact">
+    <view class="eyebrow">活动与参与</view>
+    <view class="title">挑一张活动纸条。</view>
+  </view>
+
+  <view class="tabs">
+    <view class="tab {{view === 'upcoming' ? 'active' : ''}}" data-view="upcoming" bindtap="switchView">近期活动</view>
+    <view class="tab {{view === 'history' ? 'active' : ''}}" data-view="history" bindtap="switchView">历史活动</view>
+  </view>
+
+  <view wx:if="{{view === 'history'}}" class="source-tabs">
+    <view class="source-tab {{sourceType === '' ? 'active' : ''}}" data-source-type="" bindtap="switchSourceType">全部</view>
+    <view class="source-tab {{sourceType === 'living_room' ? 'active' : ''}}" data-source-type="living_room" bindtap="switchSourceType">客厅</view>
+    <view class="source-tab {{sourceType === 'friend' ? 'active' : ''}}" data-source-type="friend" bindtap="switchSourceType">客厅的朋友们</view>
+  </view>
+
+  <view wx:if="{{seriesTabs.length > 1}}" class="series-tabs">
+    <view
+      wx:for="{{seriesTabs}}"
+      wx:key="id"
+      class="series-tab {{seriesId === item.id ? 'active' : ''}}"
+      data-series-id="{{item.id}}"
+      bindtap="switchSeries"
+    >{{item.name}}</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="panel muted">正在读取活动...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <view wx:elif="{{activities.length}}" class="list">
+    <activity-card wx:for="{{activities}}" wx:key="id" activity="{{item}}" />
+    <view wx:if="{{loadingMore}}" class="loading-more">继续读取中...</view>
+    <view wx:elif="{{!hasMore}}" class="loading-more">已经到底了</view>
+  </view>
+  <empty-state wx:else title="这里暂时没有活动" text="换个列表看看，或稍后再来。" />
+</view>

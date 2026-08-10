@@ -1,0 +1,75 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="panel muted">正在读取活动反馈...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <view wx:else>
+    <view class="hero compact">
+      <view class="eyebrow">活动反馈</view>
+      <view class="title">{{activity.title || "活动反馈"}}</view>
+      <view class="body">{{activity.displayTime || "时间待定"}} · {{activity.location || "地点待定"}}</view>
+      <view class="button-row">
+        <view class="button secondary" bindtap="downloadFeedbackQr">{{qrLoading ? "生成中..." : "下载反馈二维码"}}</view>
+        <view class="button secondary" bindtap="copyFeedbacksText">{{exporting ? "整理中..." : "复制反馈文本"}}</view>
+        <view class="button secondary" bindtap="openActivity">返回活动</view>
+      </view>
+    </view>
+
+    <view class="summary-card">
+      <view>
+        <text class="summary-num">{{totalFeedbackCount || feedbacks.length}}</text>
+        <text>条活动反馈</text>
+      </view>
+      <view class="summary-detail">已展示 {{statusCounts.approved || 0}} · 待审核 {{statusCounts.admin_review || 0}} · 不展示 {{statusCounts.rejected || 0}}</view>
+    </view>
+
+    <view wx:if="{{recap}}" class="recap-card">
+      <view class="recap-title">{{recap.metrics.formation.label || "活动复盘"}}</view>
+      <view class="recap-text">{{recap.summaryText}}</view>
+      <view class="recap-metrics">
+        <text>{{recap.metrics.registrationCount || 0}} 人报名</text>
+        <text>{{recap.metrics.interestCount || 0}} 人感兴趣</text>
+        <text>{{recap.metrics.approvedFeedbackCount || 0}} 条已展示</text>
+      </view>
+      <view wx:if="{{recap.topFeedbacks.length}}" class="recap-feedbacks">
+        <view wx:for="{{recap.topFeedbacks}}" wx:key="id" class="recap-feedback">{{item.favorite || item.improvement || item.other}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{feedbacks.length}}" class="feedback-tabs">
+      <view
+        wx:for="{{filterTabs}}"
+        wx:key="key"
+        class="feedback-tab {{statusFilter === item.key ? 'active' : ''}}"
+        data-status="{{item.key}}"
+        bindtap="switchStatus"
+      >{{item.label}} {{item.count}}</view>
+    </view>
+
+    <view wx:if="{{visibleFeedbacks.length}}" class="feedback-list">
+      <view class="feedback-card" wx:for="{{visibleFeedbacks}}" wx:key="id">
+        <view class="tag-row">
+          <text class="tag status-{{item.statusKey}}">{{item.statusLabel || "反馈"}}</text>
+          <text class="tag soft">权重 {{item.feedbackWeight || 0}}</text>
+        </view>
+        <view wx:if="{{item.favorite}}" class="feedback-line"><text>最喜欢：</text>{{item.favorite}}</view>
+        <view wx:if="{{item.improvement}}" class="feedback-line"><text>可以改进：</text>{{item.improvement}}</view>
+        <view wx:if="{{item.other}}" class="feedback-line"><text>还想说：</text>{{item.other}}</view>
+        <view wx:if="{{item.aiReason}}" class="feedback-note">AI 分析：{{item.aiReason}}</view>
+        <view class="feedback-foot">提交时间：{{item.displayCreatedAt || "刚刚"}}</view>
+        <view wx:if="{{item.reviewAction}}" class="feedback-actions">
+          <view
+            class="mini-action {{item.reviewActionDanger ? 'danger' : ''}}"
+            data-id="{{item.id}}"
+            data-action="{{item.reviewAction}}"
+            data-label="{{item.reviewActionText}}"
+            bindtap="reviewFeedback"
+          >{{reviewLoadingId === item.id ? "处理中..." : item.reviewActionText}}</view>
+        </view>
+      </view>
+      <view wx:if="{{loadingMore}}" class="loading-more">继续读取中...</view>
+      <view wx:elif="{{!hasMore}}" class="loading-more">已经到底了</view>
+    </view>
+    <empty-state wx:elif="{{!feedbacks.length}}" title="还没有活动反馈" text="可以下载反馈二维码，活动结束后请参与者扫码填写。" />
+    <empty-state wx:else title="这个筛选下暂无反馈" text="换一个状态看看。" />
+  </view>
+  <canvas canvas-id="shareCanvas" class="share-canvas" style="width: {{shareCanvasWidth}}px; height: {{shareCanvasHeight}}px;"></canvas>
+</view>

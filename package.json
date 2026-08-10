@@ -1,6 +1,6 @@
 {
   "name": "youkong-living-room",
-  "version": "0.28.3",
+  "version": "0.29.0",
   "private": true,
   "description": "有空客厅官网与活动系统 MVP",
   "scripts": {
@@ -17,7 +17,9 @@
     "deploy:dry-run": "npm run build:cloudbase && node scripts/verify-cloudbase-package.js",
     "deploy:static": "npm run build:static && tcb hosting deploy dist -e youkong-d5gh4x0ayc29a2187",
     "deploy:function": "npm run build:function && tcb fn deploy youkongApi --path /api --force",
-    "deploy:cloudbase": "npm run build:cloudbase && tcb hosting deploy dist -e youkong-d5gh4x0ayc29a2187 && tcb fn deploy youkongApi --path /api --force"
+    "deploy:cloudbase": "npm run build:cloudbase && tcb hosting deploy dist -e youkong-d5gh4x0ayc29a2187 && tcb fn deploy youkongApi --path /api --force",
+    "miniprogram:check": "find miniprogram -name '*.js' -print0 | xargs -0 -n 1 node --check",
+    "miniprogram:open": "node scripts/open-miniprogram.js"
   },
   "dependencies": {
     "@cloudbase/node-sdk": "^3.18.3",

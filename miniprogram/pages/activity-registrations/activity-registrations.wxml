@@ -1,0 +1,35 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="panel muted">正在读取报名表...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <view wx:else>
+    <view class="hero compact">
+      <view class="eyebrow">报名表</view>
+      <view class="title">{{activity.title || "活动报名表"}}</view>
+      <view class="body">{{activity.displayTime}} · {{activity.location || "地点待定"}}</view>
+      <view class="button-row">
+        <view class="button secondary" bindtap="copyRegistrationsText">复制报名名单</view>
+      </view>
+    </view>
+
+    <view class="summary-card">
+      <view>
+        <text class="summary-num">{{registrations.length}}</text>
+        <text>人已报名</text>
+      </view>
+      <view class="summary-detail">限额 {{activity.capacity || 99}} 人 · 剩余 {{activity.spotsLeft || 0}} 人</view>
+    </view>
+
+    <view wx:if="{{activity.displayFormation}}" class="formation-card">{{activity.displayFormation}}</view>
+
+    <view wx:if="{{registrations.length}}" class="registration-list">
+      <view class="registration-row" wx:for="{{registrations}}" wx:key="id">
+        <view>
+          <view class="nickname">{{item.nickname || "未命名报名"}}</view>
+          <view class="time">报名时间：{{item.displayCreatedAt || "刚刚"}}</view>
+        </view>
+        <view class="delete-action" data-id="{{item.id}}" data-nickname="{{item.nickname}}" bindtap="deleteRegistration">删除</view>
+      </view>
+    </view>
+    <empty-state wx:else title="还没有报名" text="有人报名后，会在这里显示昵称和报名时间。" />
+  </view>
+</view>

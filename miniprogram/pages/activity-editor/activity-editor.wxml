@@ -1,0 +1,221 @@
+<view class="page editor-page">
+  <view class="hero compact">
+    <view class="eyebrow">{{editorTitle}}</view>
+    <view class="title">把一个活动想法写清楚。</view>
+    <view class="body">{{editorBody}}</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="panel muted">正在准备发起页...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <view wx:else class="editor-form">
+    <view wx:if="{{editLockConflict}}" class="form-card lock-card">
+      <view class="field-label">当前活动正在被编辑</view>
+      <view class="field-hint">{{editLockMessage}}</view>
+      <view class="button-row">
+        <view class="button secondary" bindtap="takeoverEditLock">接管编辑</view>
+      </view>
+    </view>
+
+    <view class="form-card">
+      <view class="field">
+        <view class="field-label">活动封面</view>
+        <view wx:if="{{coverTempFilePath}}" class="cover-preview">
+          <image src="{{coverTempFilePath}}" mode="aspectFill" />
+          <view class="cover-remove" bindtap="removeCover">移除</view>
+        </view>
+        <view wx:else class="cover-picker" bindtap="chooseCover">选择封面图</view>
+      </view>
+
+      <view class="field">
+        <view class="field-label">活动标题</view>
+        <input class="input" value="{{form.title}}" maxlength="80" placeholder="例如：有空放映｜周末电影夜" data-field="title" bindinput="handleInput" />
+      </view>
+
+      <view class="field">
+        <view class="field-label">活动模块</view>
+        <picker mode="selector" range="{{moduleNames}}" value="{{moduleIndex}}" bindchange="handleModuleChange">
+          <view class="select">{{selectedModuleName}}</view>
+        </picker>
+      </view>
+
+      <view class="field">
+        <view class="field-label">活动系列</view>
+        <picker mode="selector" range="{{seriesNames}}" value="{{seriesIndex}}" bindchange="handleSeriesChange">
+          <view class="select">{{selectedSeriesName}}</view>
+        </picker>
+        <view class="field-hint">可选，用于把相似活动收在同一个栏目里。</view>
+      </view>
+
+      <view class="field">
+        <view class="field-label">发起主体</view>
+        <picker mode="selector" range="{{sourceTypeOptions}}" value="{{sourceTypeIndex}}" bindchange="handleSourceTypeChange">
+          <view class="select">{{selectedSourceTypeName}}</view>
+        </picker>
+      </view>
+
+      <view wx:if="{{form.sourceType === 'friend'}}" class="field">
+        <view class="field-label">客厅的朋友们</view>
+        <picker mode="selector" range="{{friendNames}}" value="{{friendIndex}}" bindchange="handleFriendChange">
+          <view class="select">{{selectedFriendName}}</view>
+        </picker>
+        <view class="field-hint">这里的主体由后台维护；没有可选项时，请先改回“有空客厅”。</view>
+      </view>
+
+      <view class="field">
+        <view class="field-label">发起人</view>
+        <input class="input" value="{{form.initiator}}" maxlength="40" placeholder="填写发起人昵称" data-field="initiator" bindinput="handleInput" />
+      </view>
+
+      <view class="switch-row">
+        <view>
+          <view class="field-label">展示发起人联系方式</view>
+          <view class="field-hint">公开后会展示在活动详情页</view>
+        </view>
+        <switch checked="{{form.showInitiatorContact}}" data-field="showInitiatorContact" bindchange="handleSwitch" />
+      </view>
+
+      <view wx:if="{{form.showInitiatorContact}}" class="field">
+        <view class="field-label">联系方式</view>
+        <input class="input" value="{{form.initiatorContact}}" maxlength="80" placeholder="微信号、手机号或其他联系方式" data-field="initiatorContact" bindinput="handleInput" />
+      </view>
+    </view>
+
+    <view class="form-card">
+      <view class="field two-columns">
+        <view>
+          <view class="field-label">开始日期</view>
+          <picker mode="date" value="{{form.startsDate}}" start="{{today}}" data-field="startsDate" bindchange="handlePickerChange">
+            <view class="select">{{form.startsDate}}</view>
+          </picker>
+        </view>
+        <view>
+          <view class="field-label">开始时间</view>
+          <picker mode="time" value="{{form.startsTime}}" data-field="startsTime" bindchange="handlePickerChange">
+            <view class="select">{{form.startsTime}}</view>
+          </picker>
+        </view>
+      </view>
+
+      <view class="field two-columns">
+        <view>
+          <view class="field-label">结束日期</view>
+          <picker mode="date" value="{{form.endsDate}}" start="{{today}}" data-field="endsDate" bindchange="handlePickerChange">
+            <view class="select">{{form.endsDate}}</view>
+          </picker>
+        </view>
+        <view>
+          <view class="field-label">结束时间</view>
+          <picker mode="time" value="{{form.endsTime}}" data-field="endsTime" bindchange="handlePickerChange">
+            <view class="select">{{form.endsTime}}</view>
+          </picker>
+        </view>
+      </view>
+
+      <view class="field">
+        <view class="field-label">地点</view>
+        <input class="input" value="{{form.location}}" maxlength="80" placeholder="填写活动地点" data-field="location" bindinput="handleInput" />
+      </view>
+
+      <view class="field">
+        <view class="field-label">人数限额</view>
+        <input class="input" type="number" value="{{form.capacity}}" placeholder="默认 99 人" data-field="capacity" bindinput="handleInput" />
+      </view>
+    </view>
+
+    <view class="form-card">
+      <view class="switch-row">
+        <view>
+          <view class="field-label">公示报名昵称</view>
+          <view class="field-hint">开启后，活动详情页会展示报名人的昵称</view>
+        </view>
+        <switch checked="{{form.showRegistrationNames}}" data-field="showRegistrationNames" bindchange="handleSwitch" />
+      </view>
+
+      <view class="switch-row">
+        <view>
+          <view class="field-label">展示活动反馈</view>
+          <view class="field-hint">仅展示通过安全分析的反馈</view>
+        </view>
+        <switch checked="{{form.showFeedbacks}}" data-field="showFeedbacks" bindchange="handleSwitch" />
+      </view>
+
+      <view class="switch-row">
+        <view>
+          <view class="field-label">最低报名限度</view>
+          <view class="field-hint">未达到人数会自动标记为未成团取消</view>
+        </view>
+        <switch checked="{{form.minRegistrationEnabled}}" data-field="minRegistrationEnabled" bindchange="handleSwitch" />
+      </view>
+
+      <block wx:if="{{form.minRegistrationEnabled}}">
+        <view class="field">
+          <view class="field-label">最低报名人数</view>
+          <input class="input" type="number" value="{{form.minRegistrationCount}}" placeholder="例如：6" data-field="minRegistrationCount" bindinput="handleInput" />
+        </view>
+        <view class="field two-columns">
+          <view>
+            <view class="field-label">最后报名日期</view>
+            <picker mode="date" value="{{form.deadlineDate}}" start="{{today}}" data-field="deadlineDate" bindchange="handlePickerChange">
+              <view class="select">{{form.deadlineDate}}</view>
+            </picker>
+          </view>
+          <view>
+            <view class="field-label">最后报名时间</view>
+            <picker mode="time" value="{{form.deadlineTime}}" data-field="deadlineTime" bindchange="handlePickerChange">
+              <view class="select">{{form.deadlineTime}}</view>
+            </picker>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view class="form-card">
+      <view class="field">
+        <view class="field-label">活动介绍</view>
+        <picker mode="selector" range="{{templateNames}}" value="{{templateIndex}}" bindchange="handleTemplateChange">
+          <view class="select template-select">描述模板：{{selectedTemplateName}}</view>
+        </picker>
+        <view class="rich-toolbar">
+          <view class="tool {{!formats.header ? 'active' : ''}}" data-name="header" data-value="" bindtap="formatRichText">正文</view>
+          <view class="tool {{formats.header === 1 || formats.header === '1' ? 'active' : ''}}" data-name="header" bindtap="formatRichText">H1</view>
+          <view class="tool {{formats.bold ? 'active' : ''}}" data-name="bold" bindtap="formatRichText">B</view>
+          <view class="tool {{formats.italic ? 'active' : ''}}" data-name="italic" bindtap="formatRichText">I</view>
+          <view class="tool {{formats.underline ? 'active' : ''}}" data-name="underline" bindtap="formatRichText">U</view>
+          <view class="tool" data-name="list" data-value="bullet" bindtap="formatRichText">•</view>
+          <view class="tool" data-name="list" data-value="ordered" bindtap="formatRichText">1.</view>
+          <view class="tool" data-name="blockquote" bindtap="formatRichText">引</view>
+          <view class="tool" bindtap="insertDivider">线</view>
+          <view class="tool wide" bindtap="insertRichImage">{{richImageUploading ? "上传中" : "图片"}}</view>
+          <view class="tool wide muted-tool" bindtap="clearRichText">清空</view>
+        </view>
+        <editor id="activityEditor" class="rich-editor" placeholder="写清楚想做什么、适合谁、需要准备什么。" read-only="{{editLockConflict}}" bindready="onRichEditorReady" bindinput="handleRichTextInput" bindstatuschange="handleRichTextStatusChange" />
+        <view class="field-hint">支持标题、列表、引用和正文图片。保存草稿不会触发安全分析，提交活动才会分析。</view>
+        <view wx:if="{{form.description}}" class="rich-preview">
+          <view class="field-label">正文预览</view>
+          <rich-text class="rich-preview-body" nodes="{{form.description}}" />
+        </view>
+      </view>
+    </view>
+
+    <view class="form-card">
+      <view class="field-label">共同发起人</view>
+      <view class="field-hint">可以先保存草稿再邀请。对方接受后，可以一起编辑、提交、撤回、取消或结束活动。</view>
+      <view class="button-row">
+        <view class="button secondary" bindtap="createCoInvite">{{submitting ? "处理中..." : "生成协作邀请"}}</view>
+        <button wx:if="{{coInvite.token}}" class="button share-button" open-type="share">分享邀请</button>
+      </view>
+      <view wx:if="{{coInvite.token}}" class="invite-box">
+        <view class="invite-title">协作邀请已生成</view>
+        <view class="invite-url">{{coInvite.inviteUrl || coInvite.miniPath}}</view>
+        <view class="button-row">
+          <view class="button secondary" bindtap="copyCoInvite">复制邀请链接</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="sticky-actions">
+      <view class="button secondary {{editLockConflict ? 'disabled' : ''}}" bindtap="submitDraft">{{submitting ? "处理中..." : "保存草稿"}}</view>
+      <view class="button {{editLockConflict ? 'disabled' : ''}}" bindtap="submitPublish">{{submitting ? "处理中..." : "提交活动"}}</view>
+    </view>
+  </view>
+</view>

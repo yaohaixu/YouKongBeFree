@@ -1,0 +1,22 @@
+<view class="activity-card" bindtap="handleOpen">
+  <view class="cover-wrap">
+    <image wx:if="{{activity.coverUrl}}" class="cover" src="{{activity.coverUrl}}" mode="aspectFill" />
+    <view wx:else class="cover placeholder">{{activity.moduleName || "有空"}}</view>
+  </view>
+  <view class="content">
+    <view class="topline">
+      <view class="meta">{{activity.displaySource}}</view>
+      <view class="status-pill">{{activity.statusLabel || "活动发布"}}</view>
+    </view>
+    <view wx:if="{{activity.displaySeries}}" class="series-pill">{{activity.displaySeries}}</view>
+    <view class="name">{{activity.title}}</view>
+    <view class="time">{{activity.displayTime}}</view>
+    <view class="summary" wx:if="{{activity.displaySummary}}">{{activity.displaySummary}}</view>
+    <view wx:if="{{activity.displayFormation}}" class="formation-chip">{{activity.displayFormation}}</view>
+    <view class="foot">
+      <text>{{activity.registrationCount || 0}}/{{activity.capacity || 99}} 人</text>
+      <text wx:if="{{activity.interestCount}}">{{activity.interestCount}} 人感兴趣</text>
+    </view>
+    <button class="share-mini" open-type="share" data-activity-id="{{activity.id}}" data-activity-title="{{activity.title}}" catchtap="noop">分享</button>
+  </view>
+</view>

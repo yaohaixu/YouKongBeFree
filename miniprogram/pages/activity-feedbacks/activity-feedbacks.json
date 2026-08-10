@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "活动反馈",
+  "usingComponents": {
+    "empty-state": "../../components/empty-state/empty-state"
+  }
+}

@@ -1,0 +1,52 @@
+.feedback-page {
+  padding-bottom: 132rpx;
+}
+
+.compact {
+  padding-bottom: 16rpx;
+}
+
+.form-card {
+  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border-radius: 24rpx;
+  padding: 28rpx;
+  background: #fffefa;
+}
+
+.field {
+  margin-top: 28rpx;
+}
+
+.field:first-child {
+  margin-top: 0;
+}
+
+.field-label {
+  color: #101714;
+  font-size: 28rpx;
+  font-weight: 780;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 210rpx;
+  margin-top: 14rpx;
+  border: 1rpx solid rgba(16, 23, 20, 0.12);
+  border-radius: 20rpx;
+  padding: 22rpx 24rpx;
+  background: #f8f5ee;
+  color: #101714;
+  font-size: 28rpx;
+  line-height: 1.68;
+}
+
+.sticky-actions {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid rgba(16, 23, 20, 0.08);
+  background: rgba(255, 254, 250, 0.96);
+}

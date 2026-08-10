@@ -1,0 +1,118 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="panel muted">正在读取活动...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <view wx:elif="{{activity}}" class="detail">
+    <image wx:if="{{activity.coverUrl}}" class="hero-cover" src="{{activity.coverUrl}}" mode="widthFix" />
+    <view wx:else class="hero-cover placeholder">{{activity.moduleName || "有空"}}</view>
+
+    <view class="meta">{{activity.displaySource}} · {{activity.displayTime}}</view>
+    <view class="detail-title">{{activity.title}}</view>
+    <view class="info-card">
+      <view>地点：{{activity.location || "待定"}}</view>
+      <view wx:if="{{activity.displaySeries}}">系列：{{activity.displaySeries}}</view>
+      <view class="initiator-link" bindtap="openInitiatorProfile">发起人：{{activity.initiator || activity.creatorName || "有空朋友"}}</view>
+      <view>状态：{{activity.statusLabel || "活动发布"}}</view>
+      <view>报名：{{activity.registrationCount || 0}}/{{activity.capacity || 99}} 人</view>
+      <view>感兴趣：{{activity.interestCount || 0}} 人</view>
+    </view>
+
+    <view wx:if="{{activity.displayFormation}}" class="formation-card">
+      <view class="formation-title">成团规则</view>
+      <view class="formation-body">{{activity.displayFormation}}</view>
+      <view wx:if="{{activity.registrationDeadlinePassed}}" class="formation-alert">报名已截止</view>
+    </view>
+
+    <view class="section-title">活动介绍</view>
+    <rich-text wx:if="{{activity.richDescription}}" class="description rich-description" nodes="{{activity.richDescription}}" />
+    <view wx:else class="description">发起人还没有写更多介绍。</view>
+
+    <view wx:if="{{activity.publicRegistrations.length}}" class="section-title">已报名</view>
+    <view wx:if="{{activity.publicRegistrations.length}}" class="name-list">
+      <text wx:for="{{activity.publicRegistrations}}" wx:key="nickname">{{item.nickname}}</text>
+    </view>
+
+    <view class="section-title">参与活动</view>
+    <view class="register-card">
+      <input class="nickname-input" value="{{nickname}}" maxlength="32" placeholder="填写一个报名昵称" bindinput="handleNicknameInput" />
+      <view class="hint">小程序首版只记录昵称，报名成功后会保存在当前设备里。</view>
+    </view>
+
+    <view class="button-row">
+      <view class="button {{activity.canRegister ? '' : 'disabled'}}" bindtap="registerActivity">{{registering ? "报名中..." : activity.canRegister ? "报名" : "暂不可报名"}}</view>
+      <view class="button secondary" bindtap="markInterest">{{interestLoading ? "记录中..." : "感兴趣"}}</view>
+      <view class="button secondary" bindtap="subscribeActivityReminder">{{subscribingReminder ? "订阅中..." : reminderSubscribed ? "已订阅提醒" : "订阅提醒"}}</view>
+      <view class="button secondary" bindtap="shareActivity">复制链接</view>
+      <view class="button secondary" bindtap="goFeedback">写反馈</view>
+    </view>
+    <view wx:if="{{!activity.canRegister && activity.registrationNotice}}" class="closed-notice">{{activity.registrationNotice}}</view>
+
+    <view class="section-title">分享活动</view>
+    <view class="share-card">
+      <view class="hint">可以保存 JPG 图片后发给朋友。邀请函里的“诚邀”会优先使用上方填写的报名昵称。</view>
+      <view class="button-row">
+        <view class="button secondary" bindtap="downloadInvitationPoster">{{shareImageLoading ? "生成中..." : "下载活动邀请函"}}</view>
+        <view class="button secondary" bindtap="downloadActivityQr">{{shareImageLoading ? "生成中..." : "下载活动二维码"}}</view>
+        <view class="button secondary" bindtap="addToCalendar">加到日历</view>
+      </view>
+    </view>
+
+    <view wx:if="{{activity.showFeedbacks && activity.publicFeedbacks.length}}" class="section-title">活动反馈</view>
+    <view wx:if="{{activity.showFeedbacks && activity.publicFeedbacks.length}}" class="feedback-list">
+      <view class="feedback-card" wx:for="{{activity.publicFeedbacks}}" wx:key="id">
+        <view wx:if="{{item.favorite}}" class="feedback-line"><text>最喜欢：</text>{{item.favorite}}</view>
+        <view wx:if="{{item.improvement}}" class="feedback-line"><text>可以改进：</text>{{item.improvement}}</view>
+        <view wx:if="{{item.other}}" class="feedback-line"><text>还想说：</text>{{item.other}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{activity.permissions.canEdit || activity.permissions.canManageCoInitiators}}" class="section-title">发起人管理</view>
+    <view wx:if="{{activity.permissions.canEdit || activity.permissions.canManageCoInitiators}}" class="manage-card">
+      <view class="button-row">
+        <view wx:if="{{activity.permissions.canEdit}}" class="button secondary" bindtap="goEditor">编辑活动</view>
+        <view class="button secondary" bindtap="goRegistrations">报名表</view>
+        <view class="button secondary" bindtap="goActivityFeedbacks">活动反馈</view>
+        <view class="button secondary" bindtap="downloadFeedbackQr">反馈二维码</view>
+      </view>
+      <view wx:if="{{activity.permissions.canManageCoInitiators}}" class="button-row">
+        <view class="button secondary" bindtap="createCoInvite">生成协作邀请</view>
+        <button wx:if="{{coInvite.token}}" class="button share-button" open-type="share">分享邀请</button>
+      </view>
+      <view wx:if="{{coInvite.token}}" class="invite-box">
+        <view class="invite-title">协作邀请已生成</view>
+        <view class="invite-url">{{coInvite.inviteUrl}}</view>
+        <view class="button secondary single-action" bindtap="copyCoInvite">复制邀请链接</view>
+      </view>
+    </view>
+
+    <view wx:if="{{activity.coInitiators.length}}" class="section-title">共同发起人</view>
+    <view wx:if="{{activity.coInitiators.length}}" class="co-list">
+      <view class="co-row" wx:for="{{activity.coInitiators}}" wx:key="id">
+        <view class="co-profile" data-id="{{item.profileId}}" bindtap="openCoProfile">
+          <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill" />
+          <view wx:else>{{item.avatarInitial}}</view>
+          <text>{{item.displayName || "共同发起人"}}</text>
+        </view>
+        <view wx:if="{{activity.permissions.canManageCoInitiators}}" class="co-remove" data-id="{{item.id}}" data-name="{{item.displayName}}" bindtap="removeCoInitiator">移除</view>
+      </view>
+    </view>
+
+    <view class="section-title">社区反馈</view>
+    <view class="report-card">
+      <view class="hint">发现广告、虚假活动或其他风险，可以提交社区反馈。系统会记录并触发相应复核。</view>
+      <view wx:if="{{!showReportForm}}" class="button-row">
+        <view class="button secondary" bindtap="toggleReportForm">举报这个活动</view>
+      </view>
+      <view wx:else>
+        <picker mode="selector" range="{{reportReasons}}" value="{{reportReasonIndex}}" bindchange="handleReportReasonChange">
+          <view class="select">原因：{{reportReasons[reportReasonIndex]}}</view>
+        </picker>
+        <textarea class="report-textarea" value="{{reportDetail}}" maxlength="500" auto-height placeholder="可以补充说明，也可以留空。" bindinput="handleReportDetailInput" />
+        <view class="button-row">
+          <view class="button" bindtap="submitReport">{{reportSubmitting ? "提交中..." : "提交举报"}}</view>
+          <view class="button secondary" bindtap="toggleReportForm">取消</view>
+        </view>
+      </view>
+    </view>
+  </view>
+  <canvas canvas-id="shareCanvas" class="share-canvas" style="width: {{shareCanvasWidth}}px; height: {{shareCanvasHeight}}px;"></canvas>
+</view>

@@ -1,0 +1,30 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="panel muted">正在读取公开主页...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <view wx:else>
+    <view class="profile-card">
+      <image wx:if="{{profile.avatarUrl}}" class="avatar" src="{{profile.avatarUrl}}" mode="aspectFill" />
+      <view wx:else class="avatar placeholder">{{avatarInitial}}</view>
+      <view class="profile-name">{{profile.displayName || "有空朋友"}}</view>
+      <view class="profile-id">{{profile.communityId || "Community ID"}}</view>
+      <view class="profile-bio">{{profile.bio || "这个朋友还没有写简介，可以从公开活动里认识 TA。"}}</view>
+      <view class="badge-row">
+        <text wx:for="{{badges}}" wx:key="id" class="badge">{{item.name}}</text>
+        <text wx:if="{{!badges.length}}" class="badge soft">暂无公开徽章</text>
+      </view>
+    </view>
+
+    <view class="stats">
+      <view class="stat" wx:for="{{summaryItems}}" wx:key="label">
+        <text class="num">{{item.value}}</text>
+        <text>{{item.label}}</text>
+      </view>
+    </view>
+
+    <view class="section-title">公开活动</view>
+    <view wx:if="{{activities.length}}" class="list">
+      <activity-card wx:for="{{activities}}" wx:key="id" activity="{{item}}" />
+    </view>
+    <empty-state wx:else title="还没有公开活动" text="发起人公开发布过的活动会显示在这里。" />
+  </view>
+</view>

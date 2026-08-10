@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "公开主页",
+  "usingComponents": {
+    "activity-card": "/components/activity-card/activity-card",
+    "empty-state": "/components/empty-state/empty-state"
+  }
+}

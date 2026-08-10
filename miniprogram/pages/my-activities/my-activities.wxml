@@ -1,0 +1,37 @@
+<view class="page">
+  <view class="hero compact">
+    <view class="eyebrow">我的活动</view>
+    <view class="title">看这个身份发起过什么。</view>
+    <view class="body">这里会同步当前身份发起的草稿、分析中和已发布活动。</view>
+    <view class="button-row">
+      <view class="button" bindtap="goEditor">发起活动</view>
+    </view>
+  </view>
+
+  <view class="filter-tabs">
+    <view class="filter {{status === '' ? 'active' : ''}}" data-status="" bindtap="switchStatus">全部</view>
+    <view class="filter {{status === 'draft' ? 'active' : ''}}" data-status="draft" bindtap="switchStatus">草稿</view>
+    <view class="filter {{status === 'reviewing' ? 'active' : ''}}" data-status="reviewing" bindtap="switchStatus">复核</view>
+    <view class="filter {{status === 'published_group' ? 'active' : ''}}" data-status="published_group" bindtap="switchStatus">已发布</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="panel muted">正在读取我的活动...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <block wx:elif="{{activities.length}}">
+    <view class="list">
+      <view class="activity-shell" wx:for="{{activities}}" wx:key="id">
+        <activity-card activity="{{item}}" />
+        <view wx:if="{{item.permissions.canEdit || item.permissions.canWithdraw || item.permissions.canCancel || item.permissions.canEnd || item.permissions.canManageCoInitiators}}" class="action-stack">
+          <view wx:if="{{item.permissions.canEdit}}" class="mini-action" data-id="{{item.id}}" bindtap="goEditor">编辑</view>
+          <view class="mini-action" data-id="{{item.id}}" bindtap="goRegistrations">报名表</view>
+          <view wx:if="{{item.permissions.canWithdraw}}" class="mini-action" data-id="{{item.id}}" data-title="{{item.title}}" data-action="withdraw" bindtap="runActivityAction">撤回为草稿</view>
+          <view wx:if="{{item.permissions.canCancel}}" class="mini-action danger" data-id="{{item.id}}" data-title="{{item.title}}" data-action="cancel" bindtap="runActivityAction">取消活动</view>
+          <view wx:if="{{item.permissions.canEnd}}" class="mini-action" data-id="{{item.id}}" data-title="{{item.title}}" data-action="end" bindtap="runActivityAction">结束活动</view>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{loadingMore}}" class="loading-more">继续读取中...</view>
+    <view wx:elif="{{!hasMore}}" class="loading-more">已经到底了</view>
+  </block>
+  <empty-state wx:else title="还没有发起过活动" text="可以先保存草稿，也可以直接提交进入安全分析。" />
+</view>

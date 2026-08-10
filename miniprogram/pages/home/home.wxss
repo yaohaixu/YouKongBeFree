@@ -1,0 +1,94 @@
+.home-hero {
+  padding-top: 40rpx;
+  background: #101714;
+}
+
+.home-hero .title {
+  max-width: 520rpx;
+  color: #fffefa;
+  font-size: 54rpx;
+  line-height: 1.08;
+}
+
+.home-hero .body {
+  max-width: 560rpx;
+  color: rgba(255, 254, 250, 0.74);
+}
+
+.home-badge {
+  display: inline-flex;
+  border-radius: 999rpx;
+  padding: 9rpx 16rpx;
+  background: rgba(255, 254, 250, 0.1);
+  color: rgba(255, 254, 250, 0.86);
+  font-size: 23rpx;
+  font-weight: 760;
+}
+
+.home-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14rpx;
+  margin-top: 28rpx;
+}
+
+.home-actions .button {
+  min-width: 0;
+  background: #fffefa;
+  color: #101714;
+}
+
+.home-actions .button.secondary {
+  border-color: rgba(255, 254, 250, 0.16);
+  background: rgba(255, 254, 250, 0.08);
+  color: #fffefa;
+}
+
+.quick-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14rpx;
+  margin-top: 28rpx;
+}
+
+.quick-item {
+  border: 1rpx solid rgba(255, 254, 250, 0.12);
+  border-radius: 22rpx;
+  padding: 18rpx;
+  background: rgba(255, 254, 250, 0.06);
+}
+
+.quick-item text:first-child {
+  display: block;
+  color: #fffefa;
+  font-size: 26rpx;
+  font-weight: 820;
+}
+
+.quick-item text:last-child {
+  display: block;
+  margin-top: 6rpx;
+  color: rgba(255, 254, 250, 0.58);
+  font-size: 22rpx;
+  line-height: 1.45;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 34rpx 0 18rpx;
+}
+
+.section-heading .section-title {
+  margin: 0;
+}
+
+.section-more {
+  border-radius: 999rpx;
+  padding: 10rpx 18rpx;
+  background: #fffefa;
+  color: #34443b;
+  font-size: 24rpx;
+  font-weight: 760;
+}

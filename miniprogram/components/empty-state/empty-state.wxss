@@ -1,0 +1,20 @@
+.empty-state {
+  border: 1rpx dashed rgba(16, 23, 20, 0.18);
+  border-radius: 24rpx;
+  padding: 42rpx 30rpx;
+  background: rgba(255, 254, 250, 0.72);
+  text-align: center;
+}
+
+.title {
+  color: #101714;
+  font-size: 30rpx;
+  font-weight: 820;
+}
+
+.text {
+  margin-top: 12rpx;
+  color: #69746d;
+  font-size: 26rpx;
+  line-height: 1.6;
+}

@@ -13,6 +13,7 @@ process.env.STORE_DRIVER = "json";
 process.env.YK_DB_FILE = path.join(tmpDir, "youkong-db.json");
 process.env.YKADMIN_NICKNAME = "有空管理员";
 process.env.YKADMIN_PHONE = "18800000000";
+process.env.WECHAT_MP_ACTIVITY_REMINDER_TEMPLATE_IDS = "tmpl_smoke_activity";
 
 const { createApp, store } = require("../lib/app");
 const { shouldCallAi } = require("../lib/ai-analysis/service");
@@ -160,6 +161,7 @@ async function createActivity(token, overrides = {}) {
   const form = new FormData();
   form.set("title", overrides.title || "自动化测试活动");
   form.set("moduleId", modules.modules[0].id);
+  form.set("seriesId", overrides.seriesId || "");
   form.set("collaboratorId", overrides.collaboratorId || collaborators[0].id);
   form.set("initiator", overrides.initiator || "成员A");
   form.set("startsAt", overrides.startsAt || localDateTimeFromNow(30));
@@ -197,6 +199,7 @@ function activityUpdateForm(activity, overrides = {}) {
   const showInitiatorContact = overrides.showInitiatorContact !== undefined ? overrides.showInitiatorContact : activity.showInitiatorContact;
   form.set("title", overrides.title || activity.title || "自动化测试活动");
   form.set("moduleId", overrides.moduleId || activity.moduleId);
+  form.set("seriesId", overrides.seriesId ?? activity.seriesId ?? "");
   form.set("collaboratorId", overrides.collaboratorId ?? activity.collaboratorId ?? "");
   form.set("initiator", overrides.initiator || activity.initiator || "成员A");
   form.set("startsAt", overrides.startsAt || activity.startsAt || localDateTimeFromNow(30));
@@ -400,6 +403,32 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(qrResponse.ok, true);
   assert.match(qrResponse.headers.get("content-type") || "", /image\/svg\+xml/);
   assert.match(await qrResponse.text(), /<svg/);
+  const qrDataResponse = await fetch(`${baseUrl}/api/qr-data?text=${encodeURIComponent(`${baseUrl}/activity.html?id=demo`)}`);
+  assert.equal(qrDataResponse.ok, true);
+  const qrData = await qrDataResponse.json();
+  assert.ok(qrData.size >= 21);
+  assert.equal(qrData.data.length, qrData.size * qrData.size);
+  const originalWechatSecret = process.env.WECHAT_MP_SECRET;
+  delete process.env.WECHAT_MP_SECRET;
+  try {
+    const missingWechatSecretResponse = await fetch(`${baseUrl}/api/identity-sync/wechat/bind`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        "X-YK-Client-Id": testClientId,
+        "X-YK-Fingerprint": "fp_smoke_test",
+      },
+      body: JSON.stringify({ code: "test-code" }),
+    });
+    assert.equal(missingWechatSecretResponse.status, 503);
+    const missingWechatSecret = await missingWechatSecretResponse.json();
+    assert.equal(missingWechatSecret.errorCode, "WECHAT_MP_SECRET_MISSING");
+    assert.match(missingWechatSecret.error, /AppSecret/);
+  } finally {
+    if (originalWechatSecret === undefined) delete process.env.WECHAT_MP_SECRET;
+    else process.env.WECHAT_MP_SECRET = originalWechatSecret;
+  }
   const richImageBuffer = fs.readFileSync(path.join(__dirname, "..", "assets", "youkong-gathering.png"));
   const richImageForm = new FormData();
   richImageForm.set("image", new Blob([richImageBuffer], { type: "image/png" }), "rich-body.png");
@@ -451,10 +480,16 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const memberTemplates = await request("/api/templates?page=1&pageSize=10&q=放映", {}, member.token);
   assert.ok(memberTemplates.templates.some((item) => item.id === template.template.id));
 
+  const activitySeries = await request("/api/activity-series");
+  assert.ok(activitySeries.series.length >= 3);
+  const screeningSeries = activitySeries.series.find((item) => item.id === "screening") || activitySeries.series[0];
+  assert.equal(screeningSeries.enabled, true);
+
   const longMeetingUrl = `https://meeting.tencent.com/dm/${"YK".repeat(120)}?meeting_code=${"1234567890".repeat(12)}`;
   const longDescriptionWithImage = `<h1>活动段落标题</h1><p>${"有".repeat(48500)}</p><img src="${richImage.url}" alt="正文图">`;
   const created = await createActivity(member.token, {
     title: "分页和日志测试活动",
+    seriesId: screeningSeries.id,
     endsAt: localDateTimeFromNow(30, 22, 0),
     showInitiatorContact: true,
     initiatorContact: "13300002222",
@@ -463,6 +498,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(created.activity.capacity, 99);
   assert.equal(created.activity.registrationCount, 0);
   assert.equal(created.activity.status, "published");
+  assert.equal(created.activity.seriesId, screeningSeries.id);
+  assert.equal(created.activity.seriesName, screeningSeries.name);
   assert.ok(created.activity.confidenceScore <= 100);
   assert.equal(created.activity.endsAt, localDateTimeFromNow(30, 22, 0));
   assert.equal(created.activity.showInitiatorContact, true);
@@ -479,6 +516,21 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const shortPublicProfile = await request(`/api/profiles/${encodeURIComponent(created.activity.initiatorProfile.communityId)}`);
   assert.equal(shortPublicProfile.profile.displayName, "海旭测试");
   assert.ok(shortPublicProfile.activities.some((activity) => activity.id === created.activity.id));
+  const seriesFiltered = await request(`/api/activities?all=true&seriesId=${encodeURIComponent(screeningSeries.id)}&page=1&pageSize=20`, {}, admin.token);
+  assert.ok(seriesFiltered.activities.some((activity) => activity.id === created.activity.id));
+  const mpConfig = await request("/api/miniprogram/config");
+  assert.equal(mpConfig.notifications.enabled, true);
+  assert.deepEqual(mpConfig.notifications.scenes.activityReminder.templateIds, ["tmpl_smoke_activity"]);
+  const reminderSubscription = await request(`/api/activities/${created.activity.id}/notification-subscriptions`, {
+    method: "POST",
+    body: {
+      source: "wechat_miniprogram",
+      scene: "activity_reminder",
+      templateIds: ["tmpl_smoke_activity"],
+      authorization: { tmpl_smoke_activity: "accept" },
+    },
+  });
+  assert.equal(reminderSubscription.subscription.status, "accepted");
 
   const coHeaders = {
     "X-YK-Client-Id": `${testClientId}_cohost`,
@@ -710,6 +762,15 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   });
   const syncInviteToken = new URL(syncInvite.invite.url).searchParams.get("token");
   assert.ok(syncInviteToken);
+  const expectedPublicOrigin = process.env.PUBLIC_SITE_ORIGIN
+    || String(process.env.CORS_ORIGINS || "")
+      .split(",")
+      .map((item) => item.trim())
+      .find((item) => /^https?:\/\//.test(item) && !/\.service\.tcloudbase\./.test(item))
+    || "https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com";
+  assert.equal(new URL(syncInvite.invite.url).origin, expectedPublicOrigin.replace(/\/$/, ""));
+  assert.equal(syncInvite.invite.url.includes(".service.tcloudbase.com"), false);
+  assert.match(syncInvite.invite.miniPath, /^\/pages\/identity-sync\/identity-sync\?token=/);
   const syncPreview = await request(`/api/identity-sync/invites/${encodeURIComponent(syncInviteToken)}`, {
     headers: syncBHeaders,
   });
@@ -1520,8 +1581,26 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.ok(myFeedbacks.feedbacks.some((feedback) => feedback.id === approvedFeedback.feedback.id));
     const managedFeedbacks = await request(`/api/activities/${expired.activity.id}/feedbacks?manage=true&page=1&pageSize=10`, {}, member.token);
     assert.ok(managedFeedbacks.feedbacks.some((feedback) => feedback.id === approvedFeedback.feedback.id));
+    const feedbackRecap = await request(`/api/activities/${expired.activity.id}/recap`, {}, member.token);
+    assert.equal(feedbackRecap.activity.id, expired.activity.id);
+    assert.ok(feedbackRecap.metrics.feedbackCount >= 1);
+    assert.ok(feedbackRecap.metrics.approvedFeedbackCount >= 1);
+    assert.ok(feedbackRecap.topFeedbacks.some((feedback) => feedback.id === approvedFeedback.feedback.id));
+    assert.match(feedbackRecap.summaryText, /活动反馈|精选反馈/);
     const publicFeedbackDetail = await request(`/api/activities/${expired.activity.id}`);
     assert.ok(publicFeedbackDetail.activity.publicFeedbacks.some((feedback) => feedback.id === approvedFeedback.feedback.id));
+    const ownerHiddenApprovedFeedback = await request(`/api/activities/${expired.activity.id}/feedbacks/${approvedFeedback.feedback.id}/review`, {
+      method: "POST",
+      body: { action: "reject" },
+    }, member.token);
+    assert.equal(ownerHiddenApprovedFeedback.feedback.status, "rejected");
+    const publicFeedbackAfterOwnerHide = await request(`/api/activities/${expired.activity.id}`);
+    assert.equal(publicFeedbackAfterOwnerHide.activity.publicFeedbacks.some((feedback) => feedback.id === approvedFeedback.feedback.id), false);
+    const ownerRestoredApprovedFeedback = await request(`/api/activities/${expired.activity.id}/feedbacks/${approvedFeedback.feedback.id}/review`, {
+      method: "POST",
+      body: { action: "approve" },
+    }, member.token);
+    assert.equal(ownerRestoredApprovedFeedback.feedback.status, "approved");
     const hiddenFeedbackActivity = await createActivity(member.token, {
       title: "不展示反馈测试活动",
       startsAt: localDateTimeFromNow(-2, 20, 0),

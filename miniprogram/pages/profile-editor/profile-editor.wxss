@@ -1,0 +1,73 @@
+.compact {
+  padding-bottom: 16rpx;
+}
+
+.form-card {
+  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border-radius: 24rpx;
+  padding: 28rpx;
+  background: #fffefa;
+}
+
+.avatar-editor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14rpx;
+  padding: 20rpx 0 10rpx;
+}
+
+.avatar-editor image,
+.avatar-placeholder {
+  width: 144rpx;
+  height: 144rpx;
+  border-radius: 48rpx;
+  background: #dfe8dc;
+}
+
+.avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #101714;
+  font-size: 54rpx;
+  font-weight: 880;
+}
+
+.avatar-action {
+  color: #4d5b53;
+  font-size: 25rpx;
+  font-weight: 760;
+}
+
+.field {
+  margin-top: 28rpx;
+}
+
+.field-label {
+  color: #101714;
+  font-size: 28rpx;
+  font-weight: 780;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  margin-top: 14rpx;
+  border: 1rpx solid rgba(16, 23, 20, 0.12);
+  border-radius: 20rpx;
+  background: #f8f5ee;
+  color: #101714;
+  font-size: 28rpx;
+}
+
+.input {
+  min-height: 88rpx;
+  padding: 0 24rpx;
+}
+
+.textarea {
+  min-height: 180rpx;
+  padding: 22rpx 24rpx;
+  line-height: 1.68;
+}
