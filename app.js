@@ -142,6 +142,19 @@ function registrationTokenFor(activityId, registrationId) {
   return readRegistrationTokens()[`${activityId}:${registrationId}`] || "";
 }
 
+function registrationTokenEntryForActivity(activityId) {
+  const id = String(activityId || "");
+  if (!id) return null;
+  const entry = Object.entries(readRegistrationTokens()).find(([key, token]) => {
+    const [entryActivityId, registrationId] = key.split(":");
+    return entryActivityId === id && registrationId && token;
+  });
+  if (!entry) return null;
+  const [key, token] = entry;
+  const [, registrationId] = key.split(":");
+  return { activityId: id, registrationId, token };
+}
+
 function rememberActivityInterest(activityId) {
   if (!activityId) return;
   const interests = readActivityInterests();
@@ -1818,7 +1831,7 @@ function renderMyRegistrationRows(list, registrations = []) {
     const token = registrationTokenFor(activity.id, registration.id);
     const detailUrl = token
       ? `success.html?activity=${encodeURIComponent(activity.id)}&registration=${encodeURIComponent(registration.id)}&token=${encodeURIComponent(token)}`
-      : `activity.html?id=${encodeURIComponent(activity.id)}`;
+      : `success.html?activity=${encodeURIComponent(activity.id)}&registration=${encodeURIComponent(registration.id)}`;
     return `
       <article class="event-row compact-row">
         <div>
@@ -1827,7 +1840,7 @@ function renderMyRegistrationRows(list, registrations = []) {
           <p>${escapeHtml(activity.location || "地点待定")} · ${formatActivityTime(activity)} · 报名昵称：${escapeHtml(registration.nickname)}</p>
         </div>
         <div class="row-actions">
-          <a class="button outline" href="${detailUrl}">查看详情</a>
+          <a class="button outline" href="${detailUrl}">查看我的报名</a>
         </div>
       </article>
     `;
@@ -3043,7 +3056,24 @@ async function initActivityPage() {
     return;
   }
 
-  const { activity } = await api.get(`/api/activities/${id}`);
+  let { activity } = await api.get(`/api/activities/${id}`);
+  if (activity && !activity.myRegistration) {
+    const savedRegistration = registrationTokenEntryForActivity(activity.id);
+    if (savedRegistration) {
+      try {
+        const confirmed = await api.get(`/api/activities/${encodeURIComponent(activity.id)}/registrations/${encodeURIComponent(savedRegistration.registrationId)}?token=${encodeURIComponent(savedRegistration.token)}`);
+        if (confirmed.registration) {
+          activity = {
+            ...(confirmed.activity || activity),
+            myRegistration: confirmed.registration,
+            hasMyRegistration: true,
+          };
+        }
+      } catch {
+        // 本地报名凭证失效时，继续按服务端活动状态展示。
+      }
+    }
+  }
   root.innerHTML = `
     <section class="activity-hero">
       <div>
@@ -3062,9 +3092,9 @@ async function initActivityPage() {
         ${renderCoInitiatorList(activity)}
         ${renderInitiatorContact(activity)}
         <div class="activity-share-actions" aria-label="活动分享操作">
-          <button class="button ghost" type="button" data-download-poster>下载活动邀请函</button>
-          <button class="button outline" type="button" data-copy-registration-link>复制报名链接</button>
-          <button class="button outline" type="button" data-download-calendar>加到日历</button>
+          <button class="button ghost" type="button" data-download-activity-qr>下载活动二维码</button>
+          <button class="button outline" type="button" data-copy-registration-link>复制链接</button>
+          <button class="button outline" type="button" data-share-mini-program-link>分享小程序链接</button>
         </div>
       </div>
       ${
@@ -3077,8 +3107,19 @@ async function initActivityPage() {
       <div class="wrap activity-layout">
         <article class="article-content">${descriptionToHtml(activity.description)}</article>
         ${
-          canRegisterActivity(activity)
+          activity.myRegistration
             ? `<aside class="form-note registration-note" id="activity-registration">
+                <h3>参与活动</h3>
+                <p class="muted-text">你已经报名过这个活动。</p>
+                <div class="my-registration-box">
+                  <span>报名昵称</span>
+                  <strong>${escapeHtml(activity.myRegistration.nickname || "有空朋友")}</strong>
+                </div>
+                <a class="button primary full-button" href="success.html?activity=${encodeURIComponent(activity.id)}&registration=${encodeURIComponent(activity.myRegistration.id)}">查看我的报名</a>
+                ${renderCommunityReportBox(activity)}
+              </aside>`
+            : canRegisterActivity(activity)
+              ? `<aside class="form-note registration-note" id="activity-registration">
                 <h3>报名这个活动</h3>
                 <p class="muted-text">只需要留下一个昵称，方便发起人现场确认。</p>
                 ${renderActivityFormationPanel(activity)}
@@ -3090,7 +3131,7 @@ async function initActivityPage() {
                 </form>
                 ${renderCommunityReportBox(activity)}
               </aside>`
-            : `<aside class="form-note">
+              : `<aside class="form-note">
                 <h3>暂不开放报名</h3>
                 ${renderActivityFormationPanel(activity)}
                 <p class="muted-text">${registrationClosedText(activity)}</p>
@@ -3099,7 +3140,7 @@ async function initActivityPage() {
         }
       </div>
     </section>
-    ${canRegisterActivity(activity) ? `<a class="mobile-sticky-cta" href="#activity-registration">报名这个活动</a>` : ""}
+    ${activity.myRegistration || canRegisterActivity(activity) ? `<a class="mobile-sticky-cta" href="#activity-registration">${activity.myRegistration ? "查看我的报名" : "报名这个活动"}</a>` : ""}
     ${renderPublicRegistrationNames(activity)}
     ${renderPublicFeedbacks(activity)}
     ${renderCoInitiatorManagementSection(activity)}
@@ -3162,13 +3203,14 @@ async function initSuccessPage() {
   const activityId = params.get("activity");
   const registrationId = params.get("registration");
   const registrationToken = params.get("token") || "";
-  if (!activityId || !registrationId || !registrationToken) {
+  if (!activityId || !registrationId) {
     root.innerHTML = `<div class="empty-state"><strong>缺少报名信息</strong><p>请从活动详情页重新报名。</p></div>`;
     return;
   }
 
   try {
-    const { activity, registration } = await api.get(`/api/activities/${activityId}/registrations/${registrationId}?token=${encodeURIComponent(registrationToken)}`);
+    const query = registrationToken ? `?token=${encodeURIComponent(registrationToken)}` : "";
+    const { activity, registration } = await api.get(`/api/activities/${activityId}/registrations/${registrationId}${query}`);
     root.innerHTML = `
       <section class="success-hero">
         <div class="wrap success-card ticket-card">
@@ -3189,10 +3231,18 @@ async function initSuccessPage() {
             </div>
           </div>
           ${renderInitiatorCard(activity)}
-          <div class="button-row">
-            <a class="button primary" href="activity.html?id=${encodeURIComponent(activity.id)}">查看活动</a>
-            <button class="button ghost" type="button" data-download-poster>下载活动邀请函</button>
-            <button class="button outline danger-soft" type="button" data-cancel-registration>取消报名</button>
+          <div class="success-actions">
+            <div class="button-stack">
+              <a class="button primary" href="activity.html?id=${encodeURIComponent(activity.id)}">查看活动</a>
+              <a class="button ghost" href="registrations.html">查看我的报名</a>
+            </div>
+            <div class="button-stack">
+              <button class="button ghost" type="button" data-download-poster>下载活动邀请函</button>
+              <button class="button outline" type="button" data-share-mini-program-link>分享小程序链接</button>
+              <button class="button outline" type="button" data-download-calendar>加到日历</button>
+              <a class="button outline" href="feedback.html?id=${encodeURIComponent(activity.id)}">写反馈</a>
+              <button class="button outline danger-soft" type="button" data-cancel-registration>取消报名</button>
+            </div>
             <a class="button ghost" href="participate.html">看看其他活动</a>
           </div>
         </div>
@@ -3206,7 +3256,7 @@ async function initSuccessPage() {
     });
     qs("[data-cancel-registration]", root)?.addEventListener("click", async () => {
       if (!confirm("确定取消这次报名吗？取消后如需参加，需要重新报名。")) return;
-      await api.post(`/api/activities/${activityId}/registrations/${registrationId}/cancel`, { token: registrationToken });
+      await api.post(`/api/activities/${activityId}/registrations/${registrationId}/cancel`, registrationToken ? { token: registrationToken } : {});
       showToast("取消成功");
       root.innerHTML = `
         <section class="success-hero">

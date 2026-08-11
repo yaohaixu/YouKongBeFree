@@ -4,11 +4,13 @@
   justify-content: center;
   width: 100%;
   min-height: 320rpx;
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
   border-radius: 24rpx;
-  background: #dfe8dc;
-  color: #2c3831;
+  background: linear-gradient(135deg, #dfe8dc 0%, #f3f6f0 100%);
+  color: #22312a;
   font-size: 34rpx;
   font-weight: 850;
+  box-shadow: 0 12rpx 30rpx rgba(20, 28, 23, 0.055);
 }
 
 .meta {
@@ -23,6 +25,7 @@
   color: #101714;
   font-size: 46rpx;
   font-weight: 880;
+  letter-spacing: 0;
   line-height: 1.18;
 }
 
@@ -31,21 +34,22 @@
   flex-direction: column;
   gap: 10rpx;
   margin-top: 24rpx;
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
-  border-radius: 26rpx;
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
+  border-radius: 24rpx;
   padding: 24rpx;
-  background: #fffefa;
+  background: #fcfcfa;
   color: #415047;
   font-size: 27rpx;
   line-height: 1.55;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
 }
 
 .formation-card {
   margin-top: 18rpx;
   border: 1rpx solid rgba(88, 111, 86, 0.18);
-  border-radius: 26rpx;
+  border-radius: 24rpx;
   padding: 22rpx;
-  background: #f7f2e8;
+  background: #f3f5f0;
 }
 
 .formation-title {
@@ -78,14 +82,17 @@
 }
 
 .description {
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
-  border-radius: 26rpx;
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
+  border-radius: 24rpx;
   padding: 26rpx;
-  background: #fffefa;
+  background: #fcfcfa;
   color: #2f3b34;
   font-size: 29rpx;
   line-height: 1.78;
   white-space: pre-wrap;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .rich-description {
@@ -96,16 +103,17 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12rpx;
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
-  border-radius: 26rpx;
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
+  border-radius: 24rpx;
   padding: 22rpx;
-  background: #fffefa;
+  background: #fcfcfa;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
 }
 
 .name-list text {
   border-radius: 999rpx;
   padding: 8rpx 16rpx;
-  background: #e8eee6;
+  background: #e9eee8;
   color: #314036;
   font-size: 24rpx;
   font-weight: 760;
@@ -118,10 +126,11 @@
 }
 
 .feedback-card {
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
-  border-radius: 26rpx;
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
+  border-radius: 24rpx;
   padding: 22rpx;
-  background: #fffefa;
+  background: #fcfcfa;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
 }
 
 .feedback-line {
@@ -153,10 +162,23 @@
 .manage-card,
 .share-card,
 .report-card {
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
-  border-radius: 26rpx;
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
+  border-radius: 24rpx;
   padding: 22rpx;
-  background: #fffefa;
+  background: #fcfcfa;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
+}
+
+.share-card .button-stack {
+  margin-top: 18rpx;
+}
+
+.register-card .button-stack {
+  margin-top: 18rpx;
+}
+
+.manage-card .button-stack {
+  margin-top: 18rpx;
 }
 
 .invite-box {
@@ -204,10 +226,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
   border-radius: 24rpx;
   padding: 18rpx;
-  background: #fffefa;
+  background: #fcfcfa;
 }
 
 .co-profile {
@@ -256,7 +278,7 @@
   margin-top: 16rpx;
   border: 1rpx solid rgba(16, 23, 20, 0.12);
   border-radius: 20rpx;
-  background: #f8f5ee;
+  background: #f8f9f6;
   color: #101714;
   font-size: 28rpx;
 }
@@ -274,10 +296,18 @@
 }
 
 .register-card {
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
-  border-radius: 26rpx;
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
+  border-radius: 24rpx;
   padding: 22rpx;
-  background: #fffefa;
+  background: #fcfcfa;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
+}
+
+.registered-name {
+  margin-top: 12rpx;
+  color: #101714;
+  font-size: 28rpx;
+  font-weight: 760;
 }
 
 .nickname-input {
@@ -285,7 +315,7 @@
   border: 1rpx solid rgba(16, 23, 20, 0.14);
   border-radius: 22rpx;
   padding: 0 22rpx;
-  background: #f8f5ee;
+  background: #f8f9f6;
   color: #101714;
   font-size: 29rpx;
 }

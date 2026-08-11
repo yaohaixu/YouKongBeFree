@@ -27,6 +27,19 @@ function stripHtml(value = "") {
     .trim();
 }
 
+function responsiveRichTextHtml(value = "") {
+  return String(value || "").replace(/<img\b([^>]*)>/gi, (_match, attributes = "") => {
+    const cleanedAttributes = String(attributes || "")
+      .replace(/\sstyle\s*=\s*"[^"]*"/gi, "")
+      .replace(/\sstyle\s*=\s*'[^']*'/gi, "")
+      .replace(/\s(width|height)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+      .replace(/\s\/\s*$/g, "")
+      .trim();
+    const spacing = cleanedAttributes ? " " : "";
+    return `<img${spacing}${cleanedAttributes} style="max-width:100%;width:100%;height:auto;display:block;margin:8px 0;border-radius:12px;" width="100%">`;
+  });
+}
+
 function activitySummary(activity = {}) {
   return stripHtml(activity.summary || activity.description || "").slice(0, 72);
 }
@@ -103,6 +116,7 @@ module.exports = {
   formatActivityTime,
   formatDateTime,
   stripHtml,
+  responsiveRichTextHtml,
   activitySummary,
   toActivityView,
   toRegistrationView,

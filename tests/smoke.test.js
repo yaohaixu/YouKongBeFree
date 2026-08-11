@@ -2073,13 +2073,13 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await page.waitForLoadState("networkidle");
     await page.evaluate(() => window.youkongTheme?.setMode("light"));
 	    const shareState = await page.evaluate(() => ({
-	      poster: Boolean(document.querySelector("[data-download-poster]")),
-	      posterText: document.querySelector("[data-download-poster]")?.textContent.trim() || "",
+	      activityQr: Boolean(document.querySelector("[data-download-activity-qr]")),
+	      activityQrText: document.querySelector("[data-download-activity-qr]")?.textContent.trim() || "",
 	      copy: Boolean(document.querySelector("[data-copy-registration-link]")),
-	      calendar: Boolean(document.querySelector("[data-download-calendar]")),
+	      share: Boolean(document.querySelector("[data-share-mini-program-link]")),
 	      phoneField: Boolean(document.querySelector('[data-register-form] input[name="phone"]')),
-	      nicknameField: Boolean(document.querySelector('[data-register-form] input[name="nickname"]')),
-	      richHeading: Boolean(document.querySelector(".article-content h1")),
+      nicknameField: Boolean(document.querySelector('[data-register-form] input[name="nickname"]')),
+      richHeading: Boolean(document.querySelector(".article-content h1")),
 	      richImage: Boolean(document.querySelector(".article-content img")),
 	      initiatorLink: document.querySelector(".initiator-link")?.getAttribute("href") || "",
 	      initiatorCard: Boolean(document.querySelector(".initiator-card")),
@@ -2088,11 +2088,11 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       detailLineColor: getComputedStyle(document.querySelector(".activity-hero > div:first-child > p")).color,
       detailLineWeight: Number(getComputedStyle(document.querySelector(".activity-hero > div:first-child > p")).fontWeight),
 	    }));
-	    assert.equal(shareState.poster, true);
-	    assert.equal(shareState.posterText, "下载活动邀请函");
+	    assert.equal(shareState.activityQr, true);
+	    assert.equal(shareState.activityQrText, "下载活动二维码");
 	    assert.equal(shareState.copy, true);
-	    assert.equal(shareState.calendar, true);
-	    assert.equal(shareState.phoneField, false);
+	    assert.equal(shareState.share, true);
+    assert.equal(shareState.phoneField, false);
 	    assert.equal(shareState.nicknameField, true);
 	    assert.equal(shareState.richHeading, true);
     assert.equal(shareState.richImage, true);
@@ -2108,6 +2108,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     await page.evaluate(() => window.youkongTheme?.setMode("light"));
     const successPosterState = await page.evaluate(() => ({
       poster: Boolean(document.querySelector("[data-download-poster]")),
+      share: Boolean(document.querySelector("[data-share-mini-program-link]")),
       activityShareLoaded: Boolean(window.youkongActivityShare),
       summaryColor: getComputedStyle(document.querySelector(".success-card > p:not(.eyebrow)")).color,
       summaryWeight: Number(getComputedStyle(document.querySelector(".success-card > p:not(.eyebrow)")).fontWeight),
@@ -2115,6 +2116,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     }));
     assert.deepEqual(successPosterState, {
       poster: true,
+      share: true,
       activityShareLoaded: true,
       summaryColor: "rgb(43, 48, 43)",
       summaryWeight: 620,

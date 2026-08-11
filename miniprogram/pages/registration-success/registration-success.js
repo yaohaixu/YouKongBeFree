@@ -40,13 +40,14 @@ Page({
 
   async loadConfirmation() {
     const { activityId, registrationId, token } = this.data;
-    if (!activityId || !registrationId || !token) {
+    if (!activityId || !registrationId) {
       this.setData({ loading: false, error: "缺少报名确认信息" });
       return;
     }
     this.setData({ loading: true, error: "" });
     try {
-      const data = await api.get(`/api/activities/${encodeURIComponent(activityId)}/registrations/${encodeURIComponent(registrationId)}?token=${encodeURIComponent(token)}`);
+      const query = token ? `?token=${encodeURIComponent(token)}` : "";
+      const data = await api.get(`/api/activities/${encodeURIComponent(activityId)}/registrations/${encodeURIComponent(registrationId)}${query}`);
       const activity = decorateActivity(data.activity || {});
       const registration = data.registration || {};
       registrationToken.save(registration, token);
@@ -75,9 +76,39 @@ Page({
     wx.setClipboardData({ data: shareImage.activityUrl(id) });
   },
 
+  addToCalendar() {
+    const activity = this.data.activity || {};
+    if (!activity.startsAt) {
+      wx.showToast({ title: "活动时间不正确", icon: "none" });
+      return;
+    }
+    if (!wx.addPhoneCalendar) {
+      wx.showToast({ title: "当前微信版本暂不支持加日历", icon: "none" });
+      return;
+    }
+    const start = new Date(activity.startsAt);
+    const end = activity.endsAt ? new Date(activity.endsAt) : new Date(start.getTime() + 2 * 60 * 60 * 1000);
+    wx.addPhoneCalendar({
+      title: activity.title || "有空客厅活动",
+      startTime: Math.floor(start.getTime() / 1000),
+      endTime: Math.floor(end.getTime() / 1000),
+      location: activity.location || "有空客厅",
+      description: activity.displayFormation || activity.displayTime || "",
+      success: () => wx.showToast({ title: "已打开日历", icon: "success" }),
+      fail: (error) => wx.showToast({ title: error.errMsg || "加日历失败", icon: "none" })
+    });
+  },
+
+  goFeedback() {
+    const activity = this.data.activity || {};
+    const id = activity.id || this.data.activityId;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/feedback/feedback?id=${encodeURIComponent(id)}` });
+  },
+
   async cancelRegistration() {
     const { activityId, registrationId, token, cancelling, cancelled } = this.data;
-    if (!activityId || !registrationId || !token || cancelling || cancelled) return;
+    if (!activityId || !registrationId || cancelling || cancelled) return;
     wx.showModal({
       title: "取消报名",
       content: `确认取消「${this.data.activity.title || "这个活动"}」的报名吗？`,
@@ -88,7 +119,7 @@ Page({
         this.setData({ cancelling: true });
         wx.showLoading({ title: "取消中..." });
         try {
-          await api.post(`/api/activities/${encodeURIComponent(activityId)}/registrations/${encodeURIComponent(registrationId)}/cancel`, { token });
+          await api.post(`/api/activities/${encodeURIComponent(activityId)}/registrations/${encodeURIComponent(registrationId)}/cancel`, token ? { token } : {});
           registrationToken.forget(registrationId);
           wx.hideLoading();
           this.setData({ cancelling: false, cancelled: true });

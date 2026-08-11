@@ -1,9 +1,10 @@
 .empty-state {
-  border: 1rpx dashed rgba(16, 23, 20, 0.18);
+  border: 1rpx dashed rgba(16, 23, 20, 0.16);
   border-radius: 24rpx;
   padding: 42rpx 30rpx;
-  background: rgba(255, 254, 250, 0.72);
+  background: rgba(252, 252, 250, 0.78);
   text-align: center;
+  box-shadow: 0 8rpx 22rpx rgba(20, 28, 23, 0.035);
 }
 
 .title {

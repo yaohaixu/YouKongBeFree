@@ -10,7 +10,13 @@
   <view wx:else>
     <view class="identity-card {{identitySync.hasNetwork ? 'active' : ''}}">
       <view class="identity-top">
-        <view class="identity-icon">ID</view>
+        <view class="identity-icon yk-icon yk-icon-sync">
+          <view class="icon-line-one"></view>
+          <view class="icon-line-two"></view>
+          <view class="icon-node node-a"></view>
+          <view class="icon-node node-b"></view>
+          <view class="icon-node node-c"></view>
+        </view>
         <view>
           <view class="identity-title">{{identitySync.hasNetwork ? "身份网络已开启" : "当前设备未开启同步"}}</view>
           <view class="identity-text">{{identitySync.displayNetworkText}}</view>
@@ -31,7 +37,10 @@
 
     <view class="identity-card wechat-card {{identitySync.hasWechatBinding ? 'active' : ''}}">
       <view class="identity-top">
-        <view class="identity-icon wechat">微</view>
+        <view class="identity-icon wechat yk-icon yk-icon-feedback">
+          <view class="icon-bubble"></view>
+          <view class="icon-tail"></view>
+        </view>
         <view>
           <view class="identity-title">{{identitySync.hasWechatBinding ? "已绑定微信" : "绑定微信找回身份"}}</view>
           <view class="identity-text">{{identitySync.wechatText}}</view>

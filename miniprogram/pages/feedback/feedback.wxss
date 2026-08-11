@@ -7,10 +7,11 @@
 }
 
 .form-card {
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
   border-radius: 24rpx;
   padding: 28rpx;
-  background: #fffefa;
+  background: #fcfcfa;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
 }
 
 .field {
@@ -34,7 +35,7 @@
   border: 1rpx solid rgba(16, 23, 20, 0.12);
   border-radius: 20rpx;
   padding: 22rpx 24rpx;
-  background: #f8f5ee;
+  background: #f8f9f6;
   color: #101714;
   font-size: 28rpx;
   line-height: 1.68;
@@ -48,5 +49,6 @@
   z-index: 20;
   padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom));
   border-top: 1rpx solid rgba(16, 23, 20, 0.08);
-  background: rgba(255, 254, 250, 0.96);
+  background: rgba(252, 252, 250, 0.96);
+  box-shadow: 0 -12rpx 30rpx rgba(20, 28, 23, 0.05);
 }

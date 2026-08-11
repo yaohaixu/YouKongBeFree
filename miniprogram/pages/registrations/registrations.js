@@ -38,7 +38,7 @@ Page({
         const saved = tokens[item.id] || {};
         return {
           ...view,
-          canCancel: Boolean(saved.accessToken),
+          canCancel: true,
           accessToken: saved.accessToken || ""
         };
       });
@@ -61,14 +61,16 @@ Page({
 
   openActivity(event) {
     const id = event.currentTarget.dataset.id;
+    const registrationId = event.currentTarget.dataset.registrationId;
     if (!id) return;
-    wx.navigateTo({ url: `/pages/activity-detail/activity-detail?id=${encodeURIComponent(id)}` });
+    const query = registrationId ? `&registration=${encodeURIComponent(registrationId)}` : "";
+    wx.navigateTo({ url: `/pages/registration-success/registration-success?activity=${encodeURIComponent(id)}${query}` });
   },
 
   cancelRegistration(event) {
     const item = event.currentTarget.dataset.item;
-    if (!item || !item.id || !item.activity || !item.activity.id || !item.accessToken) {
-      wx.showToast({ title: "当前设备缺少取消凭证", icon: "none" });
+    if (!item || !item.id || !item.activity || !item.activity.id) {
+      wx.showToast({ title: "缺少报名信息", icon: "none" });
       return;
     }
     wx.showModal({
@@ -80,9 +82,9 @@ Page({
         if (!result.confirm) return;
         wx.showLoading({ title: "取消中..." });
         try {
-          await api.post(`/api/activities/${encodeURIComponent(item.activity.id)}/registrations/${encodeURIComponent(item.id)}/cancel`, {
+          await api.post(`/api/activities/${encodeURIComponent(item.activity.id)}/registrations/${encodeURIComponent(item.id)}/cancel`, item.accessToken ? {
             token: item.accessToken
-          });
+          } : {});
           registrationToken.forget(item.id);
           wx.hideLoading();
           wx.showToast({ title: "已取消", icon: "success" });

@@ -29,6 +29,19 @@ function get(registrationId) {
   return tokens[registrationId] || {};
 }
 
+function findByActivity(activityId) {
+  const id = String(activityId || "");
+  if (!id) return null;
+  const tokens = all();
+  const entry = Object.entries(tokens).find(([, value]) => value && value.activityId === id);
+  if (!entry) return null;
+  const [registrationId, value] = entry;
+  return {
+    id: registrationId,
+    ...value,
+  };
+}
+
 function forget(registrationId) {
   try {
     const tokens = all();
@@ -43,5 +56,6 @@ module.exports = {
   all,
   save,
   get,
+  findByActivity,
   forget,
 };

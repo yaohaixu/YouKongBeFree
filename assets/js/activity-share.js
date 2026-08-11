@@ -314,20 +314,109 @@
     if (blob) triggerDownload(blob, `${safeFileName(activity.title)}-活动邀请函.jpg`);
   }
 
+  async function downloadQrCard(activity, url, formatActivityTime) {
+    const width = 900;
+    const height = 1100;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    const bg = ctx.createLinearGradient(0, 0, width, height);
+    bg.addColorStop(0, "#f8f5ef");
+    bg.addColorStop(0.58, "#eef3ed");
+    bg.addColorStop(1, "#e2ebf2");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = "rgba(16, 23, 20, 0.08)";
+    drawRoundRect(ctx, 40, 40, width - 80, height - 80, 32);
+    ctx.fill();
+
+    ctx.fillStyle = "#17231f";
+    ctx.font = "800 58px -apple-system, BlinkMacSystemFont, sans-serif";
+    wrapText(ctx, posterTitle(activity), 76, 118, 748, 74, 3);
+
+    ctx.fillStyle = "#5c6d64";
+    ctx.font = "500 30px -apple-system, BlinkMacSystemFont, sans-serif";
+    wrapText(ctx, `${activity.location || "地点待定"} · ${formatActivityTime(activity)}`, 76, 250, 720, 44, 2);
+
+    const qrSize = 340;
+    const qrX = Math.round((width - qrSize) / 2);
+    const qrY = 370;
+    ctx.fillStyle = "#ffffff";
+    drawRoundRect(ctx, qrX - 24, qrY - 72, qrSize + 48, qrSize + 120, 30);
+    ctx.fill();
+    ctx.fillStyle = "#4f665f";
+    ctx.font = "700 28px -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("活动二维码", width / 2, qrY - 28);
+
+    let qrResource = null;
+    try {
+      qrResource = await loadQrImage(url);
+      ctx.drawImage(qrResource.image, qrX, qrY, qrSize, qrSize);
+    } catch {
+      ctx.fillStyle = "#e9f1ee";
+      ctx.fillRect(qrX, qrY, qrSize, qrSize);
+      ctx.fillStyle = "#17231f";
+      ctx.font = "700 28px -apple-system, BlinkMacSystemFont, sans-serif";
+      wrapText(ctx, "扫码查看活动", qrX + 30, qrY + 182, qrSize - 60, 38, 2);
+    } finally {
+      qrResource?.revoke();
+    }
+
+    ctx.textAlign = "start";
+    ctx.fillStyle = "#304540";
+    ctx.font = "400 28px -apple-system, BlinkMacSystemFont, sans-serif";
+    wrapText(ctx, "复制链接或直接扫码，活动页会保留最新的报名与分享信息。", 76, 830, 748, 40, 3);
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    if (blob) triggerDownload(blob, `${safeFileName(activity.title)}-活动二维码.jpg`);
+  }
+
   function mount(root, activity, options = {}) {
     if (!root || !activity) return;
     const url = new URL(`activity.html?id=${encodeURIComponent(activity.id)}`, location.href).href;
     const showToast = options.showToast || ((text) => window.dispatchEvent(new CustomEvent("youkong-toast", { detail: text })));
     const formatActivityTime = options.formatActivityTime || (() => activity.startsAt || "时间待定");
 
-    root.querySelector("[data-copy-registration-link]")?.addEventListener("click", async () => {
+    const qrButton = root.querySelector("[data-download-activity-qr]");
+    qrButton?.addEventListener("click", async () => {
       try {
-        await copyText(url);
-        showToast("报名链接已复制");
+        await downloadQrCard(activity, url, formatActivityTime);
+        showToast("活动二维码已生成");
       } catch {
-        showToast("复制失败，请手动复制地址栏链接");
+        showToast("二维码生成失败，请稍后再试");
       }
     });
+
+    const copyButton = root.querySelector("[data-copy-registration-link]");
+    copyButton?.addEventListener("click", async () => {
+      try {
+        await copyText(url);
+        showToast("链接已复制");
+      } catch {
+        showToast("复制失败，请手动复制链接");
+      }
+    });
+
+    root.querySelectorAll("[data-share-mini-program-link]").forEach((shareButton) => shareButton.addEventListener("click", async () => {
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: activity.title || "有空客厅活动",
+            text: `${activity.title || "有空客厅活动"} - 有空客厅`,
+            url,
+          });
+          showToast("链接已分享");
+          return;
+        }
+        await copyText(url);
+        showToast("链接已复制");
+      } catch {
+        showToast("复制失败，请手动复制链接");
+      }
+    }));
     root.querySelector("[data-download-calendar]")?.addEventListener("click", () => {
       downloadCalendar(activity, url);
       showToast("日历文件已生成");

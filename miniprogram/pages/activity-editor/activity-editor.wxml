@@ -183,16 +183,29 @@
           <view class="tool {{formats.underline ? 'active' : ''}}" data-name="underline" bindtap="formatRichText">U</view>
           <view class="tool" data-name="list" data-value="bullet" bindtap="formatRichText">•</view>
           <view class="tool" data-name="list" data-value="ordered" bindtap="formatRichText">1.</view>
-          <view class="tool" data-name="blockquote" bindtap="formatRichText">引</view>
           <view class="tool" bindtap="insertDivider">线</view>
+          <view class="tool wide muted-tool" bindtap="undoRichText">撤销</view>
+          <view class="tool wide muted-tool" bindtap="redoRichText">重做</view>
           <view class="tool wide" bindtap="insertRichImage">{{richImageUploading ? "上传中" : "图片"}}</view>
           <view class="tool wide muted-tool" bindtap="clearRichText">清空</view>
         </view>
-        <editor id="activityEditor" class="rich-editor" placeholder="写清楚想做什么、适合谁、需要准备什么。" read-only="{{editLockConflict}}" bindready="onRichEditorReady" bindinput="handleRichTextInput" bindstatuschange="handleRichTextStatusChange" />
-        <view class="field-hint">支持标题、列表、引用和正文图片。保存草稿不会触发安全分析，提交活动才会分析。</view>
+        <editor
+          id="activityEditor"
+          class="rich-editor"
+          style="height: {{richEditorHeight}}rpx;"
+          placeholder="写清楚想做什么、适合谁、需要准备什么。"
+          read-only="{{editLockConflict}}"
+          show-img-size
+          show-img-toolbar
+          show-img-resize
+          bindready="onRichEditorReady"
+          bindinput="handleRichTextInput"
+          bindstatuschange="handleRichTextStatusChange"
+        />
+        <view class="field-hint">支持标题、列表、分隔线和正文图片。编辑区会随内容自动变高，保存草稿不会触发安全分析。</view>
         <view wx:if="{{form.description}}" class="rich-preview">
           <view class="field-label">正文预览</view>
-          <rich-text class="rich-preview-body" nodes="{{form.description}}" />
+          <rich-text class="rich-preview-body" nodes="{{descriptionPreview}}" />
         </view>
       </view>
     </view>

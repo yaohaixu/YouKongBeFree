@@ -6594,14 +6594,39 @@ html[data-theme="light"] body.product-surface .row-actions .muted-text {
 }
 
 .activity-share-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 12px;
   margin-top: 22px;
+  max-width: 420px;
 }
 
 .activity-share-actions .button {
   min-height: 42px;
+  width: 100%;
+}
+
+.success-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.success-actions .button-row {
+  margin-top: 0;
+}
+
+.success-actions .button-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 0;
+}
+
+.success-actions .button-stack .button,
+.activity-share-actions .button {
+  width: 100%;
 }
 
 .template-form-panel .rich-canvas {
@@ -10151,6 +10176,26 @@ html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-my-pending] .eve
 
 .registration-note .muted-text {
   margin-bottom: 10px;
+}
+
+.my-registration-box {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--accent-soft));
+}
+
+.my-registration-box span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.my-registration-box strong {
+  color: var(--ink);
+  font-size: 1.06rem;
 }
 
 .full-button {

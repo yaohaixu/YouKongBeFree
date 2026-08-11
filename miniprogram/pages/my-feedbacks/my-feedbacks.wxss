@@ -4,10 +4,17 @@
 
 .feedback-card {
   margin-bottom: 18rpx;
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
-  border-radius: 26rpx;
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
+  border-radius: 24rpx;
   padding: 24rpx;
-  background: #fffefa;
+  background: #fcfcfa;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.feedback-card:active {
+  transform: scale(0.988);
+  box-shadow: 0 6rpx 16rpx rgba(20, 28, 23, 0.04);
 }
 
 .tag-row {
@@ -17,16 +24,17 @@
 }
 
 .tag {
+  border: 1rpx solid rgba(16, 23, 20, 0.06);
   border-radius: 999rpx;
   padding: 8rpx 16rpx;
   background: #101714;
-  color: #fffefa;
+  color: #ffffff;
   font-size: 23rpx;
   font-weight: 760;
 }
 
 .tag.soft {
-  background: #e8eee6;
+  background: #e9eee8;
   color: #314036;
 }
 

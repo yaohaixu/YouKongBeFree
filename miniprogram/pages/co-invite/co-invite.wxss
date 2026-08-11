@@ -3,10 +3,11 @@
 }
 
 .invite-card {
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
   border-radius: 24rpx;
   padding: 28rpx;
-  background: #fffefa;
+  background: #fcfcfa;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
 }
 
 .info-row {

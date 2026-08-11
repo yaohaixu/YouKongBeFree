@@ -1,27 +1,67 @@
 .home-hero {
-  padding-top: 40rpx;
-  background: #101714;
+  padding: 38rpx 32rpx 32rpx;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(145deg, #101714 0%, #17241c 58%, #203226 100%);
+  box-shadow: 0 20rpx 48rpx rgba(16, 23, 20, 0.18);
+}
+
+.home-hero::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2rpx;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(194, 232, 190, 0.6), rgba(255, 255, 255, 0));
+  content: "";
+}
+
+.home-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
 }
 
 .home-hero .title {
   max-width: 520rpx;
   color: #fffefa;
-  font-size: 54rpx;
+  font-size: 56rpx;
   line-height: 1.08;
 }
 
 .home-hero .body {
   max-width: 560rpx;
-  color: rgba(255, 254, 250, 0.74);
+  color: rgba(255, 254, 250, 0.76);
 }
 
 .home-badge {
   display: inline-flex;
+  align-items: center;
+  gap: 10rpx;
   border-radius: 999rpx;
   padding: 9rpx 16rpx;
   background: rgba(255, 254, 250, 0.1);
   color: rgba(255, 254, 250, 0.86);
   font-size: 23rpx;
+  font-weight: 760;
+}
+
+.live-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: #8de39e;
+  box-shadow: 0 0 0 8rpx rgba(141, 227, 158, 0.12);
+  animation: livePulse 1800ms ease-in-out infinite;
+}
+
+.home-chip {
+  flex: 0 0 auto;
+  border: 1rpx solid rgba(255, 254, 250, 0.12);
+  border-radius: 999rpx;
+  padding: 8rpx 14rpx;
+  color: rgba(255, 254, 250, 0.62);
+  font-size: 21rpx;
   font-weight: 760;
 }
 
@@ -36,12 +76,14 @@
   min-width: 0;
   background: #fffefa;
   color: #101714;
+  box-shadow: 0 14rpx 30rpx rgba(0, 0, 0, 0.16);
 }
 
 .home-actions .button.secondary {
   border-color: rgba(255, 254, 250, 0.16);
   background: rgba(255, 254, 250, 0.08);
   color: #fffefa;
+  box-shadow: none;
 }
 
 .quick-strip {
@@ -52,10 +94,28 @@
 }
 
 .quick-item {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
   border: 1rpx solid rgba(255, 254, 250, 0.12);
   border-radius: 22rpx;
   padding: 18rpx;
   background: rgba(255, 254, 250, 0.06);
+  transition: transform 150ms ease-out, background-color 150ms ease-out;
+}
+
+.quick-item:active {
+  transform: scale(0.982);
+  background: rgba(255, 254, 250, 0.1);
+}
+
+.quick-icon {
+  flex: 0 0 auto;
+  width: 58rpx;
+  height: 58rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 254, 250, 0.12);
+  color: #fffefa;
 }
 
 .quick-item text:first-child {
@@ -85,10 +145,24 @@
 }
 
 .section-more {
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
   border-radius: 999rpx;
   padding: 10rpx 18rpx;
-  background: #fffefa;
+  background: #fcfcfa;
   color: #34443b;
   font-size: 24rpx;
   font-weight: 760;
+  box-shadow: 0 8rpx 18rpx rgba(20, 28, 23, 0.045);
+}
+
+@keyframes livePulse {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

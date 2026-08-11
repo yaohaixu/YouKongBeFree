@@ -16,11 +16,13 @@
       <view wx:if="{{activity.displayFormation}}" class="info-line muted-line">{{activity.displayFormation}}</view>
     </view>
 
-    <view class="button-row">
+    <view class="button-stack">
       <view class="button" bindtap="openActivity">查看活动</view>
-      <view class="button secondary" bindtap="goMyRegistrations">我的报名</view>
+      <view class="button secondary" bindtap="goMyRegistrations">查看我的报名</view>
       <view class="button secondary" bindtap="downloadInvitationPoster">{{shareImageLoading ? "生成中..." : "下载活动邀请函"}}</view>
-      <view class="button secondary" bindtap="copyActivityLink">复制活动链接</view>
+      <button class="button secondary share-button" open-type="share">分享小程序链接</button>
+      <view class="button secondary" bindtap="addToCalendar">加到日历</view>
+      <view class="button secondary" bindtap="goFeedback">写反馈</view>
     </view>
 
     <view wx:if="{{!cancelled}}" class="danger-card">

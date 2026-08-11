@@ -1,6 +1,6 @@
 (() => {
   const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
-  const MAX_COMPRESSED_IMAGE_BYTES = 1024 * 1024;
+  const MAX_COMPRESSED_IMAGE_BYTES = 10 * 1024 * 1024;
   const MAX_IMAGE_SIDE = 1600;
 
   function qs(selector, root = document) {
@@ -248,7 +248,7 @@
     }
 
     if (fallback && fallback.size <= MAX_COMPRESSED_IMAGE_BYTES * 1.1) return fallback;
-    throw new Error("图片压缩后仍超过 1MB，请换一张图或先裁剪");
+    throw new Error("图片压缩后仍超过 10MB，请换一张图或先裁剪");
   }
 
   async function uploadRichImage(blob, originalName = "rich-image.jpg") {
@@ -322,7 +322,7 @@
       </div>
       <div class="rich-canvas" data-rich-canvas contenteditable="true" role="textbox" aria-multiline="true"></div>
       <input data-rich-image-input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
-      <p class="rich-hint">正文图片可选择 10MB 以内文件，系统会压缩到约 1MB 后上传；图片不计入描述字数上限。</p>
+      <p class="rich-hint">正文图片可选择 10MB 以内文件，系统会压缩处理，压缩后仍需在 10MB 以内；图片不计入描述字数上限。</p>
     `;
     source.insertAdjacentElement("afterend", editor);
 

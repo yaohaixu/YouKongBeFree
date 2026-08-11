@@ -9,6 +9,7 @@
         <view class="eyebrow">我的</view>
         <view class="title">{{profile.displayName || "有空朋友"}}</view>
         <view class="body">{{profile.bio || "点击头像，可以编辑头像、昵称和个人简介。"}}</view>
+        <view class="profile-edit-hint">点头像编辑公开资料</view>
       </view>
     </view>
   </view>
@@ -33,7 +34,10 @@
 
     <view class="entry-list">
       <view class="entry-card primary-entry" data-url="/pages/activity-editor/activity-editor" bindtap="openEntry">
-        <view class="entry-icon">＋</view>
+        <view class="entry-icon yk-icon yk-icon-compose">
+          <view class="icon-sheet"></view>
+          <view class="icon-pen"></view>
+        </view>
         <view class="entry-content">
           <view class="entry-title">发起活动</view>
           <view class="entry-text">写下一个新的活动想法</view>
@@ -41,7 +45,10 @@
         <view class="entry-arrow">›</view>
       </view>
       <view class="entry-card" data-url="/pages/registrations/registrations" bindtap="openEntry">
-        <view class="entry-icon">报</view>
+        <view class="entry-icon yk-icon yk-icon-ticket">
+          <view class="icon-ticket-body"></view>
+          <view class="icon-ticket-line"></view>
+        </view>
         <view class="entry-content">
           <view class="entry-title">我的报名</view>
           <view class="entry-text">查看当前身份参加过的活动</view>
@@ -49,7 +56,10 @@
         <view class="entry-arrow">›</view>
       </view>
       <view class="entry-card" data-url="/pages/my-activities/my-activities" bindtap="openEntry">
-        <view class="entry-icon">发</view>
+        <view class="entry-icon yk-icon yk-icon-stack">
+          <view class="icon-card-one"></view>
+          <view class="icon-card-two"></view>
+        </view>
         <view class="entry-content">
           <view class="entry-title">我的活动</view>
           <view class="entry-text">管理这个身份发起过的活动</view>
@@ -57,7 +67,10 @@
         <view class="entry-arrow">›</view>
       </view>
       <view class="entry-card" data-url="/pages/my-feedbacks/my-feedbacks" bindtap="openEntry">
-        <view class="entry-icon">评</view>
+        <view class="entry-icon yk-icon yk-icon-feedback">
+          <view class="icon-bubble"></view>
+          <view class="icon-tail"></view>
+        </view>
         <view class="entry-content">
           <view class="entry-title">我的反馈</view>
           <view class="entry-text">回看写过的匿名活动反馈</view>
@@ -65,7 +78,13 @@
         <view class="entry-arrow">›</view>
       </view>
       <view class="entry-card" data-url="/pages/identity-sync/identity-sync" bindtap="openEntry">
-        <view class="entry-icon">同</view>
+        <view class="entry-icon yk-icon yk-icon-sync">
+          <view class="icon-line-one"></view>
+          <view class="icon-line-two"></view>
+          <view class="icon-node node-a"></view>
+          <view class="icon-node node-b"></view>
+          <view class="icon-node node-c"></view>
+        </view>
         <view class="entry-content">
           <view class="entry-title">同步设备</view>
           <view class="entry-text">把手机和电脑连成同一身份</view>

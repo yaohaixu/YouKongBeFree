@@ -28,7 +28,7 @@
   <view wx:if="{{loading}}" class="panel muted">正在读取活动...</view>
   <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
   <view wx:elif="{{activities.length}}" class="list">
-    <activity-card wx:for="{{activities}}" wx:key="id" activity="{{item}}" />
+    <activity-card wx:for="{{activities}}" wx:key="id" activity="{{item}}" bind:register="openActivityDetail" bind:interest="recordInterest" bind:reminder="subscribeReminder" />
     <view wx:if="{{loadingMore}}" class="loading-more">继续读取中...</view>
     <view wx:elif="{{!hasMore}}" class="loading-more">已经到底了</view>
   </view>

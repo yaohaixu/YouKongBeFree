@@ -4,15 +4,16 @@
 
 .identity-card {
   margin-bottom: 22rpx;
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
   border-radius: 24rpx;
   padding: 28rpx;
-  background: #fffefa;
+  background: #fcfcfa;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
 }
 
 .identity-card.active {
   border-color: rgba(60, 118, 86, 0.28);
-  background: #fbfefa;
+  background: #fbfffb;
 }
 
 .wechat-card.active {
@@ -32,7 +33,7 @@
   width: 74rpx;
   height: 74rpx;
   border-radius: 22rpx;
-  background: #dfe8dc;
+  background: linear-gradient(145deg, #eef5ef, #dfe8dc);
   color: #101714;
   font-size: 25rpx;
   font-weight: 850;
@@ -96,7 +97,7 @@
 .count {
   border-radius: 18rpx;
   padding: 18rpx 8rpx;
-  background: #f1f2ed;
+  background: #f2f4f0;
   color: #5f6b64;
   text-align: center;
   font-size: 22rpx;
@@ -123,7 +124,7 @@
   border: 1rpx solid rgba(16, 23, 20, 0.12);
   border-radius: 18rpx;
   padding: 20rpx 22rpx;
-  background: #f7f6f0;
+  background: #f8f9f6;
   color: #354039;
   font-size: 24rpx;
   line-height: 1.55;
@@ -145,7 +146,7 @@
 .merged-result {
   border-radius: 20rpx;
   padding: 20rpx;
-  background: #f1f2ed;
+  background: #f2f4f0;
 }
 
 .merged-result {
@@ -187,16 +188,21 @@
   border: 1rpx solid rgba(16, 23, 20, 0.12);
   border-radius: 18rpx;
   padding: 22rpx;
-  background: #f7f6f0;
+  background: #f8f9f6;
   color: #101714;
   font-size: 27rpx;
   font-weight: 760;
+  transition: transform 150ms ease-out, background-color 150ms ease-out;
+}
+
+.choice:active {
+  transform: scale(0.988);
 }
 
 .choice.active {
   border-color: rgba(16, 23, 20, 0.42);
   background: #101714;
-  color: #fffefa;
+  color: #ffffff;
 }
 
 .device-list {
@@ -210,10 +216,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 18rpx;
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
   border-radius: 22rpx;
   padding: 22rpx;
-  background: #fffefa;
+  background: #fcfcfa;
 }
 
 .device-name {
@@ -226,7 +232,7 @@
   border-radius: 999rpx;
   padding: 8rpx 14rpx;
   background: #101714;
-  color: #fffefa;
+  color: #ffffff;
   font-size: 22rpx;
   font-weight: 760;
 }

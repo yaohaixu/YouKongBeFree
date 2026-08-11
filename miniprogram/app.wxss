@@ -1,6 +1,6 @@
 page {
   min-height: 100vh;
-  background: #f5f3ee;
+  background: #f4f5f2;
   color: #101714;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
   font-size: 28rpx;
@@ -16,21 +16,23 @@ textarea {
 
 .page {
   min-height: 100vh;
-  padding: 30rpx 28rpx 64rpx;
+  padding: 32rpx 28rpx 72rpx;
+  animation: ykPageIn 360ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .hero {
   position: relative;
   overflow: hidden;
-  margin-bottom: 28rpx;
+  margin-bottom: 30rpx;
   border: 1rpx solid rgba(16, 23, 20, 0.08);
-  border-radius: 30rpx;
-  padding: 34rpx 30rpx;
-  background: #fffefa;
+  border-radius: 28rpx;
+  padding: 36rpx 32rpx;
+  background: #fcfcfa;
+  box-shadow: 0 14rpx 34rpx rgba(20, 28, 23, 0.06);
 }
 
 .eyebrow {
-  color: #6c5047;
+  color: #31624b;
   font-size: 24rpx;
   font-weight: 760;
 }
@@ -39,33 +41,35 @@ textarea {
   margin-top: 14rpx;
   color: #101714;
   font-size: 44rpx;
-  font-weight: 850;
-  line-height: 1.2;
+  font-weight: 860;
+  letter-spacing: 0;
+  line-height: 1.18;
 }
 
 .body {
   margin-top: 16rpx;
-  color: #4e5b54;
+  color: #4c5852;
   font-size: 28rpx;
   line-height: 1.68;
 }
 
 .section-title {
-  margin: 36rpx 0 18rpx;
+  margin: 38rpx 0 18rpx;
   color: #101714;
   font-size: 34rpx;
-  font-weight: 820;
+  font-weight: 840;
 }
 
 .panel {
   border: 1rpx solid rgba(16, 23, 20, 0.1);
   border-radius: 24rpx;
   padding: 28rpx;
-  background: #fffefa;
+  background: #fcfcfa;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
 }
 
 .muted {
-  color: #5f6b64;
+  color: #65706a;
 }
 
 .button-row {
@@ -75,18 +79,35 @@ textarea {
   margin-top: 24rpx;
 }
 
+.button-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  margin-top: 24rpx;
+}
+
 .button {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 88rpx;
+  margin: 0;
+  border: 0;
   border-radius: 999rpx;
   padding: 0 28rpx;
   background: #101714;
-  color: #fffefa;
+  color: #ffffff;
   font-size: 28rpx;
   font-weight: 760;
-  transition: opacity 160ms ease-out, transform 160ms ease-out;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 10rpx 22rpx rgba(16, 23, 20, 0.14);
+  transition: opacity 150ms ease-out, transform 150ms ease-out, background-color 150ms ease-out;
+}
+
+.button::after {
+  border: 0;
 }
 
 .button-row .button {
@@ -94,16 +115,28 @@ textarea {
   min-width: 190rpx;
 }
 
+.button-stack .button {
+  width: 100%;
+  min-width: 0;
+}
+
 .button.secondary {
   border: 1rpx solid rgba(16, 23, 20, 0.14);
-  background: #fffefa;
+  background: #fcfcfa;
   color: #101714;
+  box-shadow: none;
 }
 
 .button.disabled {
   border: 1rpx solid rgba(16, 23, 20, 0.08);
-  background: #dfe4dd;
+  background: #e4e7e2;
   color: #7c8780;
+  box-shadow: none;
+}
+
+.button:active {
+  transform: scale(0.982);
+  opacity: 0.9;
 }
 
 .list {
@@ -116,13 +149,14 @@ textarea {
   border: 1rpx solid rgba(16, 23, 20, 0.1);
   border-radius: 24rpx;
   padding: 26rpx;
-  background: #fffefa;
+  background: #fcfcfa;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
 }
 
 .soft-card {
   border-radius: 22rpx;
   padding: 22rpx;
-  background: #ecefe8;
+  background: #eef1ec;
 }
 
 .pill {
@@ -131,8 +165,179 @@ textarea {
   justify-content: center;
   border-radius: 999rpx;
   padding: 8rpx 16rpx;
-  background: #edf0ea;
-  color: #34443b;
+  background: #e9eee8;
+  color: #30433a;
   font-size: 23rpx;
   font-weight: 760;
+}
+
+.loading-more {
+  padding: 22rpx 0;
+  color: #65706a;
+  text-align: center;
+  font-size: 25rpx;
+}
+
+.yk-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(145deg, #f7faf5, #dfe8df);
+  color: #101714;
+}
+
+.yk-icon view {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.yk-icon-compose .icon-sheet {
+  width: 34rpx;
+  height: 42rpx;
+  border: 4rpx solid currentColor;
+  border-radius: 8rpx;
+  transform: translate(-4rpx, -1rpx) rotate(-5deg);
+}
+
+.yk-icon-compose .icon-pen {
+  width: 34rpx;
+  height: 7rpx;
+  border-radius: 999rpx;
+  background: currentColor;
+  transform: translate(11rpx, 12rpx) rotate(-34deg);
+}
+
+.yk-icon-ticket .icon-ticket-body {
+  width: 44rpx;
+  height: 32rpx;
+  border: 4rpx solid currentColor;
+  border-radius: 10rpx;
+}
+
+.yk-icon-ticket .icon-ticket-line {
+  width: 4rpx;
+  height: 22rpx;
+  border-radius: 999rpx;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.yk-icon-stack .icon-card-one,
+.yk-icon-stack .icon-card-two {
+  width: 40rpx;
+  height: 30rpx;
+  border: 4rpx solid currentColor;
+  border-radius: 9rpx;
+}
+
+.yk-icon-stack .icon-card-one {
+  transform: translate(-5rpx, -6rpx);
+  opacity: 0.45;
+}
+
+.yk-icon-stack .icon-card-two {
+  transform: translate(5rpx, 7rpx);
+}
+
+.yk-icon-feedback .icon-bubble {
+  width: 43rpx;
+  height: 32rpx;
+  border: 4rpx solid currentColor;
+  border-radius: 13rpx;
+}
+
+.yk-icon-feedback .icon-tail {
+  width: 14rpx;
+  height: 14rpx;
+  border-left: 4rpx solid currentColor;
+  border-bottom: 4rpx solid currentColor;
+  transform: translate(-12rpx, 18rpx) rotate(-18deg);
+}
+
+.yk-icon-sync .icon-node {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: currentColor;
+}
+
+.yk-icon-sync .node-a {
+  transform: translate(-19rpx, -14rpx);
+}
+
+.yk-icon-sync .node-b {
+  transform: translate(20rpx, -8rpx);
+}
+
+.yk-icon-sync .node-c {
+  transform: translate(-2rpx, 18rpx);
+}
+
+.yk-icon-sync .icon-line-one,
+.yk-icon-sync .icon-line-two {
+  width: 38rpx;
+  height: 4rpx;
+  border-radius: 999rpx;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.yk-icon-sync .icon-line-one {
+  transform: translate(0, -10rpx) rotate(9deg);
+}
+
+.yk-icon-sync .icon-line-two {
+  transform: translate(0, 5rpx) rotate(-39deg);
+}
+
+.yk-icon-profile .icon-head {
+  width: 22rpx;
+  height: 22rpx;
+  border: 4rpx solid currentColor;
+  border-radius: 999rpx;
+  transform: translate(0, -12rpx);
+}
+
+.yk-icon-profile .icon-shoulder {
+  width: 44rpx;
+  height: 24rpx;
+  border: 4rpx solid currentColor;
+  border-radius: 22rpx 22rpx 8rpx 8rpx;
+  transform: translate(0, 18rpx);
+}
+
+.yk-icon-calendar .icon-calendar-body {
+  width: 42rpx;
+  height: 38rpx;
+  border: 4rpx solid currentColor;
+  border-radius: 10rpx;
+}
+
+.yk-icon-calendar .icon-calendar-top {
+  width: 42rpx;
+  height: 4rpx;
+  border-radius: 999rpx;
+  background: currentColor;
+  transform: translate(0, -8rpx);
+}
+
+.yk-icon-calendar .icon-calendar-dot {
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 999rpx;
+  background: currentColor;
+  transform: translate(9rpx, 9rpx);
+}
+
+@keyframes ykPageIn {
+  from {
+    opacity: 0;
+    transform: translateY(16rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

@@ -1,5 +1,5 @@
 .compact {
-  padding-bottom: 16rpx;
+  padding-bottom: 18rpx;
 }
 
 .tabs {
@@ -8,9 +8,10 @@
   gap: 8rpx;
   margin: 10rpx 0 28rpx;
   padding: 8rpx;
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
   border-radius: 22rpx;
-  background: #fffefa;
+  background: #fcfcfa;
+  box-shadow: 0 8rpx 20rpx rgba(20, 28, 23, 0.04);
 }
 
 .tab {
@@ -19,14 +20,21 @@
   justify-content: center;
   min-height: 72rpx;
   border-radius: 16rpx;
-  color: #5f6b64;
+  color: #65706a;
   font-size: 27rpx;
   font-weight: 760;
+  transition: transform 150ms ease-out, background-color 150ms ease-out;
+}
+
+.tab:active,
+.source-tab:active,
+.series-tab:active {
+  transform: scale(0.98);
 }
 
 .tab.active {
   background: #101714;
-  color: #fffefa;
+  color: #ffffff;
 }
 
 .source-tabs,
@@ -47,24 +55,25 @@
   align-items: center;
   justify-content: center;
   min-height: 64rpx;
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
   border-radius: 16rpx;
   padding: 0 24rpx;
-  background: #fffefa;
+  background: #fcfcfa;
   color: #59665e;
   font-size: 25rpx;
   font-weight: 760;
+  box-shadow: 0 6rpx 16rpx rgba(20, 28, 23, 0.035);
 }
 
 .source-tab.active,
 .series-tab.active {
   border-color: rgba(16, 23, 20, 0.18);
-  background: #edf0ea;
+  background: #e9eee8;
   color: #101714;
 }
 
 .series-tab {
-  background: #f9f7f1;
+  background: #f8f9f6;
 }
 
 .loading-more {

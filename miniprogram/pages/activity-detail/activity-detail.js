@@ -1,5 +1,5 @@
 const api = require("../../utils/api");
-const { toActivityView, stripHtml } = require("../../utils/format");
+const { toActivityView, stripHtml, responsiveRichTextHtml } = require("../../utils/format");
 const shareImage = require("../../utils/share-image");
 const share = require("../../utils/share");
 const registrationToken = require("../../utils/registration-token");
@@ -15,7 +15,7 @@ function extractInviteToken(invite = {}) {
 function decorateActivity(raw = {}) {
   const activity = toActivityView(raw || {});
   activity.plainDescription = stripHtml(activity.description || "");
-  activity.richDescription = activity.description || "";
+  activity.richDescription = responsiveRichTextHtml(activity.description || "");
   activity.permissions = activity.permissions || {};
   activity.publicRegistrations = activity.publicRegistrations || [];
   activity.publicFeedbacks = activity.publicFeedbacks || [];
@@ -25,6 +25,24 @@ function decorateActivity(raw = {}) {
     profileId: item.communityId || item.id || ""
   }));
   return activity;
+}
+
+async function attachLocalRegistration(activity = {}) {
+  if (!activity.id || activity.myRegistration) return activity;
+  const saved = registrationToken.findByActivity(activity.id);
+  if (!saved || !saved.id || !saved.accessToken) return activity;
+  try {
+    const data = await api.get(`/api/activities/${encodeURIComponent(activity.id)}/registrations/${encodeURIComponent(saved.id)}?token=${encodeURIComponent(saved.accessToken)}`);
+    if (!data.registration) return activity;
+    registrationToken.save(data.registration, saved.accessToken);
+    return {
+      ...decorateActivity(data.activity || activity),
+      myRegistration: data.registration,
+      hasMyRegistration: true
+    };
+  } catch (error) {
+    return activity;
+  }
 }
 
 Page({
@@ -71,7 +89,7 @@ Page({
         api.get(`/api/activities/${encodeURIComponent(this.data.id)}`),
         api.get("/api/miniprogram/config").catch(() => ({ notifications: null }))
       ]);
-      const activity = decorateActivity(data.activity || {});
+      const activity = await attachLocalRegistration(decorateActivity(data.activity || {}));
       this.setData({
         activity,
         notificationConfig: config.notifications || null,
@@ -184,10 +202,11 @@ Page({
     }
   },
 
-  shareActivity() {
+  copyActivityLink() {
     if (!this.data.activity) return;
     wx.setClipboardData({
-      data: `https://youkong-d5gh4x0ayc29a2187-1441855189.tcloudbaseapp.com/activity.html?id=${this.data.activity.id}`
+      data: shareImage.activityUrl(this.data.activity.id),
+      success: () => wx.showToast({ title: "链接已复制", icon: "success" })
     });
   },
 
@@ -273,6 +292,15 @@ Page({
     const activity = this.data.activity;
     if (!activity || !activity.id) return;
     wx.navigateTo({ url: `/pages/feedback/feedback?id=${encodeURIComponent(activity.id)}` });
+  },
+
+  goMyRegistration() {
+    const activity = this.data.activity;
+    const registration = activity && activity.myRegistration;
+    if (!activity || !activity.id || !registration || !registration.id) return;
+    wx.navigateTo({
+      url: `/pages/registration-success/registration-success?activity=${encodeURIComponent(activity.id)}&registration=${encodeURIComponent(registration.id)}`
+    });
   },
 
   goEditor() {

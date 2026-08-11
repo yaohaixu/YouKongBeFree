@@ -1,8 +1,9 @@
 .success-hero {
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
   border-radius: 24rpx;
-  padding: 34rpx 28rpx;
-  background: #fffefa;
+  padding: 36rpx 30rpx;
+  background: #fcfcfa;
+  box-shadow: 0 14rpx 34rpx rgba(20, 28, 23, 0.055);
 }
 
 .success-hero.is-cancelled {
@@ -14,7 +15,7 @@
   border-radius: 999rpx;
   padding: 10rpx 18rpx;
   background: #101714;
-  color: #fffefa;
+  color: #ffffff;
   font-size: 24rpx;
   font-weight: 820;
 }
@@ -25,10 +26,11 @@
 
 .info-card {
   margin-top: 22rpx;
-  border: 1rpx solid rgba(16, 23, 20, 0.1);
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
   border-radius: 24rpx;
   padding: 26rpx;
-  background: #fffefa;
+  background: #fcfcfa;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
 }
 
 .info-title {
@@ -57,7 +59,7 @@
   gap: 20rpx;
   margin-top: 24rpx;
   border: 1rpx solid rgba(159, 57, 43, 0.18);
-  border-radius: 26rpx;
+  border-radius: 24rpx;
   padding: 22rpx;
   background: #fff7f2;
 }
@@ -83,6 +85,15 @@
   color: #9f392b;
   font-size: 25rpx;
   font-weight: 800;
+}
+
+.share-button {
+  border: 0;
+  margin: 0;
+}
+
+.share-button::after {
+  border: 0;
 }
 
 .share-canvas {

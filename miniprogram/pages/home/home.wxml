@@ -1,6 +1,12 @@
 <view class="page">
   <view class="hero home-hero">
-    <view class="home-badge">重庆 · 有空客厅</view>
+    <view class="home-hero-top">
+      <view class="home-badge">
+        <view class="live-dot"></view>
+        <text>重庆 · 有空客厅</text>
+      </view>
+      <view class="home-chip">Community OS</view>
+    </view>
     <view class="title">今天有空吗？</view>
     <view class="body">看一场放映，发起一次讨论，或者把下一次见面先写下来。</view>
     <view class="home-actions">
@@ -9,12 +15,25 @@
     </view>
     <view class="quick-strip">
       <view class="quick-item" bindtap="goMe">
-        <text>我的</text>
-        <text>报名、反馈、身份网络</text>
+        <view class="quick-icon yk-icon yk-icon-profile">
+          <view class="icon-head"></view>
+          <view class="icon-shoulder"></view>
+        </view>
+        <view>
+          <text>我的</text>
+          <text>报名、反馈、身份网络</text>
+        </view>
       </view>
       <view class="quick-item" bindtap="goActivities">
-        <text>近期</text>
-        <text>正在发生的活动</text>
+        <view class="quick-icon yk-icon yk-icon-calendar">
+          <view class="icon-calendar-body"></view>
+          <view class="icon-calendar-top"></view>
+          <view class="icon-calendar-dot"></view>
+        </view>
+        <view>
+          <text>近期</text>
+          <text>正在发生的活动</text>
+        </view>
       </view>
     </view>
   </view>
@@ -26,7 +45,7 @@
   <view wx:if="{{loading}}" class="panel muted">正在读取活动...</view>
   <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
   <view wx:elif="{{activities.length}}" class="list">
-    <activity-card wx:for="{{activities}}" wx:key="id" activity="{{item}}" />
+    <activity-card wx:for="{{activities}}" wx:key="id" activity="{{item}}" bind:register="openActivityDetail" bind:interest="recordInterest" bind:reminder="subscribeReminder" />
   </view>
   <empty-state wx:else title="近期还没有公开活动" text="等第一位朋友把活动发出来，这里就会亮起来。" />
 </view>

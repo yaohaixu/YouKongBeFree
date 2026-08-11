@@ -8,7 +8,7 @@
   <view wx:if="{{loading}}" class="panel muted">正在读取报名记录...</view>
   <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
   <block wx:elif="{{registrations.length}}">
-    <view class="record-card" wx:for="{{registrations}}" wx:key="id" data-id="{{item.activity.id}}" bindtap="openActivity">
+    <view class="record-card" wx:for="{{registrations}}" wx:key="id" data-id="{{item.activity.id}}" data-registration-id="{{item.id}}" bindtap="openActivity">
       <view class="tag-row">
         <text class="tag">{{item.activity.statusLabel || "活动"}}</text>
         <text class="tag soft">报名昵称：{{item.nickname}}</text>

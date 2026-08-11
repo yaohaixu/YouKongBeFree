@@ -1,9 +1,11 @@
 const api = require("../../utils/api");
-const { stripHtml } = require("../../utils/format");
+const { stripHtml, responsiveRichTextHtml } = require("../../utils/format");
 const share = require("../../utils/share");
 
 const MAX_COVER_SIZE = 10 * 1024 * 1024;
 const MAX_RICH_IMAGE_SIZE = 10 * 1024 * 1024;
+const RICH_EDITOR_MIN_HEIGHT = 520;
+const RICH_EDITOR_MAX_HEIGHT = 980;
 
 function pad(value) {
   return String(value).padStart(2, "0");
@@ -55,6 +57,17 @@ function chooseImageFile() {
   });
 }
 
+function getTempFileSize(file = {}) {
+  if (!file.tempFilePath || !wx.getFileInfo) return Promise.resolve(Number(file.size || 0));
+  return new Promise((resolve) => {
+    wx.getFileInfo({
+      filePath: file.tempFilePath,
+      success: (res) => resolve(Number(res.size || file.size || 0)),
+      fail: () => resolve(Number(file.size || 0))
+    });
+  });
+}
+
 function truthy(value) {
   return value === true || value === "true" || value === "1" || value === 1;
 }
@@ -70,6 +83,31 @@ function normalizeRichHtml(value = "") {
     .replace(/\s+(href|src)\s*=\s*'(javascript:[^']*)'/gi, "")
     .replace(/<p>\s*<\/p>/gi, "")
     .trim();
+}
+
+function imageCount(html = "") {
+  return (String(html || "").match(/<img\b/gi) || []).length;
+}
+
+function estimateRichEditorHeight(html = "", text = "") {
+  const plain = String(text || stripHtml(html || ""));
+  const explicitLines = (plain.match(/\n/g) || []).length;
+  const wrappedLines = Math.ceil(plain.length / 18);
+  const blockLines = (String(html || "").match(/<\/p>|<h1\b|<li\b|<br\b|<hr\b/gi) || []).length;
+  const imageLines = imageCount(html) * 8;
+  const lines = Math.max(6, explicitLines + wrappedLines + blockLines + imageLines);
+  return Math.max(RICH_EDITOR_MIN_HEIGHT, Math.min(RICH_EDITOR_MAX_HEIGHT, 300 + lines * 34));
+}
+
+function richEditorState(html = "", text = "") {
+  const description = String(html || "");
+  const descriptionText = String(text || stripHtml(description));
+  return {
+    "form.description": description,
+    "form.descriptionText": descriptionText,
+    descriptionPreview: responsiveRichTextHtml(normalizeRichHtml(description)),
+    richEditorHeight: estimateRichEditorHeight(description, descriptionText)
+  };
 }
 
 function saveManageToken(activity, manageToken) {
@@ -141,6 +179,8 @@ Page({
     editorTitle: "发起活动",
     editorBody: "保存草稿不会触发安全分析；正式提交后，系统会先做安全分析，再决定公开或进入社区复核。",
     formats: {},
+    descriptionPreview: "",
+    richEditorHeight: RICH_EDITOR_MIN_HEIGHT,
     coInvite: null,
     form: {
       title: "",
@@ -318,8 +358,7 @@ Page({
       "form.minRegistrationCount": activity.minRegistrationEnabled ? String(activity.minRegistrationCount || "") : "",
       "form.deadlineDate": datePart(deadline),
       "form.deadlineTime": timePart(deadline),
-      "form.description": html,
-      "form.descriptionText": stripHtml(html)
+      ...richEditorState(html, stripHtml(html))
     });
     this.setEditorContent(html);
   },
@@ -411,8 +450,7 @@ Page({
       this.editorCtx.getContents({
         success: (res) => {
           this.setData({
-            "form.description": res.html || "",
-            "form.descriptionText": res.text || stripHtml(res.html || "")
+            ...richEditorState(res.html || "", res.text || stripHtml(res.html || ""))
           });
           resolve(res.html || "");
         },
@@ -423,8 +461,7 @@ Page({
 
   handleRichTextInput(event) {
     this.setData({
-      "form.description": event.detail.html || "",
-      "form.descriptionText": event.detail.text || ""
+      ...richEditorState(event.detail.html || "", event.detail.text || "")
     });
   },
 
@@ -451,6 +488,20 @@ Page({
     this.editorCtx.insertDivider();
   },
 
+  undoRichText() {
+    if (!this.editorCtx || typeof this.editorCtx.undo !== "function") return;
+    this.editorCtx.undo({
+      success: () => this.syncRichEditorContent()
+    });
+  },
+
+  redoRichText() {
+    if (!this.editorCtx || typeof this.editorCtx.redo !== "function") return;
+    this.editorCtx.redo({
+      success: () => this.syncRichEditorContent()
+    });
+  },
+
   clearRichText() {
     if (!this.editorCtx) return;
     wx.showModal({
@@ -459,7 +510,7 @@ Page({
       success: (result) => {
         if (!result.confirm) return;
         this.editorCtx.clear({
-          success: () => this.setData({ "form.description": "", "form.descriptionText": "" })
+          success: () => this.setData(richEditorState("", ""))
         });
       }
     });
@@ -470,8 +521,9 @@ Page({
     try {
       const file = await chooseImageFile();
       if (!file.tempFilePath) return;
-      if (Number(file.size || 0) > MAX_RICH_IMAGE_SIZE) {
-        wx.showToast({ title: "正文图片需小于 10MB", icon: "none" });
+      const finalSize = await getTempFileSize(file);
+      if (finalSize > MAX_RICH_IMAGE_SIZE) {
+        wx.showToast({ title: "压缩后需小于 10MB", icon: "none" });
         return;
       }
       this.setData({ richImageUploading: true });
@@ -480,6 +532,7 @@ Page({
       this.editorCtx.insertImage({
         src: result.url,
         alt: "活动图片",
+        width: "100%",
         success: () => this.syncRichEditorContent()
       });
       wx.hideLoading();
@@ -561,8 +614,7 @@ Page({
       this.setData({
         templateIndex: nextIndex,
         selectedTemplateName: template ? template.name || "未命名模板" : "无，自己写",
-        "form.description": content,
-        "form.descriptionText": stripHtml(content)
+        ...richEditorState(content, stripHtml(content))
       });
       if (template) this.setEditorContent(content);
     };

@@ -8,6 +8,18 @@ Component({
   methods: {
     noop() {},
 
+    handleRegisterTap() {
+      this.triggerEvent("register", { activity: this.data.activity });
+    },
+
+    handleInterestTap() {
+      this.triggerEvent("interest", { activity: this.data.activity });
+    },
+
+    handleReminderTap() {
+      this.triggerEvent("reminder", { activity: this.data.activity });
+    },
+
     handleOpen() {
       const id = this.data.activity && this.data.activity.id;
       if (!id) return;
