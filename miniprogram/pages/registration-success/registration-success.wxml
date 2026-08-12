@@ -22,7 +22,8 @@
       <view class="button secondary" bindtap="downloadInvitationPoster">{{shareImageLoading ? "生成中..." : "下载活动邀请函"}}</view>
       <button class="button secondary share-button" open-type="share">分享小程序链接</button>
       <view class="button secondary" bindtap="addToCalendar">加到日历</view>
-      <view class="button secondary" bindtap="goFeedback">写反馈</view>
+      <view wx:if="{{activity.canWriteFeedback && !activity.hasMyFeedback && !cancelled}}" class="button feeling" bindtap="goFeedback">写下活动感受</view>
+      <view wx:elif="{{activity.hasMyFeedback && !cancelled}}" class="feeling-note">已写活动感受</view>
     </view>
 
     <view wx:if="{{!cancelled}}" class="danger-card">

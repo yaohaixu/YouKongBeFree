@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>有空开门｜有空客厅</title>
+    <meta name="description" content="预约有空客厅开门，确认开门关门并写下夜记。" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <script src="theme.js?v=0.29.0"></script>
+    <link rel="stylesheet" href="styles.css?v=0.29.0" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <a class="brand" href="index.html"><span class="brand-mark">有空</span><span class="brand-text">有空客厅</span></a>
+        <button class="menu-toggle" type="button" aria-label="打开导航" aria-expanded="false"><span></span><span></span><span></span></button>
+        <nav class="nav-links" aria-label="主导航">
+          <a href="index.html">首页</a>
+          <a href="whitepaper.html">社区共识</a>
+          <a href="participate.html">活动与参与</a>
+          <a href="donate.html">捐赠支持</a>
+          <a href="about.html">关于与联系</a>
+          <span class="session-nav" data-session-nav><a href="me.html">我的</a></span>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" data-room-log-manage-page>
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">有空开门</p>
+          <h1>预约开门，也把一天留下来。</h1>
+          <p>任何朋友都可以预约开门。开门文字和夜记会走同一套 AI 审核 Prompt；如果不适合公开，会进入管理员待办。</p>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap editor-layout">
+          <form class="form-note config-editor room-log-form" data-room-log-form>
+            <h3 data-room-log-form-title>预约开门</h3>
+            <div class="form-grid compact-form-grid">
+              <label>轮值看门人<input name="keeperName" maxlength="32" required placeholder="比如 Siry / 考拉" /></label>
+              <label>计划开门时间<input name="scheduledOpenAt" type="datetime-local" required /></label>
+              <label>计划关门时间<input name="scheduledCloseAt" type="datetime-local" /></label>
+            </div>
+            <label>开门文字
+              <textarea name="openNote" data-rich-textarea placeholder="客厅开门时间、今日轮值、今天想聊的话题，或者路上遇到的小事。"></textarea>
+            </label>
+            <label>夜记
+              <textarea name="nightNote" data-rich-textarea placeholder="关门之后，可以写一点今天发生了什么。没有夜记可以先留空。"></textarea>
+            </label>
+            <div class="form-actions">
+              <button class="button primary" type="submit">保存开门记录</button>
+              <button class="button outline" type="button" data-reset-room-log-form>新建一条</button>
+              <a class="button ghost" href="me.html#my-tools">回我的</a>
+            </div>
+            <p class="form-message" data-room-log-message></p>
+          </form>
+
+          <aside class="panel-block sticky-panel">
+            <p class="section-kicker">状态规则</p>
+            <h3>开门不能由系统假装。</h3>
+            <p class="muted-text">预约后首页显示「即将开门」；只有你点击确认开门后才会显示「已开门」。关门后可以补夜记，夜记公开展示由审核结果决定。</p>
+            <div class="button-row">
+              <a class="button outline" href="room-logs.html">查看值班记录</a>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap">
+          <div class="section-head compact-head">
+            <div>
+              <p class="section-kicker">我的值班</p>
+              <h2>这个身份创建过的开门记录。</h2>
+            </div>
+          </div>
+          <div class="list-toolbar">
+            <span data-room-log-count>正在读取我的值班记录...</span>
+            <button class="button ghost load-more" type="button" data-load-more-room-logs hidden>加载更多</button>
+          </div>
+          <div class="event-list rows room-log-list" data-room-logs>正在读取我的值班记录...</div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div><div class="footer-brand">有空客厅</div><div>开门记录是客厅的日常脉搏。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="me.html">我的</a><a href="room-logs.html">值班记录</a><a href="activity-editor.html">发起活动</a></nav>
+      </div>
+    </footer>
+    <script src="script.js?v=0.29.0"></script>
+    <script src="assets/js/rich-editor.js?v=0.29.0"></script>
+    <script src="app.js?v=0.29.0"></script>
+  </body>
+</html>

@@ -15,6 +15,7 @@ process.env.CACHE_DRIVER = "memory";
 process.env.YKADMIN_NICKNAME = "有空管理员";
 process.env.YKADMIN_PHONE = "18800000000";
 process.env.WECHAT_MP_ACTIVITY_REMINDER_TEMPLATE_IDS = "tmpl_smoke_activity";
+process.env.ACTIVITY_MUTATION_RATE_LIMIT_MAX = "500";
 
 const { createApp, store } = require("../lib/app");
 const { shouldCallAi } = require("../lib/ai-analysis/service");
@@ -380,6 +381,10 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   await request("/api/users", {
     method: "POST",
     body: { nickname: "成员A", phone: "13300002222", role: "member" },
+  }, admin.token);
+  await request("/api/users", {
+    method: "POST",
+    body: { nickname: "看门人", phone: "13300006666", role: "member" },
   }, admin.token);
 
   const logViewer = await login("13300003333");
@@ -888,6 +893,49 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(aiSettings.settings.apiKeyStatus, "未配置");
   assert.equal(aiSettings.settings.callStrategy.ruleConfidenceMax, 70);
   assert.equal(aiSettings.settings.callStrategy.firstActivityCount, 3);
+  const emptyRoomStatus = await request("/api/room-logs/status");
+  assert.equal(emptyRoomStatus.roomStatus.status, "none");
+  assert.equal(emptyRoomStatus.roomStatus.statusLabel, "今日暂无安排");
+  const roomKeeper = await login("13300006666");
+  const roomLogReview = await request("/api/room-logs", {
+    method: "POST",
+    body: {
+      keeperName: "Smoke 看门人",
+      scheduledOpenAt: localDateTimeFromNow(0, 20, 0),
+      scheduledCloseAt: localDateTimeFromNow(0, 23, 0),
+      openNote: "<p>今天开门，有冰水和测试夜谈。</p>",
+    },
+  }, roomKeeper.token);
+  assert.equal(roomLogReview.roomLog.status, "scheduled");
+  assert.equal(roomLogReview.roomLog.openNoteStatus, "admin_review");
+  assert.equal(roomLogReview.roomLog.openNote.includes("测试夜谈"), true);
+  const roomLogVisitorHeaders = { "X-YK-Client-Id": `${testClientId}_room_visitor`, "X-YK-Fingerprint": "fp_room_visitor" };
+  const publicRoomLogBeforeReview = await request(`/api/room-logs/${roomLogReview.roomLog.id}`, { headers: roomLogVisitorHeaders });
+  assert.equal(publicRoomLogBeforeReview.roomLog.openNote, "");
+  assert.equal(publicRoomLogBeforeReview.roomLog.hasOpenNote, true);
+  const roomStatusAfterCreate = await request("/api/room-logs/status");
+  assert.equal(roomStatusAfterCreate.roomStatus.status, "scheduled");
+  assert.equal(roomStatusAfterCreate.roomStatus.currentLog.id, roomLogReview.roomLog.id);
+  const bootstrapWithRoomStatus = await request("/api/public/bootstrap");
+  assert.equal(bootstrapWithRoomStatus.roomStatus.currentLog.id, roomLogReview.roomLog.id);
+  const openedRoomLog = await request(`/api/room-logs/${roomLogReview.roomLog.id}/open`, { method: "POST", body: {} }, roomKeeper.token);
+  assert.equal(openedRoomLog.roomLog.status, "opened");
+  assert.equal(openedRoomLog.roomStatus.status, "opened");
+  const closedRoomLog = await request(`/api/room-logs/${roomLogReview.roomLog.id}/close`, {
+    method: "POST",
+    body: { nightNote: "<p>客厅已关门，今天测试很顺。</p>" },
+  }, roomKeeper.token);
+  assert.equal(closedRoomLog.roomLog.status, "closed");
+  assert.equal(closedRoomLog.roomLog.nightNoteStatus, "admin_review");
+  const roomLogPending = await request("/api/room-logs?all=true&noteStatus=admin_review&page=1&pageSize=10", {}, admin.token);
+  assert.ok(roomLogPending.roomLogs.some((item) => item.id === roomLogReview.roomLog.id));
+  const approvedOpenNote = await request(`/api/room-logs/${roomLogReview.roomLog.id}/review`, {
+    method: "POST",
+    body: { field: "openNote", action: "approve" },
+  }, admin.token);
+  assert.equal(approvedOpenNote.roomLog.openNoteStatus, "approved");
+  const approvedPublicRoomLog = await request(`/api/room-logs/${roomLogReview.roomLog.id}`, { headers: roomLogVisitorHeaders });
+  assert.match(approvedPublicRoomLog.roomLog.openNote, /测试夜谈/);
   const aiSettingsUpdate = await request("/api/ai/settings", {
     method: "PUT",
     body: { callStrategy: { ruleConfidenceMax: 55, firstActivityCount: 4 } },
@@ -900,6 +948,8 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.ok(defaultAiModels.models.some((model) => model.id === "ai_model_default"));
   const feedbackPrompts = await request("/api/ai/prompts?type=feedback&page=1&pageSize=10", {}, admin.token);
   assert.ok(feedbackPrompts.prompts.every((prompt) => prompt.type === "feedback"));
+  const roomLogPrompts = await request("/api/ai/prompts?type=room_log&page=1&pageSize=10", {}, admin.token);
+  assert.ok(roomLogPrompts.prompts.some((prompt) => prompt.type === "room_log"));
   const feedbackPrompt = await request("/api/ai/prompts", {
     method: "POST",
     body: {
@@ -1010,6 +1060,18 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.equal(aiCalledConfidence.latestAnalysis.aiMeta.skipped, false);
     assert.equal(aiCalledConfidence.latestAnalysis.aiMeta.triggerReason, "low-rule-confidence");
     assert.equal(aiCalledConfidence.latestAnalysis.aiReport.summary, "AI stub 分析结果");
+    const aiApprovedRoomLog = await request("/api/room-logs", {
+      method: "POST",
+      body: {
+        keeperName: "AI 看门人",
+        scheduledOpenAt: localDateTimeFromNow(0, 21, 0),
+        scheduledCloseAt: localDateTimeFromNow(0, 23, 30),
+        openNote: "<p>今天客厅开门，欢迎带一个想聊的问题来坐坐。</p>",
+      },
+    });
+    assert.equal(aiApprovedRoomLog.roomLog.openNoteStatus, "approved");
+    const publicAiApprovedRoomLog = await request(`/api/room-logs/${aiApprovedRoomLog.roomLog.id}`);
+    assert.match(publicAiApprovedRoomLog.roomLog.openNote, /想聊的问题/);
   } finally {
     await aiStub.close();
   }
@@ -1394,6 +1456,10 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   });
   const myActiveRegistrations = await request("/api/my/registrations?page=1&pageSize=10");
   assert.ok(myActiveRegistrations.registrations.some((item) => item.id === registration.registration.id));
+  const myUpcomingRegistrations = await request("/api/my/registrations?view=upcoming&page=1&pageSize=10");
+  assert.ok(myUpcomingRegistrations.registrations.some((item) => item.id === registration.registration.id && item.activity.hasEnded === false));
+  const myPastRegistrationsBeforeEnded = await request("/api/my/registrations?view=past&page=1&pageSize=10");
+  assert.ok(!myPastRegistrationsBeforeEnded.registrations.some((item) => item.id === registration.registration.id));
   const myCancelledRegistrations = await request("/api/my/registrations?page=1&pageSize=10", {
     headers: { "X-YK-Client-Id": `${testClientId}_cancel` },
   });
@@ -1432,7 +1498,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     title: "报名昵称公示测试活动",
     showRegistrationNames: true,
   });
-  await request(`/api/activities/${publicNamesActivity.activity.id}/register`, {
+  const publicNamesRegistration = await request(`/api/activities/${publicNamesActivity.activity.id}/register`, {
     method: "POST",
     headers: { "X-YK-Client-Id": `${testClientId}_public_name` },
     body: { nickname: "愿意公示昵称" },
@@ -1440,6 +1506,33 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const publicNamesDetail = await request(`/api/activities/${publicNamesActivity.activity.id}`);
   assert.equal(publicNamesDetail.activity.showRegistrationNames, true);
   assert.deepEqual(publicNamesDetail.activity.publicRegistrations.map((item) => item.nickname), ["愿意公示昵称"]);
+  const publicNameUpcomingRegistrations = await request("/api/my/registrations?view=upcoming&page=1&pageSize=10", {
+    headers: { "X-YK-Client-Id": `${testClientId}_public_name` },
+  });
+  assert.ok(publicNameUpcomingRegistrations.registrations.some((item) => item.id === publicNamesRegistration.registration.id));
+  await store.update("activities", publicNamesActivity.activity.id, {
+    status: "ended",
+    endedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+  const publicNamePastRegistrations = await request("/api/my/registrations?view=past&page=1&pageSize=10", {
+    headers: { "X-YK-Client-Id": `${testClientId}_public_name` },
+  });
+  const publicNamePastRow = publicNamePastRegistrations.registrations.find((item) => item.id === publicNamesRegistration.registration.id);
+  assert.equal(publicNamePastRow?.activity.hasEnded, true);
+  assert.equal(publicNamePastRow?.activity.canWriteFeedback, true);
+  assert.equal(publicNamePastRow?.activity.hasMyFeedback, false);
+  await request(`/api/activities/${publicNamesActivity.activity.id}/feedbacks`, {
+    method: "POST",
+    headers: { "X-YK-Client-Id": `${testClientId}_public_name` },
+    body: { favorite: "结束后补一条活动感受。" },
+  });
+  const publicNamePastAfterFeedback = await request("/api/my/registrations?view=past&page=1&pageSize=10", {
+    headers: { "X-YK-Client-Id": `${testClientId}_public_name` },
+  });
+  const publicNameFeedbackRow = publicNamePastAfterFeedback.registrations.find((item) => item.id === publicNamesRegistration.registration.id);
+  assert.equal(publicNameFeedbackRow?.activity.hasMyFeedback, true);
+  assert.equal(publicNameFeedbackRow?.activity.canWriteFeedback, false);
 
   const logs = await request("/api/logs?page=1&pageSize=5&q=测试活动", {}, admin.token);
   assert.ok(logs.logs.length >= 1);
@@ -1578,10 +1671,10 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.equal(ongoing?.endsAt, localDateTimeFromNow(1, 10, 0));
 
   await assert.rejects(
-    request(`/api/activities/${created.activity.id}/feedbacks`, {
+    request(`/api/activities/${crossDay.activity.id}/feedbacks`, {
       method: "POST",
       headers: { "X-YK-Client-Id": `${testClientId}_feedback_future` },
-      body: { favorite: "还没开始就不能写体验" },
+      body: { favorite: "活动还没结束就不能写体验" },
     }),
     /400/
   );
@@ -1820,12 +1913,12 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 	        pendingHidden: document.querySelector("[data-my-pending-section]")?.hidden,
 	      };
 	    });
-	    assert.equal(openWorkspaceMotionState.cardCount, 5);
+	    assert.equal(openWorkspaceMotionState.cardCount, 6);
 	    assert.equal(openWorkspaceMotionState.iconCount, openWorkspaceMotionState.cardCount);
 	    assert.equal(openWorkspaceMotionState.cueCount, openWorkspaceMotionState.cardCount);
 	    assert.equal(openWorkspaceMotionState.toneCount, openWorkspaceMotionState.cardCount);
-	    assert.deepEqual(openWorkspaceMotionState.labels, ["我的报名", "我的反馈", "身份网络", "发起活动", "我发起的活动"]);
-	    assert.deepEqual(openWorkspaceMotionState.hrefs, ["#my-registrations", "my-feedbacks.html", "identity-sync.html", "activity-editor.html", "my-activities.html"]);
+	    assert.deepEqual(openWorkspaceMotionState.labels, ["我的报名", "我的反馈", "身份网络", "有空开门", "发起活动", "我发起的活动"]);
+	    assert.deepEqual(openWorkspaceMotionState.hrefs, ["#my-registrations", "my-feedbacks.html", "identity-sync.html", "room-log-manage.html", "activity-editor.html", "my-activities.html"]);
 	    assert.match(openWorkspaceMotionState.iconTransition, /transform/);
 	    assert.notEqual(openWorkspaceMotionState.iconFill, "none");
 	    assert.equal(openWorkspaceMotionState.hasSyncPanel, false);
@@ -1889,6 +1982,16 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 	    await assertNoHorizontalOverflow(page, `${baseUrl}/me.html`);
 	    await assertNoHorizontalOverflow(page, `${baseUrl}/my-feedbacks.html`);
 	    await assertNoHorizontalOverflow(page, `${baseUrl}/identity-sync.html`);
+	    await assertNoHorizontalOverflow(page, `${baseUrl}/room-logs.html`);
+	    await assertNoHorizontalOverflow(page, `${baseUrl}/room-log-manage.html`);
+	    await page.goto(`${baseUrl}/index.html`);
+	    await page.waitForSelector(".room-status-card");
+	    const roomStatusCardState = await page.evaluate(() => ({
+	      title: document.querySelector(".room-status-card h2")?.textContent.trim() || "",
+	      hasManageLink: Boolean(document.querySelector(".room-status-card a[href='room-log-manage.html']")),
+	    }));
+	    assert.match(roomStatusCardState.title, /客厅|开门|关门/);
+	    assert.equal(roomStatusCardState.hasManageLink, true);
 	    await assertNoHorizontalOverflow(page, `${baseUrl}/my-activities.html?status=draft`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/my-activities.html?status=reviewing`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/my-activities.html?status=published_group`);

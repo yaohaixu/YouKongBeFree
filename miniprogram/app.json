@@ -6,6 +6,8 @@
     "pages/activity-editor/activity-editor",
     "pages/registration-success/registration-success",
     "pages/feedback/feedback",
+    "pages/room-logs/room-logs",
+    "pages/room-log-manage/room-log-manage",
     "pages/identity-sync/identity-sync",
     "pages/profile-editor/profile-editor",
     "pages/profile/profile",

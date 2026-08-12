@@ -3,10 +3,12 @@
   <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
   <view wx:else>
     <view class="hero compact">
-      <view class="eyebrow">匿名反馈</view>
-      <view class="title">{{activity.title || "活动反馈"}}</view>
+      <view class="eyebrow">匿名活动感受</view>
+      <view class="title">{{activity.title || "活动感受"}}</view>
       <view class="body">{{activity.displayTime}} · {{activity.location || "地点待定"}}</view>
     </view>
+
+    <view wx:if="{{!activity.hasEnded}}" class="notice-card">活动结束后再来写下活动感受，会更像真实经历。</view>
 
     <view class="form-card">
       <view class="field">
@@ -26,7 +28,7 @@
     </view>
 
     <view class="sticky-actions single">
-      <view class="button" bindtap="submitFeedback">{{submitting ? "提交中..." : "提交匿名反馈"}}</view>
+      <view class="button {{activity.hasEnded ? '' : 'disabled'}}" bindtap="submitFeedback">{{submitting ? "提交中..." : "提交活动感受"}}</view>
     </view>
   </view>
 </view>

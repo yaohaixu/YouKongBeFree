@@ -1,6 +1,6 @@
 const api = require("../../utils/api");
 const cache = require("../../utils/cache");
-const { toActivityView } = require("../../utils/format");
+const { toActivityView, roomStatusView } = require("../../utils/format");
 const { loadReminderConfig, subscribeActivityReminder } = require("../../utils/activity-reminder");
 const share = require("../../utils/share");
 
@@ -14,6 +14,7 @@ let refreshPromise = null;
 function homeView(data = {}) {
   return {
     activities: (data.upcomingActivities || []).map(toActivityView),
+    roomStatus: roomStatusView(data.roomStatus || {}),
     notificationConfig: data.miniprogramConfig || null
   };
 }
@@ -24,6 +25,7 @@ Page({
     refreshing: false,
     error: "",
     activities: [],
+    roomStatus: roomStatusView({}),
     notificationConfig: null
   },
 
@@ -40,6 +42,7 @@ Page({
     const view = homeView(data);
     this.setData({
       activities: view.activities,
+      roomStatus: view.roomStatus,
       notificationConfig: view.notificationConfig,
       loading: false,
       refreshing: Boolean(options.refreshing),
@@ -130,6 +133,14 @@ Page({
     wx.navigateTo({ url: "/pages/activity-editor/activity-editor" });
   },
 
+  goRoomLogs() {
+    wx.navigateTo({ url: "/pages/room-logs/room-logs" });
+  },
+
+  goRoomLogManage() {
+    wx.navigateTo({ url: "/pages/room-log-manage/room-log-manage" });
+  },
+
   goMe() {
     wx.switchTab({ url: "/pages/me/me" });
   },
@@ -173,6 +184,9 @@ Page({
   },
 
   onShareAppMessage(event = {}) {
+    if ((event.target?.dataset || {}).shareType === "room") {
+      return share.roomLogShare(this.data.roomStatus);
+    }
     return share.activityShareFromEvent(event) || share.defaultShare("/pages/home/home");
   },
 

@@ -9,6 +9,15 @@ function decorateActivity(raw = {}) {
   return toActivityView(raw || {});
 }
 
+function fallbackRegistrationToken(activityId = "", registrationId = "") {
+  if (registrationId) {
+    const savedById = registrationToken.get(registrationId);
+    if (savedById && savedById.accessToken) return savedById.accessToken;
+  }
+  const savedByActivity = registrationToken.findByActivity(activityId);
+  return savedByActivity && savedByActivity.accessToken ? savedByActivity.accessToken : "";
+}
+
 Page({
   data: {
     activityId: "",
@@ -30,7 +39,10 @@ Page({
     this.setData({
       activityId: options.activity || options.activityId || "",
       registrationId: options.registration || options.registrationId || "",
-      token: options.token || "",
+      token: options.token || fallbackRegistrationToken(
+        options.activity || options.activityId || "",
+        options.registration || options.registrationId || ""
+      ),
     });
     this.loadConfirmation();
   },
@@ -51,8 +63,9 @@ Page({
       const data = await api.get(`/api/activities/${encodeURIComponent(activityId)}/registrations/${encodeURIComponent(registrationId)}${query}`);
       const activity = decorateActivity(data.activity || {});
       const registration = data.registration || {};
-      registrationToken.save(registration, token);
-      this.setData({ activity, registration, loading: false, cancelled: false });
+      const effectiveToken = token || fallbackRegistrationToken(activityId, registrationId);
+      registrationToken.save(registration, effectiveToken);
+      this.setData({ activity, registration, token: effectiveToken, loading: false, cancelled: false });
     } catch (error) {
       this.setData({
         error: error.message || "报名确认读取失败",
@@ -104,6 +117,10 @@ Page({
     const activity = this.data.activity || {};
     const id = activity.id || this.data.activityId;
     if (!id) return;
+    if (!activity.canWriteFeedback) {
+      wx.showToast({ title: activity.hasMyFeedback ? "你已经写过活动感受" : "活动结束后再来写下活动感受", icon: "none" });
+      return;
+    }
     wx.navigateTo({ url: `/pages/feedback/feedback?id=${encodeURIComponent(id)}` });
   },
 

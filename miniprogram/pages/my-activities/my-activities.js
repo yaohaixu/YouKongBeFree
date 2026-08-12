@@ -44,6 +44,12 @@ Page({
     wx.navigateTo({ url: `/pages/activity-registrations/activity-registrations?id=${encodeURIComponent(id)}` });
   },
 
+  goActivityFeedbacks(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/activity-feedbacks/activity-feedbacks?id=${encodeURIComponent(id)}` });
+  },
+
   runActivityAction(event) {
     const id = event.currentTarget.dataset.id;
     const action = event.currentTarget.dataset.action;

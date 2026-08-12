@@ -29,6 +29,22 @@ function activityShareFromEvent(event = {}) {
   };
 }
 
+function roomLogPath(roomLogOrId = "") {
+  const id = typeof roomLogOrId === "string" ? roomLogOrId : roomLogOrId.id;
+  return id
+    ? `/pages/room-logs/room-logs?id=${encodeURIComponent(id)}`
+    : "/pages/room-logs/room-logs";
+}
+
+function roomLogShare(roomStatusOrLog = {}) {
+  const log = roomStatusOrLog.currentLog || roomStatusOrLog;
+  const title = roomStatusOrLog.title || (log.statusLabel ? `有空客厅${log.statusLabel}` : "有空客厅开门值班记录");
+  return {
+    title,
+    path: roomLogPath(log && log.id ? log.id : ""),
+  };
+}
+
 function defaultShare(path = "/pages/home/home") {
   return {
     title: `${APP_NAME}：一个在重庆生长的弱中心化社区`,
@@ -49,6 +65,8 @@ module.exports = {
   activityPath,
   activityShare,
   activityShareFromEvent,
+  roomLogPath,
+  roomLogShare,
   defaultShare,
   defaultTimeline,
 };

@@ -5,8 +5,8 @@ const registrationToken = require("../../utils/registration-token");
 
 const REGISTRATIONS_TTL = 2 * 60 * 1000;
 
-function registrationsCacheKey(page, pageSize) {
-  return cache.keys.registrations(cache.currentIdentityPart(), page, pageSize);
+function registrationsCacheKey(view, page, pageSize) {
+  return cache.keys.registrations(cache.currentIdentityPart(), page, pageSize, view);
 }
 
 Page({
@@ -18,6 +18,11 @@ Page({
     page: 1,
     pageSize: 10,
     hasMore: true,
+    view: "upcoming",
+    tabs: [
+      { key: "upcoming", label: "待参加" },
+      { key: "past", label: "已参加" }
+    ],
     registrations: []
   },
 
@@ -34,10 +39,23 @@ Page({
     this.loadRegistrations({ reset: false });
   },
 
+  switchView(event) {
+    const view = event.currentTarget.dataset.view || "upcoming";
+    if (view === this.data.view) return;
+    this.setData({
+      view,
+      page: 1,
+      hasMore: true,
+      registrations: [],
+      error: ""
+    });
+    this.loadRegistrations({ reset: true, preferCache: true });
+  },
+
   async loadRegistrations(options = {}) {
     const reset = options.reset !== false;
     const page = reset ? 1 : this.data.page + 1;
-    const key = registrationsCacheKey(page, this.data.pageSize);
+    const key = registrationsCacheKey(this.data.view, page, this.data.pageSize);
     const cached = cache.getWithMeta(key);
     const force = Boolean(options.force);
     if (reset && options.preferCache !== false && cached.exists && !force) {
@@ -59,7 +77,7 @@ Page({
         const saved = tokens[item.id] || {};
         return {
           ...view,
-          canCancel: true,
+          canCancel: this.data.view === "upcoming",
           accessToken: saved.accessToken || ""
         };
       });
@@ -80,7 +98,7 @@ Page({
 
   async refreshRegistrations(options = {}) {
     try {
-      const data = await api.get(`/api/my/registrations?page=${options.page}&pageSize=${this.data.pageSize}`);
+      const data = await api.get(`/api/my/registrations?view=${encodeURIComponent(this.data.view)}&page=${options.page}&pageSize=${this.data.pageSize}`);
       cache.set(options.key, data, REGISTRATIONS_TTL);
       this.renderRegistrations(data, options);
       return data;
@@ -104,8 +122,17 @@ Page({
     const id = event.currentTarget.dataset.id;
     const registrationId = event.currentTarget.dataset.registrationId;
     if (!id) return;
-    const query = registrationId ? `&registration=${encodeURIComponent(registrationId)}` : "";
-    wx.navigateTo({ url: `/pages/registration-success/registration-success?activity=${encodeURIComponent(id)}${query}` });
+    const savedById = registrationId ? registrationToken.get(registrationId) : {};
+    const saved = savedById && savedById.accessToken ? savedById : (registrationToken.findByActivity(id) || {});
+    const registrationQuery = registrationId ? `&registration=${encodeURIComponent(registrationId)}` : "";
+    const tokenQuery = saved && saved.accessToken ? `&token=${encodeURIComponent(saved.accessToken)}` : "";
+    wx.navigateTo({ url: `/pages/registration-success/registration-success?activity=${encodeURIComponent(id)}${registrationQuery}${tokenQuery}` });
+  },
+
+  goFeedback(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/feedback/feedback?id=${encodeURIComponent(id)}` });
   },
 
   cancelRegistration(event) {

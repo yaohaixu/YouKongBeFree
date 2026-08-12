@@ -10,6 +10,8 @@ const UI_CACHE_TTL = {
   myActivities: 90 * 1000,
   myRegistrations: 2 * 60 * 1000,
   myFeedbacks: 2 * 60 * 1000,
+  roomLogs: 2 * 60 * 1000,
+  publicRoomLogs: 60 * 1000,
   profile: 5 * 60 * 1000,
   identitySync: 5 * 60 * 1000,
   selectOptions: 10 * 60 * 1000,
@@ -303,6 +305,13 @@ let mePageState = {
   profile: null,
   identitySync: null,
   identityInvite: null,
+  publicRoomLogs: [],
+  roomLogs: [],
+  roomLogPage: 1,
+  publicRoomLogPage: 1,
+  editingRoomLog: null,
+  roomLogOpenEditor: null,
+  roomLogNightEditor: null,
   friends: [],
   feedbacks: [],
   activityFeedbacks: [],
@@ -362,6 +371,11 @@ const logActionOptions = [
   ["activity.feedback.create", "提交活动反馈"],
   ["activity.feedback.review", "审核活动反馈"],
   ["activity.feedback.export", "导出活动反馈"],
+  ["room_log.create", "预约开门"],
+  ["room_log.update", "保存开门记录"],
+  ["room_log.open", "确认开门"],
+  ["room_log.close", "确认关门"],
+  ["room_log.review", "审核开门记录"],
   ["profile.update", "保存个人资料"],
   ["ai.model.create", "新增 AI 模型"],
   ["ai.model.update", "保存 AI 模型"],
@@ -930,6 +944,8 @@ function renderMainNav(navLinks, baseLinks, pageName, user) {
     "review-tasks.html",
     "registrations.html",
     "activity-feedback.html",
+    "room-logs.html",
+    "room-log-manage.html",
     "feedback.html",
     "admin.html",
     "admin-activities.html",
@@ -1133,6 +1149,368 @@ function renderActivityCard(activity) {
       </div>
     </article>
   `;
+}
+
+function roomLogStatusToneClass(status = "") {
+  return {
+    opened: "open",
+    scheduled: "upcoming",
+    closed: "closed",
+    none: "empty",
+  }[status] || "empty";
+}
+
+function roomLogNoteHtml(value = "") {
+  const html = descriptionToHtml(value || "");
+  return html || "";
+}
+
+function roomLogDateLabel(value = "") {
+  if (!value) return "日期待定";
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return `${match[1]}/${match[2]}/${match[3]}`;
+  return formatDate(value);
+}
+
+function roomLogNoteStatusTag(status = "", label = "") {
+  const tone = status === "approved" ? "success" : status === "rejected" ? "danger-soft" : "soft";
+  return `<span class="tag ${tone}">${escapeHtml(label || feedbackStatusLabel(status))}</span>`;
+}
+
+function roomLogReviewFieldLabel(field = "") {
+  return field === "nightNote" ? "夜记" : "开门文字";
+}
+
+function renderRoomStatusCard(roomStatus = {}, options = {}) {
+  const status = roomStatus.status || "none";
+  const tone = roomStatus.tone || roomLogStatusToneClass(status);
+  const log = roomStatus.currentLog || null;
+  const actionHref = log?.id ? `room-logs.html#${encodeURIComponent(log.id)}` : "room-logs.html";
+  const primaryText = status === "none" ? "预约开门" : "查看值班记录";
+  const primaryHref = status === "none" ? "room-log-manage.html" : actionHref;
+  const title = roomStatus.title || "今日暂无开门安排";
+  const text = roomStatus.text || "如果今天会在客厅，可以从「我的」预约开门。";
+  return `
+    <article class="room-status-card tone-${escapeHtml(tone)}" data-room-status="${escapeHtml(status)}">
+      <div class="room-status-orb" aria-hidden="true">
+        <span></span>
+      </div>
+      <div class="room-status-copy">
+        <div class="tag-row">
+          <span class="tag">${escapeHtml(roomStatus.statusLabel || "今日暂无安排")}</span>
+          ${log?.keeperName ? `<span class="tag soft">今日轮值：${escapeHtml(log.keeperName)}</span>` : ""}
+        </div>
+        <h2>${escapeHtml(title)}</h2>
+        <div class="room-status-text">${roomLogNoteHtml(text)}</div>
+        ${log?.timingText ? `<p class="room-status-meta">客厅开门时间：${escapeHtml(log.timingText)}</p>` : ""}
+      </div>
+      <div class="room-status-actions">
+        <a class="button primary" href="${primaryHref}">${primaryText}</a>
+        <a class="button outline" href="room-log-manage.html">有空开门</a>
+      </div>
+    </article>
+    ${options.compact ? "" : `<div class="room-status-footnote">状态由轮值看门人的预约、确认开门和确认关门记录决定；AI 只审核公开文字，不决定客厅是否开门。</div>`}
+  `;
+}
+
+async function initRoomStatusCard() {
+  const card = qs("[data-room-status-card]");
+  if (!card) return;
+  const cached = readUiCache("public:bootstrap");
+  if (cached?.data?.roomStatus) {
+    card.innerHTML = renderRoomStatusCard(cached.data.roomStatus);
+    revealDynamicContent(card);
+  }
+  try {
+    const data = await publicBootstrap();
+    card.innerHTML = renderRoomStatusCard(data.roomStatus || {});
+    revealDynamicContent(card);
+  } catch (error) {
+    card.innerHTML = renderRoomStatusCard({
+      status: "none",
+      tone: "empty",
+      statusLabel: "状态读取失败",
+      title: "暂时没读到客厅开门状态",
+      text: "可以稍后刷新，或直接进入值班记录页面查看。",
+    });
+    revealDynamicContent(card);
+  }
+}
+
+function renderRoomLogNoteBlock(log = {}, field = "openNote", options = {}) {
+  const note = log[field] || "";
+  const hasPrivate = Boolean(options.includePrivate);
+  const status = log[`${field}Status`] || "";
+  const statusLabel = log[`${field}StatusLabel`] || feedbackStatusLabel(status);
+  const title = roomLogReviewFieldLabel(field);
+  if (!note) return "";
+  if (!hasPrivate && status !== "approved") return "";
+  const aiReason = log[`${field}AiReason`] || "";
+  return `
+    <section class="room-log-note-block">
+      <div class="tag-row">
+        <span class="tag soft">${escapeHtml(title)}</span>
+        ${hasPrivate ? roomLogNoteStatusTag(status, statusLabel) : ""}
+      </div>
+      <div class="article-content compact">${roomLogNoteHtml(note)}</div>
+      ${hasPrivate && aiReason ? `<p class="muted-text">AI：${escapeHtml(aiReason)}</p>` : ""}
+    </section>
+  `;
+}
+
+function renderRoomLogRow(log = {}, options = {}) {
+  const tone = roomLogStatusToneClass(log.status);
+  const canManage = Boolean(log.canManage) && !options.publicMode;
+  const includePrivate = Boolean(options.includePrivate || canManage || options.reviewActions);
+  const anchor = options.publicMode ? ` id="${escapeHtml(log.id || "")}"` : "";
+  return `
+    <article class="event-row room-log-row tone-${escapeHtml(tone)}"${anchor} data-room-log-id="${escapeHtml(log.id || "")}">
+      <div>
+        <div class="tag-row">
+          <span class="tag">${escapeHtml(log.statusLabel || "开门记录")}</span>
+          <span class="tag soft">${escapeHtml(roomLogDateLabel(log.scheduledOpenAt || log.dateKey))}</span>
+          ${log.keeperName ? `<span class="tag soft">轮值：${escapeHtml(log.keeperName)}</span>` : ""}
+        </div>
+        <h3>${escapeHtml(log.statusLabel || "值班记录")} · ${escapeHtml(log.timingText || "时间待定")}</h3>
+        <p>${escapeHtml(log.scheduledOpenAt ? `计划开门 ${log.scheduledOpenAt.replace("T", " ")}` : "计划时间待定")}${log.scheduledCloseAt ? ` · 计划关门 ${escapeHtml(log.scheduledCloseAt.replace("T", " "))}` : ""}</p>
+        ${renderRoomLogNoteBlock(log, "openNote", { includePrivate })}
+        ${renderRoomLogNoteBlock(log, "nightNote", { includePrivate })}
+        ${includePrivate && log.hasAdminReviewNote ? `<p class="muted-text">有文字正在等待管理员决定是否展示。</p>` : ""}
+      </div>
+      <div class="row-actions">
+        ${canManage ? `<button class="button outline" type="button" data-edit-room-log="${escapeHtml(log.id)}">编辑</button>` : ""}
+        ${canManage && log.status === "scheduled" ? `<button class="button primary" type="button" data-open-room-log="${escapeHtml(log.id)}">确认开门</button>` : ""}
+        ${canManage && log.status !== "closed" ? `<button class="button outline" type="button" data-close-room-log="${escapeHtml(log.id)}">确认关门</button>` : ""}
+        ${options.reviewActions ? renderRoomLogReviewButtons(log) : ""}
+      </div>
+    </article>
+  `;
+}
+
+function renderRoomLogReviewButtons(log = {}) {
+  const fields = ["openNote", "nightNote"].filter((field) => log[field] && log[`${field}Status`] === "admin_review");
+  if (!fields.length) return "";
+  return fields.map((field) => `
+    <button class="button outline" type="button" data-room-log-review-field="${field}" data-room-log-review-action="approve">展示${roomLogReviewFieldLabel(field)}</button>
+    <button class="button outline danger-soft" type="button" data-room-log-review-field="${field}" data-room-log-review-action="reject">不展示${roomLogReviewFieldLabel(field)}</button>
+  `).join("");
+}
+
+async function renderPublicRoomLogs(root = document, options = {}) {
+  const list = qs("[data-public-room-logs]", root);
+  if (!list) return;
+  const page = Number(options.page || mePageState.publicRoomLogPage || 1);
+  const query = `?page=${page}&pageSize=${mePageState.pageSize}`;
+  const cacheKey = `public-room-logs:${query}`;
+  const cached = page === 1 ? readUiCache(cacheKey) : null;
+  if (cached?.data?.roomLogs) {
+    resetPagedState("publicRoomLogs");
+    const cachedLoaded = mergePageItems("publicRoomLogs", page, cached.data.roomLogs);
+    renderPublicRoomLogRows(root, cachedLoaded, cached.data.pageInfo);
+  }
+  const data = await api.get(`/api/room-logs${query}`);
+  if (page === 1) writeUiCache(cacheKey, data, UI_CACHE_TTL.publicRoomLogs);
+  const loaded = mergePageItems("publicRoomLogs", page, data.roomLogs || []);
+  renderPublicRoomLogRows(root, loaded, data.pageInfo);
+}
+
+function renderPublicRoomLogRows(root = document, logs = [], pageInfo = {}) {
+  const list = qs("[data-public-room-logs]", root);
+  if (!list) return;
+  updatePagedCount(qs("[data-public-room-log-count]", root), logs.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-public-room-logs]", root), logs.length, pageInfo?.total || logs.length);
+  if (!logs.length) {
+    list.innerHTML = `<div class="empty-state"><strong>还没有值班记录</strong><p>有人预约开门后，这里会按时间展示。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = logs.map((log) => renderRoomLogRow(log, { publicMode: true })).join("");
+  revealDynamicContent(list);
+  const hash = decodeURIComponent(location.hash.replace(/^#/, ""));
+  if (hash) qs(`#${CSS.escape(hash)}`, list)?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function initPublicRoomLogsPage() {
+  const root = qs("[data-room-logs-page]");
+  if (!root) return;
+  await renderPublicRoomLogs(root);
+  qs("[data-load-more-public-room-logs]", root)?.addEventListener("click", async () => {
+    mePageState.publicRoomLogPage += 1;
+    await renderPublicRoomLogs(root, { page: mePageState.publicRoomLogPage });
+  });
+}
+
+function defaultLocalDatetime(hoursOffset = 0) {
+  const date = new Date(Date.now() + hoursOffset * 60 * 60 * 1000);
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60 * 1000).toISOString().slice(0, 16);
+}
+
+function mountRoomLogEditors(form) {
+  if (!form || !window.youkongRichEditor) return;
+  qsa("[data-rich-textarea]", form).forEach((textarea) => {
+    const editor = window.youkongRichEditor.mount(textarea);
+    if (textarea.name === "openNote") mePageState.roomLogOpenEditor = editor;
+    if (textarea.name === "nightNote") mePageState.roomLogNightEditor = editor;
+  });
+}
+
+function syncRoomLogEditors(form) {
+  mePageState.roomLogOpenEditor?.sync?.();
+  mePageState.roomLogNightEditor?.sync?.();
+  return {
+    keeperName: form.keeperName.value,
+    scheduledOpenAt: form.scheduledOpenAt.value,
+    scheduledCloseAt: form.scheduledCloseAt.value,
+    openNote: form.openNote.value,
+    nightNote: form.nightNote.value,
+  };
+}
+
+function resetRoomLogForm(form) {
+  mePageState.editingRoomLog = null;
+  form.reset();
+  form.scheduledOpenAt.value = defaultLocalDatetime(1);
+  form.scheduledCloseAt.value = defaultLocalDatetime(5);
+  mePageState.roomLogOpenEditor?.reset?.();
+  mePageState.roomLogNightEditor?.reset?.();
+  qs("[data-room-log-form-title]", form)?.replaceChildren(document.createTextNode("预约开门"));
+  qs("[data-reset-room-log-form]", form).hidden = false;
+}
+
+function fillRoomLogForm(form, log = {}) {
+  mePageState.editingRoomLog = log;
+  form.keeperName.value = log.keeperName || preferredDisplayName();
+  form.scheduledOpenAt.value = toDatetimeLocal(log.scheduledOpenAt);
+  form.scheduledCloseAt.value = toDatetimeLocal(log.scheduledCloseAt);
+  form.openNote.value = log.openNote || "";
+  form.nightNote.value = log.nightNote || "";
+  mePageState.roomLogOpenEditor?.setHtml?.(log.openNote || "");
+  mePageState.roomLogNightEditor?.setHtml?.(log.nightNote || "");
+  qs("[data-room-log-form-title]", form)?.replaceChildren(document.createTextNode("编辑开门记录"));
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function renderMyRoomLogs(root = document, options = {}) {
+  const list = qs("[data-room-logs]", root);
+  if (!list) return;
+  const page = Number(options.page || mePageState.roomLogPage || 1);
+  const cacheKey = `room-logs:me:page=${page}&pageSize=${mePageState.pageSize}`;
+  const cached = page === 1 ? readUiCache(cacheKey) : null;
+  if (cached?.data?.roomLogs) {
+    resetPagedState("roomLogs");
+    const cachedLoaded = mergePageItems("roomLogs", page, cached.data.roomLogs);
+    renderMyRoomLogRows(root, cachedLoaded, cached.data.pageInfo);
+  }
+  const data = await api.get(`/api/my/room-logs?page=${page}&pageSize=${mePageState.pageSize}`);
+  if (page === 1) writeUiCache(cacheKey, data, UI_CACHE_TTL.roomLogs);
+  const loaded = mergePageItems("roomLogs", page, data.roomLogs || []);
+  renderMyRoomLogRows(root, loaded, data.pageInfo);
+}
+
+function renderMyRoomLogRows(root = document, logs = [], pageInfo = {}) {
+  const list = qs("[data-room-logs]", root);
+  if (!list) return;
+  updatePagedCount(qs("[data-room-log-count]", root), logs.length, pageInfo);
+  updateLoadMore(qs("[data-load-more-room-logs]", root), logs.length, pageInfo?.total || logs.length);
+  if (!logs.length) {
+    list.innerHTML = `<div class="empty-state"><strong>还没有预约过开门</strong><p>可以在上面创建第一条开门记录。</p></div>`;
+    revealDynamicContent(list);
+    return;
+  }
+  list.innerHTML = logs.map((log) => renderRoomLogRow(log, { includePrivate: true })).join("");
+  bindRoomLogManageActions(root);
+  revealDynamicContent(list);
+}
+
+function bindRoomLogManageActions(root = document) {
+  const form = qs("[data-room-log-form]", root);
+  qsa("[data-edit-room-log]", root).forEach((button) => {
+    button.addEventListener("click", () => {
+      const log = (mePageState.roomLogs || []).find((item) => item.id === button.dataset.editRoomLog);
+      if (log && form) fillRoomLogForm(form, log);
+    });
+  });
+  qsa("[data-open-room-log]", root).forEach((button) => {
+    button.addEventListener("click", async () => {
+      await api.post(`/api/room-logs/${encodeURIComponent(button.dataset.openRoomLog)}/open`, {});
+      showToast("客厅已开门");
+      resetPagedState("roomLogs");
+      await Promise.all([renderMyRoomLogs(root), initRoomStatusCard()]);
+    });
+  });
+  qsa("[data-close-room-log]", root).forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!confirm("确认客厅已经关门了吗？")) return;
+      const editing = mePageState.editingRoomLog?.id === button.dataset.closeRoomLog && form;
+      const payload = editing ? syncRoomLogEditors(form) : {};
+      await api.post(`/api/room-logs/${encodeURIComponent(button.dataset.closeRoomLog)}/close`, payload);
+      showToast("已记录关门");
+      resetPagedState("roomLogs");
+      await Promise.all([renderMyRoomLogs(root), initRoomStatusCard()]);
+    });
+  });
+}
+
+function bindRoomLogReviewActions(root = document, after = async () => {}) {
+  qsa("[data-room-log-review-field]", root).forEach((button) => {
+    button.addEventListener("click", async () => {
+      const row = button.closest("[data-room-log-id]");
+      const id = row?.dataset.roomLogId || "";
+      const field = button.dataset.roomLogReviewField || "";
+      const action = button.dataset.roomLogReviewAction || "";
+      if (!id || !field || !action) return;
+      if (action === "reject" && !confirm(`确定不展示这段${roomLogReviewFieldLabel(field)}吗？`)) return;
+      await api.post(`/api/room-logs/${encodeURIComponent(id)}/review`, { field, action });
+      showToast("保存成功");
+      resetPagedState("roomLogs");
+      resetPagedState("publicRoomLogs");
+      await after();
+    });
+  });
+}
+
+async function initRoomLogManagePage() {
+  const root = qs("[data-room-log-manage-page]");
+  if (!root) return;
+  await getOptionalUser().then((user) => { mePageState.user = user; }).catch(() => {});
+  const form = qs("[data-room-log-form]", root);
+  const message = qs("[data-room-log-message]", root);
+  mountRoomLogEditors(form);
+  resetRoomLogForm(form);
+  form.keeperName.value = preferredDisplayName();
+  qs("[data-reset-room-log-form]", form)?.addEventListener("click", () => {
+    resetRoomLogForm(form);
+    form.keeperName.value = preferredDisplayName();
+    setMessage(message, "已切换为新建。");
+  });
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = form.querySelector("button[type='submit']");
+    button.disabled = true;
+    setMessage(message, "正在保存开门记录...");
+    try {
+      const payload = syncRoomLogEditors(form);
+      const editing = mePageState.editingRoomLog;
+      const result = editing
+        ? await api.put(`/api/room-logs/${encodeURIComponent(editing.id)}`, payload)
+        : await api.post("/api/room-logs", payload);
+      mePageState.editingRoomLog = result.roomLog;
+      setMessage(message, result.roomLog?.hasAdminReviewNote ? "已保存，部分文字需管理员确认后才会公开展示。" : "已保存并更新首页状态。", "success");
+      showToast("保存成功");
+      resetPagedState("roomLogs");
+      await Promise.all([renderMyRoomLogs(root), initRoomStatusCard()]);
+    } catch (error) {
+      setMessage(message, error.message, "error");
+    } finally {
+      button.disabled = false;
+    }
+  });
+  qs("[data-load-more-room-logs]", root)?.addEventListener("click", async () => {
+    mePageState.roomLogPage += 1;
+    await renderMyRoomLogs(root, { page: mePageState.roomLogPage });
+  });
+  await renderMyRoomLogs(root);
 }
 
 async function initProfilePage() {
@@ -1977,6 +2355,16 @@ function renderWorkspaceCards(root, user, summary, pendingSummary) {
       tone: "amber",
     },
     {
+      href: "room-log-manage.html",
+      label: "有空开门",
+      title: "预约开门和值班夜记",
+      body: "记录今天谁在、什么时候开门关门，也可以写下开门文字和夜记。",
+      meta: "客厅日常入口",
+      count: "开门",
+      icon: "room",
+      tone: "emerald",
+    },
+    {
       href: "activity-editor.html",
       label: "发起活动",
       title: "写下一个新的活动想法",
@@ -2050,6 +2438,7 @@ function renderWorkspaceCard(card) {
     sync: "amber",
     template: "purple",
     todo: "urgent",
+    room: "emerald",
   };
   const tone = card.tone || toneByIcon[card.icon] || "neutral";
   const icon = card.icon ? `<span class="workspace-icon" aria-hidden="true">${workspaceIconSvg(card.icon)}</span>` : "";
@@ -2085,6 +2474,7 @@ function workspaceIconSvg(name = "circle") {
     policy: { viewBox: "0 0 24 24", body: `<path d="M4.75 3.5a.75.75 0 0 0 0 1.5h14.5a.75.75 0 0 0 0-1.5H4.75ZM3 8.75A.75.75 0 0 1 3.75 8h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 8.75Zm1.75 4.25a.75.75 0 0 0 0 1.5h9.5a.75.75 0 0 0 0-1.5h-9.5Zm0 5a.75.75 0 0 0 0 1.5h6.5a.75.75 0 0 0 0-1.5h-6.5Z"></path><path d="M18.78 13.72a.75.75 0 0 0-1.06 0l-4.25 4.25a.75.75 0 0 0-.22.53v1.75c0 .414.336.75.75.75h1.75a.75.75 0 0 0 .53-.22l4.25-4.25a.75.75 0 0 0 0-1.06l-1.75-1.75Zm-4.03 4.97 3.5-3.5.69.69-3.5 3.5h-.69v-.69Z"></path>` },
     registration: { viewBox: "0 0 24 24", body: `<path d="M5 3.75C5 2.784 5.784 2 6.75 2h10.5c.966 0 1.75.784 1.75 1.75v17.5a.75.75 0 0 1-1.218.586L12 17.21l-5.781 4.625A.75.75 0 0 1 5 21.25Zm1.75-.25a.25.25 0 0 0-.25.25v15.94l5.031-4.026a.749.749 0 0 1 .938 0L17.5 19.69V3.75a.25.25 0 0 0-.25-.25Z"></path>` },
     report: { viewBox: "0 0 24 24", body: `<path d="M1.5 4.25c0-.966.784-1.75 1.75-1.75h17.5c.966 0 1.75.784 1.75 1.75v12.5a1.75 1.75 0 0 1-1.75 1.75h-9.586a.25.25 0 0 0-.177.073l-3.5 3.5A1.458 1.458 0 0 1 5 21.043V18.5H3.25a1.75 1.75 0 0 1-1.75-1.75ZM3.25 4a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 .75.75v3.19l3.427-3.427A1.75 1.75 0 0 1 11.164 17h9.586a.25.25 0 0 0 .25-.25V4.25a.25.25 0 0 0-.25-.25ZM12 6a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 12 6Zm0 9a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path>` },
+    room: { viewBox: "0 0 24 24", body: `<path d="M5.75 2A2.75 2.75 0 0 0 3 4.75v14.5A2.75 2.75 0 0 0 5.75 22h12.5A2.75 2.75 0 0 0 21 19.25V4.75A2.75 2.75 0 0 0 18.25 2H5.75ZM4.5 4.75c0-.69.56-1.25 1.25-1.25h12.5c.69 0 1.25.56 1.25 1.25v14.5c0 .69-.56 1.25-1.25 1.25H15V5.75A.75.75 0 0 0 14.25 5H6.75A.75.75 0 0 0 6 5.75V20.5h-.25c-.69 0-1.25-.56-1.25-1.25V4.75ZM7.5 20.5v-14h6v14h-6Zm4.75-7.25a.75.75 0 0 0 0 1.5h.5a.75.75 0 0 0 0-1.5h-.5Z"></path>` },
     rules: { viewBox: "0 0 24 24", body: `<path d="M16.53 9.78a.75.75 0 0 0-1.06-1.06L11 13.19l-1.97-1.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5-5Z"></path><path d="m12.54.637 8.25 2.675A1.75 1.75 0 0 1 22 4.976V10c0 6.19-3.771 10.704-9.401 12.83a1.704 1.704 0 0 1-1.198 0C5.77 20.705 2 16.19 2 10V4.976c0-.758.489-1.43 1.21-1.664L11.46.637a1.748 1.748 0 0 1 1.08 0Zm-.617 1.426-8.25 2.676a.249.249 0 0 0-.173.237V10c0 5.46 3.28 9.483 8.43 11.426a.199.199 0 0 0 .14 0C17.22 19.483 20.5 15.461 20.5 10V4.976a.25.25 0 0 0-.173-.237l-8.25-2.676a.253.253 0 0 0-.154 0Z"></path>` },
     sync: { viewBox: "0 0 24 24", body: `<path d="M6.5 3a3.5 3.5 0 0 0-1.86 6.466l-1.82 4.55a3.5 3.5 0 1 0 1.394.557l1.82-4.548a3.505 3.505 0 0 0 3.543-1.264l5.22 3.132a3.5 3.5 0 1 0 .772-1.286L10.35 7.475A3.5 3.5 0 0 0 6.5 3Zm0 1.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm11 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM3.5 15.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"></path><path d="M7.845 16.209a.75.75 0 0 1 .946-.478l3.5 1.167a.75.75 0 0 1-.474 1.423l-3.5-1.167a.75.75 0 0 1-.472-.945Zm7.285.066a.75.75 0 0 1 .595.88l-.5 2.5a.75.75 0 0 1-1.47-.294l.5-2.5a.75.75 0 0 1 .875-.586Z"></path>` },
     template: { viewBox: "0 0 24 24", body: `<path d="M3.75 3.5a.25.25 0 0 0-.25.25v2.062a.75.75 0 1 1-1.5 0V3.75C2 2.783 2.783 2 3.75 2h2.062a.75.75 0 1 1 0 1.5Zm13.688-.75a.75.75 0 0 1 .75-.75h2.062c.966 0 1.75.783 1.75 1.75v2.062a.75.75 0 1 1-1.5 0V3.75a.25.25 0 0 0-.25-.25h-2.062a.75.75 0 0 1-.75-.75ZM2.75 17.438a.75.75 0 0 1 .75.75v2.062c0 .138.112.25.25.25h2.062a.75.75 0 1 1 0 1.5H3.75A1.75 1.75 0 0 1 2 20.25v-2.062a.75.75 0 0 1 .75-.75Zm18.5 0a.75.75 0 0 1 .75.75v2.062A1.75 1.75 0 0 1 20.25 22h-2.062a.75.75 0 1 1 0-1.5h2.062a.25.25 0 0 0 .25-.25v-2.062a.75.75 0 0 1 .75-.75Zm-18.5-8.25a.75.75 0 0 1 .75.75v4.124a.75.75 0 1 1-1.5 0V9.938a.75.75 0 0 1 .75-.75ZM9.188 2.75a.75.75 0 0 1 .75-.75h4.124a.75.75 0 1 1 0 1.5H9.938a.75.75 0 0 1-.75-.75Zm0 18.5a.75.75 0 0 1 .75-.75h4.124a.75.75 0 1 1 0 1.5H9.938a.75.75 0 0 1-.75-.75ZM21.25 9.188a.75.75 0 0 1 .75.75v4.124a.75.75 0 1 1-1.5 0V9.938a.75.75 0 0 1 .75-.75ZM3.75 8.25a.75.75 0 0 1 .75-.75h2a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1-.75-.75Zm5.5 0A.75.75 0 0 1 10 7.5h2A.75.75 0 0 1 12 9h-2a.75.75 0 0 1-.75-.75Zm-1-4.5A.75.75 0 0 1 9 4.5v2a.75.75 0 0 1-1.5 0v-2a.75.75 0 0 1 .75-.75Zm0 5.5A.75.75 0 0 1 9 10v2a.75.75 0 0 1-1.5 0v-2a.75.75 0 0 1 .75-.75Zm0 4.75a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4a.75.75 0 0 1 .75-.75ZM14 8.25a.75.75 0 0 1 .75-.75h4a.75.75 0 0 1 0 1.5h-4a.75.75 0 0 1-.75-.75Z"></path>` },
@@ -2628,6 +3018,8 @@ function resetPagedState(key) {
     myRegistrations: "myRegistrationPage",
     myFeedbacks: "myFeedbackPage",
     publicActivities: "publicActivityPage",
+    roomLogs: "roomLogPage",
+    publicRoomLogs: "publicRoomLogPage",
     trustProfiles: "userPage",
     aiPrompts: "templatePage",
     trustPolicies: "trustPolicyPage",
@@ -2879,14 +3271,19 @@ async function renderMyPendingTasks() {
   const panel = qs("[data-my-pending]");
   if (!panel) return;
   const user = mePageState.user || await getOptionalUser();
-  const [{ activities }, feedbackResult] = await Promise.all([
+  const canViewFeedbacks = hasPermission(user, "feedbacks", "view");
+  const [{ activities }, feedbackResult, roomLogResult] = await Promise.all([
     api.get("/api/activities?pending=me"),
-    hasPermission(user, "feedbacks", "view")
+    canViewFeedbacks
       ? api.get("/api/feedbacks?status=admin_review&page=1&pageSize=12")
       : Promise.resolve({ feedbacks: [] }),
+    canViewFeedbacks
+      ? api.get("/api/room-logs?all=true&noteStatus=admin_review&page=1&pageSize=12")
+      : Promise.resolve({ roomLogs: [] }),
   ]);
   renderPendingTasks(panel, activities, {
     feedbacks: feedbackResult.feedbacks || [],
+    roomLogs: roomLogResult.roomLogs || [],
     onRefresh: renderMyPendingTasks,
   });
 }
@@ -3345,6 +3742,7 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
   const templateTotal = Number(templatesSummary?.total || 0);
   const friendTotal = Number(friendsSummary?.total || 0);
   const feedbackPending = Number(feedbackSummary?.pendingReview || 0);
+  const roomLogPending = Number(feedbackSummary?.roomLogReview || pendingSummary?.roomLogTotal || 0);
   const pendingTotal = Number(pendingSummary?.total || 0);
   const groups = [
     {
@@ -3356,7 +3754,7 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           label: "审核待办",
           title: "活动与反馈复核",
           body: "管理员处理活动复核和匿名反馈复核，协作员仍只处理活动审核。",
-          meta: `活动 ${pendingSummary?.activityTotal ?? pendingTotal - feedbackPending} / 反馈 ${feedbackPending}`,
+          meta: `活动 ${pendingSummary?.activityTotal ?? pendingTotal - feedbackPending - roomLogPending} / 反馈 ${feedbackPending} / 夜记 ${roomLogPending}`,
           count: pendingTotal,
           icon: "todo",
           permissionAny: [["reviewTasks", "view"], ["activities", "review"], ["feedbacks", "view"]],
@@ -3415,6 +3813,16 @@ function renderAdminDashboardCards(root, activitiesSummary, usersSummary, module
           meta: "待审核反馈",
           count: feedbackPending,
           icon: "feedback",
+          permission: ["feedbacks", "view"],
+        },
+        {
+          href: "review-tasks.html",
+          label: "开门夜记审核",
+          title: "处理开门文字和夜记展示",
+          body: "开门事实直接记录，文字公开展示由 AI 预审和管理员兜底。",
+          meta: "值班记录",
+          count: roomLogPending,
+          icon: "room",
           permission: ["feedbacks", "view"],
         },
       ],
@@ -4283,6 +4691,7 @@ function renderSafetyRules(container, rules = []) {
 const aiSceneLabels = {
   activity: "活动分析",
   feedback: "活动反馈",
+  room_log: "开门夜记",
   report: "举报复核",
   manual: "手动重分析",
 };
@@ -4395,6 +4804,7 @@ function renderAiConsoleSummary(container, settings = {}, models = [], usage = {
   if (!container) return;
   const activityModel = firstRouteModel(settings, models, "activity");
   const feedbackPrompt = activePromptFor(prompts, settings, "feedback");
+  const roomLogPrompt = activePromptFor(prompts, settings, "room_log");
   const activityPrompt = activePromptFor(prompts, settings, "activity");
   const reportPrompt = activePromptFor(prompts, settings, "report");
   const healthy = models.filter((model) => model.healthStatus === "ok").length;
@@ -4414,6 +4824,7 @@ function renderAiConsoleSummary(container, settings = {}, models = [], usage = {
     <article class="ai-console-card"><span class="tag">Token</span><strong>${formatCompactNumber(usage.totalTokens || 0)}</strong><p>缓存命中 ${formatCompactNumber(usage.cacheHits || 0)} 次</p></article>
     <article class="ai-console-card prompt-console-card"><span class="tag">活动分析 Prompt</span><h3>${escapeHtml(activityPrompt?.name || "默认活动分析")}</h3><p>${escapeHtml(activityPrompt?.version || settings.promptVersion || "activity-default-v1")}</p><a class="button ghost" href="admin-ai-prompts.html?type=activity">查看</a></article>
     <article class="ai-console-card prompt-console-card"><span class="tag">活动反馈 Prompt</span><h3>${escapeHtml(feedbackPrompt?.name || "默认活动反馈")}</h3><p>${escapeHtml(feedbackPrompt?.version || settings.promptVersions?.feedback || "feedback-default-v1")}</p><a class="button ghost" href="admin-ai-prompts.html?type=feedback">查看</a></article>
+    <article class="ai-console-card prompt-console-card"><span class="tag">开门夜记 Prompt</span><h3>${escapeHtml(roomLogPrompt?.name || "默认开门夜记")}</h3><p>${escapeHtml(roomLogPrompt?.version || settings.promptVersions?.room_log || "room-log-default-v1")}</p><a class="button ghost" href="admin-ai-prompts.html?type=room_log">查看</a></article>
     <article class="ai-console-card prompt-console-card"><span class="tag">举报复核 Prompt</span><h3>${escapeHtml(reportPrompt?.name || "暂未单独配置")}</h3><p>${escapeHtml(reportPrompt?.version || settings.promptVersions?.report || "复用活动分析")}</p><a class="button ghost" href="admin-ai-prompts.html?type=report">查看</a></article>
   `;
   revealDynamicContent(container);
@@ -4525,7 +4936,7 @@ function renderAiSceneRoutes(container, settings = {}, models = []) {
         <div>
           <span class="tag">${escapeHtml(label)}</span>
           <h3>${escapeHtml(modelById(models, primary)?.name || "未选择模型")}</h3>
-          <p>${scene === "feedback" ? "活动匿名反馈分析、公开展示判断和精选排序。" : scene === "report" ? "举报后重新理解举报内容和活动内容。" : scene === "manual" ? "管理员手动重新分析时使用。" : "活动发布安全分析、结构化提取和风险解释。"}</p>
+          <p>${scene === "feedback" ? "活动匿名反馈分析、公开展示判断和精选排序。" : scene === "room_log" ? "开门文字和夜记公开展示判断，不决定开门事实。" : scene === "report" ? "举报后重新理解举报内容和活动内容。" : scene === "manual" ? "管理员手动重新分析时使用。" : "活动发布安全分析、结构化提取和风险解释。"}</p>
         </div>
         <div class="ai-route-controls">
           <label>主模型<select data-ai-scene-primary>${enabledModels.map((model) => `<option value="${escapeHtml(model.id)}" ${model.id === primary ? "selected" : ""}>${escapeHtml(model.name)} · ${escapeHtml(model.model || "未填模型")}</option>`).join("")}</select></label>
@@ -5588,7 +5999,8 @@ async function renderUsers() {
 function renderPendingTasks(container, activities = [], options = {}) {
   if (!container) return;
   const feedbacks = options.feedbacks || [];
-  if (!activities.length && !feedbacks.length) {
+  const roomLogs = options.roomLogs || [];
+  if (!activities.length && !feedbacks.length && !roomLogs.length) {
     container.innerHTML = `<div class="empty-state"><strong>暂无待办</strong><p>需要处理的活动或反馈会出现在这里。</p></div>`;
     revealDynamicContent(container);
     return;
@@ -5618,10 +6030,23 @@ function renderPendingTasks(container, activities = [], options = {}) {
         <div class="event-list rows">${feedbacks.map((feedback) => renderFeedbackRow(feedback, { reviewActions: true, taskMode: true })).join("")}</div>
       </section>
     ` : "",
+    roomLogs.length ? `
+      <section class="pending-task-group">
+        <div class="pending-task-head">
+          <div>
+            <span class="tag soft">开门夜记审核</span>
+            <h3>开门文字或夜记需要管理员决定是否展示</h3>
+          </div>
+          <small>${roomLogs.length} 条</small>
+        </div>
+        <div class="event-list rows">${roomLogs.map((log) => renderRoomLogRow(log, { includePrivate: true, reviewActions: true })).join("")}</div>
+      </section>
+    ` : "",
   ].join("");
   revealDynamicContent(container);
   bindReviewButtons(container);
   bindFeedbackReviewActions(container, options.onRefresh || (async () => {}));
+  bindRoomLogReviewActions(container, options.onRefresh || (async () => {}));
 }
 
 function renderReviewTask(activity) {
@@ -5699,8 +6124,18 @@ function bindReviewButtons(container) {
 async function renderAdminPendingTasks() {
   const panel = qs("[data-admin-pending]");
   if (!panel) return;
-  const { activities } = await api.get("/api/activities?pending=me");
-  renderPendingTasks(panel, activities);
+  const user = mePageState.user || getCachedUser();
+  const canViewFeedbacks = hasPermission(user, "feedbacks", "view");
+  const [{ activities }, feedbackResult, roomLogResult] = await Promise.all([
+    api.get("/api/activities?pending=me"),
+    canViewFeedbacks ? api.get("/api/feedbacks?status=admin_review&page=1&pageSize=12") : Promise.resolve({ feedbacks: [] }),
+    canViewFeedbacks ? api.get("/api/room-logs?all=true&noteStatus=admin_review&page=1&pageSize=12") : Promise.resolve({ roomLogs: [] }),
+  ]);
+  renderPendingTasks(panel, activities, {
+    feedbacks: feedbackResult.feedbacks || [],
+    roomLogs: roomLogResult.roomLogs || [],
+    onRefresh: renderAdminPendingTasks,
+  });
 }
 
 async function renderAllActivities() {
@@ -6413,7 +6848,7 @@ async function safeInit(task) {
   } catch (error) {
     console.error(error);
     showToast("页面数据读取失败，请刷新后重试");
-    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-profile-editor-page], [data-co-initiator-invite-page], [data-identity-sync-page], [data-my-feedbacks-page], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-profile-page], [data-safety-rules], [data-ai-prompts], [data-ai-console-summary], [data-community-health], [data-ai-model-list], [data-ai-usage-models], [data-ai-usage-errors], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list], [data-friend-list], [data-feedback-list], [data-activity-feedback-list], [data-my-registrations], [data-my-feedbacks], [data-identity-sync-summary]")
+    qsa("[data-activity-list], [data-public-activity-list], [data-me-dashboard], [data-profile-editor-page], [data-co-initiator-invite-page], [data-identity-sync-page], [data-my-feedbacks-page], [data-room-status-card], [data-public-room-logs], [data-room-logs], [data-admin-dashboard], [data-governance-cards], [data-activity-detail], [data-success-detail], [data-profile-page], [data-safety-rules], [data-ai-prompts], [data-ai-console-summary], [data-community-health], [data-ai-model-list], [data-ai-usage-models], [data-ai-usage-errors], [data-confidence-detail], [data-trust-list], [data-trust-detail], [data-trust-policy-list], [data-badge-list], [data-badge-policy-list], [data-report-list], [data-friend-list], [data-feedback-list], [data-activity-feedback-list], [data-my-registrations], [data-my-feedbacks], [data-identity-sync-summary]")
       .filter((element) => /正在|读取|加载/.test(element.textContent || ""))
       .forEach((element) => {
         element.innerHTML = `<div class="empty-state"><strong>暂时没读到数据</strong><p>请刷新页面重试，或稍后再来。</p></div>`;
@@ -6426,13 +6861,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   await Promise.all([
     safeInit(initSessionNav),
     safeInit(renderActivityLists),
+    safeInit(initRoomStatusCard),
+    safeInit(initPublicRoomLogsPage),
     safeInit(initPublicActivitiesPage),
     safeInit(initMeDashboardPage),
-	    safeInit(initProfileEditorPage),
-	    safeInit(initCoInitiatorInvitePage),
-	    safeInit(initIdentitySyncPage),
-	    safeInit(initMyFeedbacksPage),
-	    safeInit(initActivityEditorPage),
+    safeInit(initProfileEditorPage),
+    safeInit(initCoInitiatorInvitePage),
+    safeInit(initIdentitySyncPage),
+    safeInit(initMyFeedbacksPage),
+    safeInit(initActivityEditorPage),
+    safeInit(initRoomLogManagePage),
     safeInit(initMyActivitiesPage),
     safeInit(initRegistrationsPage),
     safeInit(initReviewTasksPage),

@@ -1,29 +1,27 @@
 <view class="page">
-  <view class="hero home-hero">
+  <view class="room-status-card tone-{{roomStatus.tone}}" bindtap="goRoomLogs">
     <view class="home-hero-top">
       <view class="home-badge">
         <view class="live-dot"></view>
         <text>重庆 · 有空客厅</text>
       </view>
-      <view class="home-chip">Community OS</view>
+      <view class="home-chip">{{roomStatus.statusLabel}}</view>
     </view>
-    <view class="title">今天有空吗？</view>
-    <view class="body">看一场放映，发起一次讨论，或者把下一次见面先写下来。</view>
+    <view class="room-status-main">
+      <view class="room-orb">
+        <view></view>
+      </view>
+      <view class="room-copy">
+        <view class="title">{{roomStatus.title}}</view>
+        <view class="body">{{roomStatus.text || "点进值班记录，可以看看今天谁在客厅。"}}</view>
+        <view wx:if="{{roomStatus.hasLog}}" class="room-meta">今日轮值：{{roomStatus.currentLog.keeperName || "有空朋友"}} · {{roomStatus.currentLog.timingText || "时间待定"}}</view>
+      </view>
+    </view>
     <view class="home-actions">
-      <view class="button" bindtap="goActivities">看活动</view>
-      <view class="button secondary" bindtap="goEditor">发起活动</view>
+      <view class="button" catchtap="goRoomLogs">看值班记录</view>
+      <view class="button secondary" catchtap="goRoomLogManage">预约开门</view>
     </view>
     <view class="quick-strip">
-      <view class="quick-item" bindtap="goMe">
-        <view class="quick-icon yk-icon yk-icon-profile">
-          <view class="icon-head"></view>
-          <view class="icon-shoulder"></view>
-        </view>
-        <view>
-          <text>我的</text>
-          <text>报名、反馈、身份网络</text>
-        </view>
-      </view>
       <view class="quick-item" bindtap="goActivities">
         <view class="quick-icon yk-icon yk-icon-calendar">
           <view class="icon-calendar-body"></view>
@@ -33,6 +31,16 @@
         <view>
           <text>近期</text>
           <text>正在发生的活动</text>
+        </view>
+      </view>
+      <view class="quick-item" bindtap="goEditor">
+        <view class="quick-icon yk-icon yk-icon-compose">
+          <view class="icon-sheet"></view>
+          <view class="icon-pen"></view>
+        </view>
+        <view>
+          <text>发起</text>
+          <text>写下一个活动想法</text>
         </view>
       </view>
     </view>

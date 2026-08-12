@@ -128,6 +128,11 @@ function feedbackUrl(activityId) {
   return `${WEB_BASE}/activity-feedback.html?id=${encodeURIComponent(activityId || "")}`;
 }
 
+function roomLogsUrl(roomLogId = "") {
+  const query = roomLogId ? `#${encodeURIComponent(roomLogId)}` : "";
+  return `${WEB_BASE}/room-logs.html${query}`;
+}
+
 function safeFileName(value = "youkong") {
   return String(value || "youkong").replace(/[\\/:*?"<>|]+/g, "-").slice(0, 60);
 }
@@ -296,6 +301,64 @@ async function generateActivityPoster(page, activity = {}, options = {}) {
   return canvasToJpg(page, width, height);
 }
 
+async function generateRoomLogPoster(page, roomStatus = {}, options = {}) {
+  const log = roomStatus.currentLog || options.roomLog || {};
+  const width = 900;
+  const height = 1260;
+  const tone = roomStatus.tone || log.tone || "empty";
+  const toneColors = {
+    open: { bg: "#eef8ef", accent: "#257b44", deep: "#112a1d" },
+    upcoming: { bg: "#fff7e4", accent: "#9b6a12", deep: "#2f2412" },
+    closed: { bg: "#fff0eb", accent: "#9f392b", deep: "#311714" },
+    empty: { bg: "#f3f5f0", accent: "#53645d", deep: "#17231f" },
+  };
+  const colors = toneColors[tone] || toneColors.empty;
+  const noteText = String(options.noteText || roomStatus.text || log.plainNote || "").replace(/\s+/g, " ").trim();
+  const link = roomLogsUrl(log.id || "");
+
+  await setCanvasData(page, width, height);
+  await sleep(80);
+  const ctx = wx.createCanvasContext(CANVAS_ID, page);
+  setFill(ctx, "#f8f5ef");
+  ctx.fillRect(0, 0, width, height);
+  fillRoundedRect(ctx, 54, 58, width - 108, height - 116, 36, "rgba(255,255,255,0.88)");
+  strokeRoundedRect(ctx, 54, 58, width - 108, height - 116, 36, "rgba(23,35,31,0.12)");
+  fillRoundedRect(ctx, 82, 86, width - 164, 276, 30, colors.bg);
+
+  setText(ctx, 28, colors.accent);
+  ctx.fillText("有空客厅开门值班记录", 116, 146);
+  setText(ctx, 54, colors.deep);
+  wrapText(ctx, roomStatus.title || log.statusLabel || "今日暂无开门安排", 116, 222, 660, 68, 2, 54);
+  setText(ctx, 28, "#53645d");
+  const timing = log.timingText || (log.scheduledOpenAt ? `计划 ${log.scheduledOpenAt.slice(11, 16)}` : "");
+  ctx.fillText(timing ? `轮值：${log.keeperName || "有空朋友"} · ${timing}` : "今天有没有人在客厅，打开小程序就知道。", 116, 330);
+
+  setText(ctx, 34, colors.deep);
+  let y = 438;
+  y = wrapText(ctx, noteText || "点进值班记录，可以看看今天谁在客厅。", 104, y, 692, 54, 6, 34) + 40;
+
+  fillRoundedRect(ctx, 104, y, 692, 2, 1, "rgba(23,35,31,0.1)");
+  y += 72;
+  setText(ctx, 30, "#8d4637");
+  ctx.fillText("开门状态由轮值看门人确认", 104, y);
+  setText(ctx, 27, "#53645d");
+  wrapText(ctx, "AI 只审核公开文字，不决定客厅是否开门。欢迎有空的时候来坐坐。", 104, y + 54, 640, 44, 2, 27);
+
+  const qrSize = 260;
+  const qrX = 320;
+  const qrY = height - 430;
+  fillRoundedRect(ctx, qrX - 26, qrY - 80, qrSize + 52, qrSize + 120, 30, "rgba(255,255,255,0.92)");
+  setText(ctx, 26, "#53645d", "center");
+  ctx.fillText("扫码查看值班记录", qrX + qrSize / 2, qrY - 34);
+  const matrix = await qrMatrix(link);
+  drawQr(ctx, matrix, qrX, qrY, qrSize);
+  setText(ctx, 24, "#6b776f", "center");
+  ctx.fillText("youkongbefree", width / 2, height - 82);
+
+  await drawCanvas(ctx);
+  return canvasToJpg(page, width, height);
+}
+
 function saveImageToAlbum(filePath) {
   return new Promise((resolve, reject) => {
     wx.saveImageToPhotosAlbum({
@@ -376,9 +439,11 @@ async function saveOrPreview(filePath) {
 module.exports = {
   activityUrl,
   feedbackUrl,
+  roomLogsUrl,
   safeFileName,
   formatActivityTime,
   generateQrCard,
   generateActivityPoster,
+  generateRoomLogPoster,
   saveOrPreview,
 };

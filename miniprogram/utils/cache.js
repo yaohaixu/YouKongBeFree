@@ -186,6 +186,15 @@ const keys = {
   publicActivityList(queryKey) {
     return key(["public", "activities", queryKey, "v1"]);
   },
+  publicRoomLogsPrefix() {
+    return key(["public", "room-logs"]);
+  },
+  publicRoomLogs(page, pageSize) {
+    return key(["public", "room-logs", `p${page}`, `s${pageSize}`, "v1"]);
+  },
+  publicRoomStatus() {
+    return key(["public", "room-status", "v1"]);
+  },
   miniprogramConfig() {
     return key(["public", "miniprogram-config", "v1"]);
   },
@@ -195,11 +204,14 @@ const keys = {
   meSummary(identityPart) {
     return key(["user", identityPart, "me-summary", "v1"]);
   },
-  registrations(identityPart, page, pageSize) {
-    return key(["user", identityPart, "registrations", `p${page}`, `s${pageSize}`, "v1"]);
+  registrations(identityPart, page, pageSize, view = "all") {
+    return key(["user", identityPart, "registrations", view || "all", `p${page}`, `s${pageSize}`, "v1"]);
   },
   feedbacks(identityPart, page, pageSize) {
     return key(["user", identityPart, "feedbacks", `p${page}`, `s${pageSize}`, "v1"]);
+  },
+  roomLogs(identityPart, page, pageSize) {
+    return key(["user", identityPart, "room-logs", `p${page}`, `s${pageSize}`, "v1"]);
   },
   identitySync(identityPart) {
     return key(["user", identityPart, "identity-sync", "v1"]);
@@ -210,6 +222,13 @@ function invalidatePublicActivities(activityId) {
   remove(keys.publicBootstrap());
   removeByPrefix(keys.publicActivityListPrefix());
   if (activityId) remove(keys.publicActivity(activityId));
+}
+
+function invalidateRoomLogs() {
+  remove(keys.publicBootstrap());
+  remove(keys.publicRoomStatus());
+  removeByPrefix(keys.publicRoomLogsPrefix());
+  removeByPrefix(keys.userPrefix(currentIdentityPart()));
 }
 
 module.exports = {
@@ -228,5 +247,6 @@ module.exports = {
   sameData,
   publicActivityData,
   publicBootstrapData,
-  invalidatePublicActivities
+  invalidatePublicActivities,
+  invalidateRoomLogs
 };

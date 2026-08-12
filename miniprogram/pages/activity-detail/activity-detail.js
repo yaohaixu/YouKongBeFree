@@ -341,8 +341,12 @@ Page({
     const activity = this.data.activity;
     const registration = activity && activity.myRegistration;
     if (!activity || !activity.id || !registration || !registration.id) return;
+    const savedById = registrationToken.get(registration.id);
+    const saved = savedById && savedById.accessToken ? savedById : (registrationToken.findByActivity(activity.id) || {});
+    const token = registration.accessToken || saved.accessToken || "";
+    const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : "";
     wx.navigateTo({
-      url: `/pages/registration-success/registration-success?activity=${encodeURIComponent(activity.id)}&registration=${encodeURIComponent(registration.id)}`
+      url: `/pages/registration-success/registration-success?activity=${encodeURIComponent(activity.id)}&registration=${encodeURIComponent(registration.id)}${tokenQuery}`
     });
   },
 

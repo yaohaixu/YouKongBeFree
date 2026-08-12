@@ -19,14 +19,39 @@
   <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
   <block wx:elif="{{activities.length}}">
     <view class="list">
-      <view class="activity-shell" wx:for="{{activities}}" wx:key="id">
-        <activity-card activity="{{item}}" />
-        <view wx:if="{{item.permissions.canEdit || item.permissions.canWithdraw || item.permissions.canCancel || item.permissions.canEnd || item.permissions.canManageCoInitiators}}" class="action-stack">
-          <view wx:if="{{item.permissions.canEdit}}" class="mini-action" data-id="{{item.id}}" bindtap="goEditor">编辑</view>
-          <view class="mini-action" data-id="{{item.id}}" bindtap="goRegistrations">报名表</view>
-          <view wx:if="{{item.permissions.canWithdraw}}" class="mini-action" data-id="{{item.id}}" data-title="{{item.title}}" data-action="withdraw" bindtap="runActivityAction">撤回为草稿</view>
-          <view wx:if="{{item.permissions.canCancel}}" class="mini-action danger" data-id="{{item.id}}" data-title="{{item.title}}" data-action="cancel" bindtap="runActivityAction">取消活动</view>
-          <view wx:if="{{item.permissions.canEnd}}" class="mini-action" data-id="{{item.id}}" data-title="{{item.title}}" data-action="end" bindtap="runActivityAction">结束活动</view>
+      <view class="owner-card" wx:for="{{activities}}" wx:key="id">
+        <view class="owner-head">
+          <view class="owner-meta">
+            <text>{{item.displaySource || item.moduleName || "有空客厅"}}</text>
+            <text wx:if="{{item.displaySeries}}">{{item.displaySeries}}</text>
+          </view>
+          <view class="status-pill">{{item.statusLabel || "活动"}}</view>
+        </view>
+        <view class="owner-title">{{item.title || "未命名活动"}}</view>
+        <view class="owner-line">{{item.displayTime || "时间待定"}}</view>
+        <view class="owner-line">{{item.location || "地点待定"}}</view>
+        <view wx:if="{{item.displayFormation}}" class="formation-note">{{item.displayFormation}}</view>
+        <view class="stats-row">
+          <view class="stat-item">
+            <view class="stat-value">{{item.registrationCount || 0}}</view>
+            <view class="stat-label">报名</view>
+          </view>
+          <view class="stat-item">
+            <view class="stat-value">{{item.interestCount || 0}}</view>
+            <view class="stat-label">感兴趣</view>
+          </view>
+          <view class="stat-item">
+            <view class="stat-value">{{item.feedbackCount || 0}}</view>
+            <view class="stat-label">活动感受</view>
+          </view>
+        </view>
+        <view wx:if="{{item.permissions.canEdit || item.permissions.canWithdraw || item.permissions.canCancel || item.permissions.canEnd || item.permissions.canManageCoInitiators}}" class="owner-actions">
+          <view wx:if="{{item.permissions.canEdit}}" class="mini-action" data-id="{{item.id}}" catchtap="goEditor">编辑</view>
+          <view class="mini-action" data-id="{{item.id}}" catchtap="goRegistrations">报名表</view>
+          <view class="mini-action" data-id="{{item.id}}" catchtap="goActivityFeedbacks">活动感受</view>
+          <view wx:if="{{item.permissions.canWithdraw}}" class="mini-action wide" data-id="{{item.id}}" data-title="{{item.title}}" data-action="withdraw" catchtap="runActivityAction">撤回为草稿</view>
+          <view wx:if="{{item.permissions.canEnd}}" class="mini-action" data-id="{{item.id}}" data-title="{{item.title}}" data-action="end" catchtap="runActivityAction">结束活动</view>
+          <view wx:if="{{item.permissions.canCancel}}" class="mini-action danger" data-id="{{item.id}}" data-title="{{item.title}}" data-action="cancel" catchtap="runActivityAction">取消活动</view>
         </view>
       </view>
     </view>

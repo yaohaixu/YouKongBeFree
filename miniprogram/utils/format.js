@@ -45,6 +45,7 @@ function activitySummary(activity = {}) {
 }
 
 function canRegisterActivity(activity = {}) {
+  if (activity.hasEnded) return false;
   return activity.status === "published" && !activity.registrationDeadlinePassed;
 }
 
@@ -112,6 +113,88 @@ function toFeedbackView(feedback = {}) {
   };
 }
 
+function roomLogStatusTone(status = "") {
+  return {
+    opened: "open",
+    scheduled: "upcoming",
+    closed: "closed",
+    none: "empty",
+  }[status] || "empty";
+}
+
+function roomLogStatusLabel(status = "") {
+  return {
+    opened: "已开门",
+    scheduled: "即将开门",
+    closed: "已关门",
+    none: "今日暂无安排",
+  }[status] || "即将开门";
+}
+
+function roomLogDateLabel(value = "") {
+  if (!value) return "";
+  const text = String(value || "");
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return text;
+  return `${match[2]}/${match[3]}`;
+}
+
+function roomLogTime(value = "") {
+  const match = String(value || "").match(/T(\d{2}:\d{2})/);
+  return match ? match[1] : "";
+}
+
+function roomLogPlainNote(log = {}) {
+  return stripHtml(log.openNote || log.nightNote || "");
+}
+
+function roomStatusView(status = {}) {
+  const currentLog = status.currentLog || {};
+  const state = status.status || "none";
+  return {
+    ...status,
+    status: state,
+    tone: status.tone || roomLogStatusTone(state),
+    statusLabel: status.statusLabel || roomLogStatusLabel(state),
+    title: status.title || "今日暂无开门安排",
+    text: stripHtml(status.text || ""),
+    currentLog: currentLog.id ? toRoomLogView(currentLog) : {},
+    hasLog: Boolean(currentLog.id),
+  };
+}
+
+function toRoomLogView(log = {}) {
+  const openNote = responsiveRichTextHtml(log.openNote || "");
+  const nightNote = responsiveRichTextHtml(log.nightNote || "");
+  const status = log.status || "scheduled";
+  const titleTime = status === "opened"
+    ? roomLogTime(log.openedAt || log.scheduledOpenAt)
+    : status === "closed"
+      ? roomLogTime(log.closedAt || log.scheduledCloseAt)
+      : roomLogTime(log.scheduledOpenAt);
+  return {
+    ...log,
+    status,
+    tone: roomLogStatusTone(status),
+    statusLabel: log.statusLabel || roomLogStatusLabel(status),
+    dateLabel: roomLogDateLabel(log.scheduledOpenAt || log.dateKey || log.createdAt),
+    titleTime,
+    timingText: log.timingText || "",
+    openNote,
+    nightNote,
+    plainNote: roomLogPlainNote(log),
+    hasPublicOpenNote: Boolean(openNote),
+    hasPublicNightNote: Boolean(nightNote),
+    openNoteInReview: log.openNoteStatus === "admin_review",
+    nightNoteInReview: log.nightNoteStatus === "admin_review",
+    openNoteRejected: log.openNoteStatus === "rejected",
+    nightNoteRejected: log.nightNoteStatus === "rejected",
+    canOpen: Boolean(log.canManage && status === "scheduled"),
+    canClose: Boolean(log.canManage && status !== "closed"),
+    displayUpdatedAt: formatDateTime(log.updatedAt || log.createdAt),
+  };
+}
+
 module.exports = {
   formatActivityTime,
   formatDateTime,
@@ -121,6 +204,10 @@ module.exports = {
   toActivityView,
   toRegistrationView,
   toFeedbackView,
+  roomLogStatusTone,
+  roomLogStatusLabel,
+  roomStatusView,
+  toRoomLogView,
   canRegisterActivity,
   registrationNotice
 };

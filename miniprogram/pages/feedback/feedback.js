@@ -53,24 +53,28 @@ Page({
 
   async submitFeedback() {
     if (this.data.submitting || !this.data.id) return;
+    if (!this.data.activity || !this.data.activity.hasEnded) {
+      wx.showToast({ title: "活动结束后再来写下活动感受", icon: "none" });
+      return;
+    }
     const payload = {
       favorite: String(this.data.form.favorite || "").trim(),
       improvement: String(this.data.form.improvement || "").trim(),
       other: String(this.data.form.other || "").trim()
     };
     if (!payload.favorite && !payload.improvement && !payload.other) {
-      wx.showToast({ title: "至少写一点反馈", icon: "none" });
+      wx.showToast({ title: "至少写一点活动感受", icon: "none" });
       return;
     }
     this.setData({ submitting: true });
-    wx.showLoading({ title: "提交反馈..." });
+    wx.showLoading({ title: "提交感受..." });
     try {
       const data = await api.post(`/api/activities/${encodeURIComponent(this.data.id)}/feedbacks`, payload);
       cache.removeByPrefix(cache.keys.userPrefix(cache.currentIdentityPart()));
       cache.invalidatePublicActivities(this.data.id);
       wx.hideLoading();
       wx.showToast({
-        title: data.existing ? "已经提交过" : "反馈已提交",
+        title: data.existing ? "已经提交过" : "感受已提交",
         icon: "success"
       });
       setTimeout(() => {

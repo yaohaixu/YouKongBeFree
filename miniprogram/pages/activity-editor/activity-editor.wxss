@@ -121,6 +121,12 @@
   transition: height 180ms cubic-bezier(0.2, 0, 0, 1);
 }
 
+.rich-editor hr {
+  height: 1rpx;
+  border: 0;
+  background: rgba(16, 23, 20, 0.08);
+}
+
 .rich-preview {
   overflow: hidden;
   margin-top: 22rpx;
@@ -150,6 +156,13 @@
   height: auto;
   margin: 12rpx 0;
   border-radius: 18rpx;
+}
+
+.rich-preview-body hr {
+  height: 1rpx;
+  margin: 20rpx 0;
+  border: 0;
+  background: rgba(16, 23, 20, 0.08);
 }
 
 .two-columns {

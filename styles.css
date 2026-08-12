@@ -6593,6 +6593,144 @@ html[data-theme="light"] body.product-surface .row-actions .muted-text {
   font-size: 0.9rem;
 }
 
+.room-status-section {
+  padding-top: clamp(28px, 5vw, 56px);
+  padding-bottom: clamp(20px, 4vw, 42px);
+}
+
+.room-status-shell {
+  color: var(--muted);
+}
+
+.room-status-card {
+  --room-tone: #5b6470;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: clamp(18px, 3vw, 32px);
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid color-mix(in srgb, var(--room-tone) 20%, var(--line) 80%);
+  border-radius: 22px;
+  padding: clamp(22px, 3.4vw, 34px);
+  background:
+    radial-gradient(circle 420px at 8% 12%, color-mix(in srgb, var(--room-tone) 13%, transparent), transparent 72%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 96%, #fff 4%), color-mix(in srgb, var(--panel) 90%, var(--bg) 10%));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    0 16px 42px rgba(32, 37, 31, 0.07);
+}
+
+.room-status-card.tone-open {
+  --room-tone: #17813f;
+}
+
+.room-status-card.tone-upcoming {
+  --room-tone: #b57a00;
+}
+
+.room-status-card.tone-closed {
+  --room-tone: #c14435;
+}
+
+.room-status-card.tone-empty {
+  --room-tone: #6f7782;
+}
+
+.room-status-orb {
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--room-tone) 24%, var(--line) 76%);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--room-tone) 10%, var(--panel) 90%);
+  color: var(--room-tone);
+}
+
+.room-status-orb span {
+  width: 30px;
+  height: 42px;
+  border: 3px solid currentColor;
+  border-radius: 10px 10px 4px 4px;
+  transform-origin: left center;
+}
+
+.room-status-card.tone-open .room-status-orb span {
+  transform: perspective(70px) rotateY(-24deg);
+}
+
+.room-status-card h2 {
+  margin: 10px 0 6px;
+  color: var(--ink);
+  font-size: clamp(28px, 4vw, 46px);
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.room-status-text {
+  max-width: 72ch;
+  color: var(--muted);
+}
+
+.room-status-text p {
+  margin: 0.45em 0;
+}
+
+.room-status-meta,
+.room-status-footnote {
+  color: var(--muted);
+}
+
+.room-status-actions {
+  display: grid;
+  gap: 10px;
+  min-width: 142px;
+}
+
+.room-status-actions .button {
+  width: 100%;
+}
+
+.room-status-footnote {
+  margin: 12px 4px 0;
+  font-size: 0.94rem;
+}
+
+.room-log-list {
+  gap: 14px;
+}
+
+.room-log-row {
+  border-color: color-mix(in srgb, var(--room-log-tone, var(--line)) 12%, var(--line) 88%);
+}
+
+.room-log-row.tone-open {
+  --room-log-tone: #17813f;
+}
+
+.room-log-row.tone-upcoming {
+  --room-log-tone: #b57a00;
+}
+
+.room-log-row.tone-closed {
+  --room-log-tone: #c14435;
+}
+
+.room-log-note-block {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.room-log-note-block .article-content {
+  margin-top: 8px;
+}
+
+.room-log-form .rich-canvas {
+  min-height: 220px;
+}
+
 .activity-share-actions {
   display: grid;
   grid-template-columns: 1fr;
@@ -9408,6 +9546,10 @@ body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card[data-ca
   --workspace-tone: #5161d6;
 }
 
+body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card[data-card-tone="emerald"] {
+  --workspace-tone: #1f7a4d;
+}
+
 body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card > * {
   position: relative;
   z-index: 1;
@@ -9536,6 +9678,11 @@ body:has(main[data-me-dashboard]) [data-my-pending] .row-actions .button {
 .workspace-card[data-workspace-icon="feedback"]:hover .workspace-icon svg,
 .workspace-card[data-workspace-icon="feedback"]:focus-visible .workspace-icon svg {
   animation: workspace-icon-dialog 230ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.workspace-card[data-workspace-icon="room"]:hover .workspace-icon svg,
+.workspace-card[data-workspace-icon="room"]:focus-visible .workspace-icon svg {
+  animation: workspace-icon-door 260ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 .workspace-card[data-workspace-icon="mine"]:hover .workspace-icon svg,
@@ -9885,6 +10032,20 @@ html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-my-pending] .eve
 
   100% {
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes workspace-icon-door {
+  0% {
+    transform: perspective(80px) rotateY(0deg) scale(1);
+  }
+
+  58% {
+    transform: perspective(80px) rotateY(-14deg) translateX(1px) scale(1.04);
+  }
+
+  100% {
+    transform: perspective(80px) rotateY(0deg) scale(1);
   }
 }
 

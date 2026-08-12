@@ -1,11 +1,30 @@
-.home-hero {
+.room-status-card {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 30rpx;
   padding: 38rpx 32rpx 32rpx;
-  border-color: rgba(255, 255, 255, 0.1);
-  background: linear-gradient(145deg, #101714 0%, #17241c 58%, #203226 100%);
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  border-radius: 28rpx;
   box-shadow: 0 20rpx 48rpx rgba(16, 23, 20, 0.18);
 }
 
-.home-hero::after {
+.room-status-card.tone-open {
+  background: linear-gradient(145deg, #0f2a1a 0%, #164326 58%, #1f6233 100%);
+}
+
+.room-status-card.tone-upcoming {
+  background: linear-gradient(145deg, #2f2412 0%, #5f4215 56%, #936e24 100%);
+}
+
+.room-status-card.tone-closed {
+  background: linear-gradient(145deg, #2f1512 0%, #5a211b 56%, #8d3329 100%);
+}
+
+.room-status-card.tone-empty {
+  background: linear-gradient(145deg, #101714 0%, #17241c 58%, #203226 100%);
+}
+
+.room-status-card::after {
   position: absolute;
   right: 0;
   bottom: 0;
@@ -22,16 +41,55 @@
   gap: 18rpx;
 }
 
-.home-hero .title {
+.room-status-main {
+  display: flex;
+  gap: 22rpx;
+  margin-top: 30rpx;
+}
+
+.room-orb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 94rpx;
+  height: 94rpx;
+  border: 1rpx solid rgba(255, 254, 250, 0.14);
+  border-radius: 30rpx;
+  background: rgba(255, 254, 250, 0.1);
+}
+
+.room-orb view {
+  width: 34rpx;
+  height: 44rpx;
+  border: 5rpx solid currentColor;
+  border-radius: 12rpx 12rpx 7rpx 7rpx;
+  color: rgba(255, 254, 250, 0.88);
+  transform: perspective(80rpx) rotateY(-16deg);
+}
+
+.room-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.room-status-card .title {
   max-width: 520rpx;
   color: #fffefa;
-  font-size: 56rpx;
+  font-size: 48rpx;
   line-height: 1.08;
 }
 
-.home-hero .body {
+.room-status-card .body {
   max-width: 560rpx;
   color: rgba(255, 254, 250, 0.76);
+}
+
+.room-meta {
+  margin-top: 14rpx;
+  color: rgba(255, 254, 250, 0.66);
+  font-size: 24rpx;
+  line-height: 1.5;
 }
 
 .home-badge {

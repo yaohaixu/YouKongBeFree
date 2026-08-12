@@ -496,13 +496,6 @@ Page({
     });
   },
 
-  redoRichText() {
-    if (!this.editorCtx || typeof this.editorCtx.redo !== "function") return;
-    this.editorCtx.redo({
-      success: () => this.syncRichEditorContent()
-    });
-  },
-
   clearRichText() {
     if (!this.editorCtx) return;
     wx.showModal({

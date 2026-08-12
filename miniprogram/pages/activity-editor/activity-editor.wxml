@@ -185,7 +185,6 @@
           <view class="tool" data-name="list" data-value="ordered" bindtap="formatRichText">1.</view>
           <view class="tool" bindtap="insertDivider">线</view>
           <view class="tool wide muted-tool" bindtap="undoRichText">撤销</view>
-          <view class="tool wide muted-tool" bindtap="redoRichText">重做</view>
           <view class="tool wide" bindtap="insertRichImage">{{richImageUploading ? "上传中" : "图片"}}</view>
           <view class="tool wide muted-tool" bindtap="clearRichText">清空</view>
         </view>

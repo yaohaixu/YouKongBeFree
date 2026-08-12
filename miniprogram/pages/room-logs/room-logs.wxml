@@ -1,0 +1,58 @@
+<view class="page room-page">
+  <view class="room-status-card tone-{{roomStatus.tone}}">
+    <view class="status-top">
+      <view class="status-badge">{{roomStatus.statusLabel}}</view>
+      <view class="status-date">{{roomStatus.hasLog ? roomStatus.currentLog.dateLabel : "今日"}}</view>
+    </view>
+    <view class="status-main">
+      <view class="status-orb"><view></view></view>
+      <view class="status-copy">
+        <view class="status-title">{{roomStatus.title}}</view>
+        <view class="status-text">{{roomStatus.text || "点进值班记录，可以看看今天谁在客厅。"}}</view>
+        <view wx:if="{{roomStatus.hasLog}}" class="status-meta">轮值：{{roomStatus.currentLog.keeperName || "有空朋友"}} · {{roomStatus.currentLog.timingText || "时间待定"}}</view>
+      </view>
+    </view>
+    <view class="status-actions">
+      <view class="button" bindtap="goManage">预约开门</view>
+      <view class="button secondary" bindtap="downloadPoster">{{shareImageLoading ? "生成中..." : "下载开门海报"}}</view>
+      <view class="button secondary" bindtap="copyLink">复制链接</view>
+      <button class="button secondary share-button" open-type="share">分享小程序链接</button>
+    </view>
+  </view>
+
+  <view class="section-heading">
+    <view>
+      <view class="section-title">值班记录</view>
+      <view class="section-subtitle">每天谁在、几点开门、有没有夜记，都留在这里。</view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="panel muted">正在读取值班记录...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <block wx:elif="{{roomLogs.length}}">
+    <view class="room-log-card tone-{{item.tone}} {{item.highlighted ? 'highlighted' : ''}}" wx:for="{{roomLogs}}" wx:key="id">
+      <view class="log-head">
+        <view>
+          <view class="log-date">{{item.dateLabel || "日期待定"}}</view>
+          <view class="log-title">{{item.statusLabel}}<text wx:if="{{item.titleTime}}">（{{item.titleTime}}）</text></view>
+        </view>
+        <view class="log-pill">{{item.keeperName || "有空朋友"}}</view>
+      </view>
+      <view wx:if="{{item.timingText}}" class="log-meta">客厅开门时间：{{item.timingText}}</view>
+      <view wx:if="{{item.openNote}}" class="note-block">
+        <view class="note-title">开门文字</view>
+        <rich-text class="note-content" nodes="{{item.openNote}}" />
+      </view>
+      <view wx:if="{{item.nightNote}}" class="note-block">
+        <view class="note-title">夜记</view>
+        <rich-text class="note-content" nodes="{{item.nightNote}}" />
+      </view>
+      <view wx:if="{{!item.openNote && !item.nightNote}}" class="log-empty">这一天还没有公开文字。</view>
+    </view>
+    <view wx:if="{{loadingMore}}" class="loading-more">继续读取中...</view>
+    <view wx:elif="{{!hasMore}}" class="loading-more">已经到底了</view>
+  </block>
+  <empty-state wx:else title="还没有值班记录" text="第一位今天在客厅的朋友，可以从这里预约开门。" />
+
+  <canvas canvas-id="shareCanvas" class="share-canvas" style="width: {{shareCanvasWidth}}px; height: {{shareCanvasHeight}}px;"></canvas>
+</view>

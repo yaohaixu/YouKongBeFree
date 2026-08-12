@@ -77,6 +77,18 @@
         </view>
         <view class="entry-arrow">›</view>
       </view>
+      <view class="entry-card" data-url="/pages/room-log-manage/room-log-manage" bindtap="openEntry">
+        <view class="entry-icon yk-icon yk-icon-door">
+          <view class="icon-door-body"></view>
+          <view class="icon-door-gap"></view>
+          <view class="icon-door-dot"></view>
+        </view>
+        <view class="entry-content">
+          <view class="entry-title">有空开门</view>
+          <view class="entry-text">预约开门、确认关门和写夜记</view>
+        </view>
+        <view class="entry-arrow">›</view>
+      </view>
       <view class="entry-card" data-url="/pages/identity-sync/identity-sync" bindtap="openEntry">
         <view class="entry-icon yk-icon yk-icon-sync">
           <view class="icon-line-one"></view>

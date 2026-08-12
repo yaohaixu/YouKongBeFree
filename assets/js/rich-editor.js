@@ -7,6 +7,10 @@
     return root.querySelector(selector);
   }
 
+  function qsa(selector, root = document) {
+    return Array.from(root.querySelectorAll(selector));
+  }
+
   function escapeHtml(value = "") {
     return String(value)
       .replaceAll("&", "&amp;")
@@ -148,10 +152,10 @@
     selection.addRange(range);
   }
 
-  function updateToolbarState(form) {
-    const editor = qs("[data-rich-editor]", form);
-    const canvas = qs("[data-rich-canvas]", form);
-    if (!editor || !canvas) return;
+  function updateToolbarState(editor) {
+    if (!editor) return;
+    const canvas = qs("[data-rich-canvas]", editor);
+    if (!canvas) return;
     const block = activeBlockTag(canvas);
     const states = {
       p: block === "p" || block === "li",
@@ -270,38 +274,56 @@
     return data.url;
   }
 
-  function sync(form) {
-    const source = qs("[data-rich-source]", form);
-    const editor = qs("[data-rich-canvas]", form);
-    if (!source || !editor) return "";
-    const html = normalizeHtml(editor.innerHTML);
+  function editorPair(sourceOrForm, editor = null) {
+    if (editor) return { source: sourceOrForm, editor };
+    const form = sourceOrForm || document;
+    return {
+      source: qs("[data-rich-source], [data-rich-textarea], textarea[name=\"description\"], textarea[name=\"content\"]", form),
+      editor: qs("[data-rich-editor]", form),
+    };
+  }
+
+  function sync(sourceOrForm, editor = null) {
+    const pair = editorPair(sourceOrForm, editor);
+    const source = pair.source;
+    const richEditor = pair.editor;
+    if (!richEditor) return "";
+    const canvas = qs("[data-rich-canvas]", richEditor);
+    if (!source || !canvas) return "";
+    const html = normalizeHtml(canvas.innerHTML);
     source.value = html;
     return html;
   }
 
-  function setHtml(form, value = "") {
-    const source = qs("[data-rich-source]", form);
-    const editor = qs("[data-rich-canvas]", form);
-    if (!source || !editor) return;
+  function setHtml(sourceOrForm, editorOrValue = null, maybeValue = "") {
+    const legacy = typeof editorOrValue === "string" || editorOrValue === undefined || editorOrValue === null;
+    const pair = legacy ? editorPair(sourceOrForm) : editorPair(sourceOrForm, editorOrValue);
+    const source = pair.source;
+    const richEditor = pair.editor;
+    const value = legacy ? editorOrValue || "" : maybeValue;
+    if (!richEditor) return;
+    const canvas = qs("[data-rich-canvas]", richEditor);
+    if (!source || !canvas) return;
     const html = looksLikeHtml(value) ? normalizeHtml(value) : textToParagraphs(value);
     source.value = html;
-    editor.innerHTML = html;
+    canvas.innerHTML = html;
   }
 
-  function reset(form) {
-    setHtml(form, "");
+  function reset(sourceOrForm, editor = null) {
+    if (editor) setHtml(sourceOrForm, editor, "");
+    else setHtml(sourceOrForm, "");
   }
 
-  function qsa(selector, root = document) {
-    return Array.from(root.querySelectorAll(selector));
-  }
-
-  function mount(form) {
-    const source = qs("[data-rich-textarea], textarea[name=\"description\"], textarea[name=\"content\"]", form);
-    if (!source || qs("[data-rich-editor]", form)) return null;
+  function mount(sourceOrForm) {
+    const source = sourceOrForm?.matches?.("textarea")
+      ? sourceOrForm
+      : qs("[data-rich-textarea], textarea[name=\"description\"], textarea[name=\"content\"]", sourceOrForm || document);
+    if (!source || source.dataset.richMounted === "true") return null;
+    const form = source.closest("form") || source.parentElement || document;
 
     source.classList.add("rich-source");
     source.setAttribute("data-rich-source", "");
+    source.dataset.richMounted = "true";
     source.removeAttribute("required");
 
     const editor = document.createElement("div");
@@ -331,15 +353,15 @@
     let savedRange = null;
     let lastPointerCommandAt = 0;
     canvas.dataset.placeholder = source.placeholder || "写下活动介绍。";
-    setHtml(form, source.value || "");
+    setHtml(source, editor, source.value || "");
 
     document.execCommand("defaultParagraphSeparator", false, "p");
     const runCommand = (button) => {
       restoreSelection(savedRange);
       execEditorCommand(button.dataset.richCommand, canvas, imageInput);
-      sync(form);
+      sync(source, editor);
       savedRange = saveSelection(canvas);
-      updateToolbarState(form);
+      updateToolbarState(editor);
     };
     editor.addEventListener("pointerdown", (event) => {
       if (event.target.closest("[data-rich-command]")) {
@@ -362,20 +384,20 @@
     });
     canvas.addEventListener("keyup", () => {
       savedRange = saveSelection(canvas);
-      updateToolbarState(form);
+      updateToolbarState(editor);
     });
     canvas.addEventListener("mouseup", () => {
       savedRange = saveSelection(canvas);
-      updateToolbarState(form);
+      updateToolbarState(editor);
     });
     canvas.addEventListener("focus", () => {
       savedRange = saveSelection(canvas);
-      updateToolbarState(form);
+      updateToolbarState(editor);
     });
     canvas.addEventListener("input", () => {
       savedRange = saveSelection(canvas);
-      sync(form);
-      updateToolbarState(form);
+      sync(source, editor);
+      updateToolbarState(editor);
     });
     canvas.addEventListener("paste", (event) => {
       event.preventDefault();
@@ -385,9 +407,9 @@
       } else {
         document.execCommand("insertText", false, text);
       }
-      sync(form);
+      sync(source, editor);
       savedRange = saveSelection(canvas);
-      updateToolbarState(form);
+      updateToolbarState(editor);
     });
     document.addEventListener("selectionchange", () => {
       if (document.activeElement === canvas) {
@@ -410,26 +432,26 @@
         canvas.focus();
         restoreSelection(savedRange);
         insertHtmlAtSelection(`<p><img src="${url}" alt=""></p><p><br></p>`);
-        sync(form);
+        sync(source, editor);
         savedRange = saveSelection(canvas);
-        updateToolbarState(form);
+        updateToolbarState(editor);
         window.dispatchEvent(new CustomEvent("youkong-toast", { detail: "图片已插入" }));
       } catch (error) {
         window.dispatchEvent(new CustomEvent("youkong-toast", { detail: error.message || "图片处理失败" }));
       }
     });
 
-    updateToolbarState(form);
+    updateToolbarState(editor);
 
     return {
-      sync: () => sync(form),
+      sync: () => sync(source, editor),
       setHtml: (value) => {
-        setHtml(form, value);
-        updateToolbarState(form);
+        setHtml(source, editor, value);
+        updateToolbarState(editor);
       },
       reset: () => {
-        reset(form);
-        updateToolbarState(form);
+        reset(source, editor);
+        updateToolbarState(editor);
       },
     };
   }

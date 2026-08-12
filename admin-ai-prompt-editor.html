@@ -42,7 +42,7 @@
           <form class="form-note config-editor" data-ai-prompt-form>
             <h3 data-ai-prompt-form-title>新增 Prompt</h3>
             <div class="form-grid compact-form-grid">
-              <label>场景<select name="type" required><option value="activity">活动分析</option><option value="feedback">活动反馈</option><option value="report">举报复核</option></select></label>
+              <label>场景<select name="type" required><option value="activity">活动分析</option><option value="feedback">活动反馈</option><option value="room_log">开门夜记</option><option value="report">举报复核</option></select></label>
               <label>版本<input name="version" placeholder="feedback-v2" required /></label>
               <label>名称<input name="name" required placeholder="比如：活动反馈分析 v2" /></label>
               <label>保存后状态<select name="active"><option value="false">保存为历史版本</option><option value="true">立即启用</option></select></label>
@@ -59,9 +59,10 @@
           <aside class="panel-block sticky-panel">
             <p class="section-kicker">Prompt 分工</p>
             <h3>不要把身份和任务混在一起。</h3>
-            <p class="muted-text">System Prompt 写“AI 是谁、不能做什么”；User Prompt 写“当前场景要分析什么、输出哪些字段”。活动反馈 Prompt 就在这里选择“活动反馈”场景维护。</p>
+            <p class="muted-text">System Prompt 写“AI 是谁、不能做什么”；User Prompt 写“当前场景要分析什么、输出哪些字段”。开门文字和夜记共用“开门夜记”场景维护。</p>
             <div class="button-row">
               <a class="button ghost" href="admin-ai-prompts.html?type=feedback">活动反馈 Prompt</a>
+              <a class="button ghost" href="admin-ai-prompts.html?type=room_log">开门夜记 Prompt</a>
               <a class="button outline" href="admin-ai.html">AI 控制台</a>
             </div>
           </aside>

@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AI Prompt 管理｜有空客厅</title>
-    <meta name="description" content="YKadmin 按场景维护活动分析、活动反馈和举报复核 Prompt。" />
+    <title>客厅值班记录｜有空客厅</title>
+    <meta name="description" content="查看有空客厅今日开门状态和值班记录。" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://youkong-d5gh4x0ayc29a2187.service.tcloudbase.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -28,39 +28,43 @@
       </div>
     </header>
 
-    <main id="main" data-admin-ai-prompts-page>
-      <section class="page-hero">
+    <main id="main" data-room-logs-page>
+      <section class="page-hero river">
         <div class="wrap">
-          <p class="eyebrow">Prompt 管理</p>
-          <h1>Prompt 应该按场景被看见，而不是藏在类型字段里。</h1>
-          <p>活动分析、活动反馈、开门夜记、举报复核分别维护版本。启用某个版本后，后续分析会使用新的口径。</p>
+          <p class="eyebrow">有空开门</p>
+          <h1>今天客厅有没有人在。</h1>
+          <p>这里记录预约开门、确认开门、关门和夜记。开门事实由轮值看门人记录，公开文字会经过 AI 安全审核。</p>
+        </div>
+      </section>
+
+      <section class="section room-status-section">
+        <div class="wrap">
+          <div data-room-status-card class="room-status-shell">正在读取客厅开门状态...</div>
         </div>
       </section>
 
       <section class="section alt">
         <div class="wrap">
-          <form class="filter-panel" data-ai-prompt-filters>
-            <label>场景<select name="type"><option value="">全部场景</option><option value="activity">活动分析</option><option value="feedback">活动反馈</option><option value="room_log">开门夜记</option><option value="report">举报复核</option></select></label>
-            <label>搜索<input name="q" placeholder="Prompt 名称 / 版本 / 内容" /></label>
-            <button class="button ghost" type="submit">筛选</button>
-          </form>
-          <div class="list-toolbar">
-            <span data-ai-prompt-count>正在读取 Prompt...</span>
-            <div class="row-actions">
-              <a class="button primary" href="admin-ai-prompt-editor.html">新增 Prompt</a>
-              <a class="button ghost" href="admin-ai.html">AI 控制台</a>
-              <a class="button ghost" href="admin.html">回后台</a>
+          <div class="section-head compact-head">
+            <div>
+              <p class="section-kicker">值班记录</p>
+              <h2>开门、关门和夜记。</h2>
             </div>
+            <a class="button primary" href="room-log-manage.html">预约开门</a>
           </div>
-          <div class="event-list rows" data-ai-prompts></div>
+          <div class="list-toolbar">
+            <span data-public-room-log-count>正在读取值班记录...</span>
+            <button class="button ghost load-more" type="button" data-load-more-public-room-logs hidden>加载更多</button>
+          </div>
+          <div class="event-list rows room-log-list" data-public-room-logs>正在读取值班记录...</div>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-grid">
-        <div><div class="footer-brand">有空客厅</div><div>不同场景，应该有不同的分析口吻。</div><div class="credit">网站制作人：海旭</div></div>
-        <nav class="footer-links"><a href="admin-ai.html">AI 控制台</a><a href="admin-ai-models.html">模型配置</a><a href="admin-ai-usage.html">用量健康</a><a href="admin-safety.html">规则引擎</a><a href="admin-logs.html">操作日志</a></nav>
+        <div><div class="footer-brand">有空客厅</div><div>值班记录让日常有迹可循。</div><div class="credit">网站制作人：海旭</div></div>
+        <nav class="footer-links"><a href="index.html">首页</a><a href="room-log-manage.html">有空开门</a><a href="participate.html">活动与参与</a></nav>
       </div>
     </footer>
     <script src="script.js?v=0.29.0"></script>
