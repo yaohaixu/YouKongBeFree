@@ -6,7 +6,7 @@
 
 当前版本：`0.29.0`
 
-状态：`0.29.0` 同步补齐 PC 与小程序活动系列、活动复盘和小程序订阅提醒：发起活动可选活动系列，近期 / 历史活动列表可按系列筛选；活动反馈页新增活动复盘摘要、报名 / 感兴趣 / 反馈指标和精选反馈；小程序活动详情新增“订阅提醒”入口，通知能力仅在小程序端展示。
+状态：`0.29.0` 后续开发继续补性能速度层：服务端新增可选 Redis / memory / noop cache driver、公开首屏聚合接口和 `X-Cache` / `Server-Timing` 观测头；PC 首页与小程序首页已接入聚合接口，第一期只缓存公开配置、公开活动列表和公开活动详情 base，不缓存后台、权限、身份网络或「我的」数据。
 
 ## 访问地址
 
@@ -82,6 +82,7 @@ GitHub Pages 静态展示：
 - 活动发起管理：保存活动草稿、可选选择协作员、发布活动、查看自己活动状态、撤回活动、取消 / 结束活动、查看独立报名表和活动反馈；共同发起团队管理集中在活动详情页底部，「我的活动」列表只展示共同发起人摘要，避免按钮挤满列表。共同发起活动也会出现在「我的活动」中。正式提交会先显示「安全分析中」并立即回到我的活动，后台任务完成后再变为已发布、管理员关注或管理员审核。
 - 活动编辑并发保护：编辑已有活动时会申请长时软锁并自动续期；其他发起人进入同一活动会看到当前编辑者和接管入口；后端保留异常过期兜底，避免关闭浏览器后永久锁死。提交时带 `activityVersion` 做版本冲突校验，避免两个人同时提交互相覆盖。保存草稿只更新活动内容和版本，不触发规则引擎或 AI 分析；正式提交才进入安全分析链路。
 - 个人侧加载优化：「我的」页使用 `/api/me/summary` 一次返回公开资料、身份网络、工作台概览和报名预览；个人资料、身份网络、我的活动、我的报名、我的反馈和活动编辑页基础下拉项使用浏览器短缓存，先显示缓存再后台刷新，写操作后自动清理缓存。
+- 服务端公开读加速：新增 `/api/public/bootstrap` 聚合首页所需模块、活动系列、启用的客厅朋友、小程序配置和近期活动，PC 首页和小程序首页已接入；可选 Redis 速度层缓存公开配置、公开活动列表和公开活动详情 base，并通过版本号失效避免 Redis pattern 删除。
 - 活动发起流程：发起 / 编辑活动页拆成基本信息、活动介绍、报名设置、发布与高级设置四段，桌面端用步骤导航快速跳转，移动端保持单页顺序阅读；高级设置默认折叠，降低首次发起活动的表单压力。
 - 活动发起人联系方式：发起活动页可选择是否展示发起人联系方式；选择展示时默认带出登录手机号，也可改成其他联系方式；公开活动详情页仅在选择展示时显示，并与活动状态 / 报名信息保持清晰间距。
 - 活动富文本编辑：发起活动页提供轻量富文本工具栏，支持正文段落、一级/二级/三级标题、加粗、列表、分隔线和正文图片插入；正文图片可选择 10MB 以内原图，浏览器或小程序会压缩处理，压缩后仍需在 10MB 以内；图片保存为稳定代理链接，图片标签不计入 50000 字描述上限；服务端会对白名单标签做二次清洗；活动正文中的超长链接和图片会在移动端自动适配页面宽度。
@@ -129,6 +130,7 @@ GitHub Pages 静态展示：
 - 本地后端：Node.js、Express
 - 云端后端：CloudBase 云函数 + `serverless-http`
 - 数据存储：本地 JSON 或 CloudBase NoSQL
+- 公开缓存：可选 Redis / memory / noop cache driver；Redis 只作为公开读速度层，不作为主数据库
 - 查询分页：本地 JSON 模拟查询；CloudBase 使用 `where`、`orderBy`、`skip`、`limit` 和 `count`
 - 活动归档：Express 启动定时轮询 + 公开活动列表请求前兜底 sweep；CloudBase 云函数入口按节流策略执行 sweep
 - 操作日志：写入和查询时自动清理 30 天前日志，管理员日志页只查询保留期内记录
@@ -136,6 +138,7 @@ GitHub Pages 静态展示：
 - AI 分析引擎：Provider Adapter、Prompt、Schema、Parser、Cache、Logger、Retry、Config、Service 分层；业务只调用统一分析服务
 - Turnstile：Cloudflare Turnstile 配置化接入，默认关闭，本地可绕过
 - API 诊断：慢请求 / 5xx 响应写入服务端日志，默认阈值 1200ms
+- API 观测：所有 API 返回 `X-Cache`、`X-Cache-Driver` 和 `Server-Timing`，便于区分缓存、存储和 hydrate 耗时
 - 数据备份：`scripts/backup-data.js` 导出 JSON 备份，默认不导出 sessions
 - 报名一致性：活动维度写入锁 + 幂等报名 ID + 报名数统一同步函数
 - 文件上传：Multer；线上封面和正文图片上传至 CloudBase Storage，正文图片通过 `/api/files?fileId=...` 代理获取最新临时访问地址
@@ -276,6 +279,20 @@ ACTIVITY_EDIT_LOCK_TTL_MINUTES=360
 DISABLE_ACTIVITY_AUTO_END=false
 API_TIMING_LOGS=true
 API_SLOW_LOG_MS=1200
+CACHE_DRIVER=noop
+REDIS_ENABLED=false
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DATABASE=0
+REDIS_KEY_PREFIX=yk:prod:v1
+REDIS_CONNECT_TIMEOUT_MS=800
+REDIS_CACHE_TIMEOUT_MS=90
+PUBLIC_CONFIG_CACHE_TTL_SECONDS=600
+PUBLIC_BOOTSTRAP_CACHE_TTL_SECONDS=90
+PUBLIC_ACTIVITY_LIST_CACHE_TTL_SECONDS=45
+PUBLIC_ACTIVITY_DETAIL_CACHE_TTL_SECONDS=120
+PUBLIC_CACHE_STALE_SECONDS=30
 IDENTITY_HASH_SALT=请替换为长随机字符串
 ANONYMOUS_ID_SECRET=请替换为长随机字符串
 TURNSTILE_ENABLED=false
@@ -302,7 +319,10 @@ YK_DB_FILE=
 - `WECHAT_MP_ACTIVITY_REMINDER_TEMPLATE_IDS` 用于小程序订阅消息模板 ID，多个模板用英文逗号分隔；未配置时活动详情会提示暂未开启提醒。
 - `SESSION_MAX_AGE_DAYS` 会被限制在 1 到 30 天之间。
 - `ACTIVITY_AUTO_END_INTERVAL_MS` 控制本地 / 常驻服务的自动结束轮询间隔，默认 15 分钟；`ACTIVITY_AUTO_END_MIN_SWEEP_MS` 控制请求兜底 sweep 的最小间隔；`ACTIVITY_EDIT_LOCK_TTL_MINUTES` 控制活动编辑锁异常兜底过期时间，默认 360 分钟，页面打开时会自动续期；`DISABLE_ACTIVITY_AUTO_END=true` 可关闭后台轮询。
-- `API_TIMING_LOGS=false` 可关闭 API 耗时日志；`API_SLOW_LOG_MS` 控制慢请求阈值，默认 1200ms。
+- `API_TIMING_LOGS=false` 可关闭 API 耗时日志；`API_SLOW_LOG_MS` 控制慢请求阈值，默认 1200ms。所有 API 响应会返回 `X-Cache`、`X-Cache-Driver` 和 `Server-Timing`，用于观察缓存、存储和 hydrate 耗时。
+- `CACHE_DRIVER` 支持 `noop`、`memory`、`redis`，默认 `noop`；生产启用 Redis 可设置 `REDIS_ENABLED=true` 或 `CACHE_DRIVER=redis`，并配置 `REDIS_HOST`、`REDIS_PORT`、`REDIS_PASSWORD`、`REDIS_DATABASE` 和 `REDIS_KEY_PREFIX`。
+- `REDIS_CONNECT_TIMEOUT_MS` 和 `REDIS_CACHE_TIMEOUT_MS` 控制 Redis 短超时，Redis 异常时公开读接口会绕过缓存继续查主存储；`PUBLIC_*_CACHE_TTL_SECONDS` 和 `PUBLIC_CACHE_STALE_SECONDS` 控制公开配置、bootstrap、活动列表、活动详情 base 的 TTL 与短时 stale 回退。
+- Redis 一期只缓存公开数据：`/api/public/bootstrap`、公开模块 / 活动系列 / 启用的客厅朋友 / 小程序配置、公开活动列表和公开活动详情 base；不会缓存后台权限、session、身份网络、`/api/me/summary`、报名 token、openid、手机号或管理 token。
 - `SESSION_SECRET` 用于登录 session HMAC 哈希；`IDENTITY_HASH_SALT` 用于匿名身份、指纹和管理 token 哈希；`ANONYMOUS_ID_SECRET` 用于服务端匿名身份 Cookie 签名。生产环境必须保持稳定且不提交 Git。
 - `TURNSTILE_*` 控制 Cloudflare Turnstile；默认关闭，本地开发可通过 `TURNSTILE_BYPASS_LOCAL=true` 绕过。
 - `AI_CONFIG_ENCRYPTION_KEY` 用于加密 AI API Key；生产环境必须配置稳定长随机值，避免重启或部署后无法解密旧配置。
@@ -491,6 +511,7 @@ npm run deploy:cloudbase
 
 ## 已验证
 
+- `Unreleased` 本地验证通过：`npm run miniprogram:check`、`npm test`、`npm run deploy:dry-run` 通过；新增覆盖公开缓存响应头、`/api/public/bootstrap`、公开活动列表缓存命中和公开活动详情 base 缓存命中。
 - `0.29.0` 本地验证通过：`npm run miniprogram:check`、`npm test`、`npm run deploy:dry-run` 通过；新增覆盖活动系列默认数据、系列筛选、活动复盘接口、小程序通知配置和订阅偏好；PC 与小程序活动系列 / 复盘展示同步。
 - `0.28.2` 本地验证通过：`my-feedbacks.html` 新增为独立子页面；「我的」工作台不再内嵌活动反馈列表，入口卡片直接跳转；冒烟覆盖页面打开、计数节点、返回路径和移动端无横向溢出。
 - `0.28.1` 本地验证通过：工作台不再内嵌身份网络管理面板，“身份网络”入口跳转独立子页面；浏览器冒烟覆盖子页面开启 / 邀请动作入口和返回路径。

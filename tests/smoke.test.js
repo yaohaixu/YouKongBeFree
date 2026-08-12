@@ -11,6 +11,7 @@ const { chromium } = require("playwright");
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "youkong-test-"));
 process.env.STORE_DRIVER = "json";
 process.env.YK_DB_FILE = path.join(tmpDir, "youkong-db.json");
+process.env.CACHE_DRIVER = "memory";
 process.env.YKADMIN_NICKNAME = "有空管理员";
 process.env.YKADMIN_PHONE = "18800000000";
 process.env.WECHAT_MP_ACTIVITY_REMINDER_TEMPLATE_IDS = "tmpl_smoke_activity";
@@ -50,6 +51,28 @@ async function request(pathname, options = {}, token = "") {
     activityManageTokens.set(data.activity.id, data.manageToken);
   }
   return data;
+}
+
+async function requestWithResponse(pathname, options = {}, token = "") {
+  const method = String(options.method || "GET").toUpperCase();
+  const headers = {
+    "X-YK-Client-Id": testClientId,
+    "X-YK-Fingerprint": "fp_smoke_test",
+    ...(options.headers || {}),
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (!["GET", "HEAD"].includes(method)) headers["X-Requested-With"] = "XMLHttpRequest";
+  if (options.body && !(options.body instanceof FormData)) headers["Content-Type"] = "application/json";
+  const response = await fetch(`${baseUrl}${pathname}`, {
+    ...options,
+    headers,
+    body: options.body && !(options.body instanceof FormData) ? JSON.stringify(options.body) : options.body,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(`${method} ${pathname} -> ${response.status} ${data.error || ""}`);
+  }
+  return { response, data };
 }
 
 async function login(phone) {
@@ -380,6 +403,12 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const modulesPage = await request("/api/modules?paged=true&page=1&pageSize=2&q=有空");
   assert.equal(modulesPage.modules.length, 2);
   assert.equal(modulesPage.pageInfo.pageSize, 2);
+  const modulesCacheMiss = await requestWithResponse("/api/modules");
+  assert.equal(modulesCacheMiss.response.headers.get("x-cache"), "MISS");
+  assert.match(modulesCacheMiss.response.headers.get("server-timing") || "", /cache;dur=.*store;dur=.*hydrate;dur=/);
+  const modulesCacheHit = await requestWithResponse("/api/modules");
+  assert.equal(modulesCacheHit.response.headers.get("x-cache"), "HIT");
+  assert.equal(modulesCacheHit.response.headers.get("x-cache-driver"), "memory");
 
   const friendForm = new FormData();
   friendForm.set("name", "邻里小屋");
@@ -484,6 +513,11 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.ok(activitySeries.series.length >= 3);
   const screeningSeries = activitySeries.series.find((item) => item.id === "screening") || activitySeries.series[0];
   assert.equal(screeningSeries.enabled, true);
+  const bootstrap = await request("/api/public/bootstrap");
+  assert.ok(bootstrap.modules.length >= 1);
+  assert.ok(bootstrap.series.length >= 1);
+  assert.equal(bootstrap.miniprogramConfig.notifications.enabled, true);
+  assert.ok(Array.isArray(bootstrap.upcomingActivities));
 
   const longMeetingUrl = `https://meeting.tencent.com/dm/${"YK".repeat(120)}?meeting_code=${"1234567890".repeat(12)}`;
   const longDescriptionWithImage = `<h1>活动段落标题</h1><p>${"有".repeat(48500)}</p><img src="${richImage.url}" alt="正文图">`;
@@ -510,6 +544,21 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.match(created.activity.description, /<img src="\/uploads\//);
   assert.match(created.activity.description, /<strong>重点<\/strong>/);
   assert.doesNotMatch(created.activity.description, /script|alert/i);
+  const publicActivitiesMiss = await requestWithResponse("/api/activities?view=upcoming&page=1&pageSize=5");
+  assert.equal(publicActivitiesMiss.response.headers.get("x-cache"), "MISS");
+  assert.ok(publicActivitiesMiss.data.activities.some((activity) => activity.id === created.activity.id));
+  const publicActivitiesHit = await requestWithResponse("/api/activities?view=upcoming&page=1&pageSize=5");
+  assert.equal(publicActivitiesHit.response.headers.get("x-cache"), "HIT");
+  const visitorHeaders = { "X-YK-Client-Id": `${testClientId}_visitor`, "X-YK-Fingerprint": "fp_public_visitor" };
+  const publicActivityDetailMiss = await requestWithResponse(`/api/activities/${created.activity.id}`, { headers: visitorHeaders });
+  assert.ok(["MISS", "HIT", "STALE"].includes(publicActivityDetailMiss.response.headers.get("x-cache")));
+  assert.equal(publicActivityDetailMiss.data.activity.manageTokenHash, undefined);
+  assert.equal(publicActivityDetailMiss.data.activity.anonymousIdentityId, undefined);
+  assert.equal(publicActivityDetailMiss.data.activity.initiatorProfile.id, undefined);
+  assert.match(publicActivityDetailMiss.data.activity.initiatorProfile.communityId, /^[A-Z0-9]/);
+  assert.equal(publicActivityDetailMiss.data.activity.editLock, undefined);
+  const publicActivityDetailHit = await requestWithResponse(`/api/activities/${created.activity.id}`, { headers: visitorHeaders });
+  assert.equal(publicActivityDetailHit.response.headers.get("x-cache"), "HIT");
   const publicProfile = await request(`/api/profiles/${encodeURIComponent(created.activity.initiatorProfile.id)}`);
   assert.equal(publicProfile.profile.displayName, "海旭测试");
   assert.ok(publicProfile.activities.some((activity) => activity.id === created.activity.id));
@@ -1203,7 +1252,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   assert.ok(governanceOverview.overview.identities.total >= 1);
   const governanceIdentities = await request("/api/governance/identities?page=1&pageSize=10", {}, admin.token);
   assert.ok(governanceIdentities.profiles.some((profile) => profile.communityId && Array.isArray(profile.badges)));
-  const governanceDetail = await request(`/api/governance/identities/${encodeURIComponent(created.activity.anonymousIdentityId)}`, {}, admin.token);
+  const governanceDetail = await request(`/api/governance/identities/${encodeURIComponent(created.activity.initiatorProfile.id)}`, {}, admin.token);
   assert.ok(governanceDetail.communityEvents.some((event) => event.type === "activity.confidence.evaluated"));
   assert.ok(governanceDetail.trustEvents.some((event) => event.metadata?.communityEventId));
   const trustPolicies = await request("/api/governance/trust-policies?page=1&pageSize=100", {}, admin.token);

@@ -4,8 +4,18 @@
 
 ## [Unreleased]
 
+### Added
+
+- 新增可选服务端缓存速度层 `lib/cache-service.js`，支持 `noop`、`memory`、`redis` driver；Redis 通过 `REDIS_ENABLED=true` 或 `CACHE_DRIVER=redis` 启用，默认不缓存。
+- 新增 `GET /api/public/bootstrap` 聚合公开首屏所需的活动模块、活动系列、启用的客厅朋友、小程序配置和近期活动，PC 首页与小程序首页已接入以减少首屏瀑布流请求。
+- API 响应新增 `X-Cache`、`X-Cache-Driver` 和 `Server-Timing`，慢请求日志同步记录缓存、存储和 hydrate 耗时，便于定位 CloudBase 冷启动、查询和渲染组装瓶颈。
+- 冒烟测试新增公开缓存响应头、bootstrap、公开活动列表缓存和公开活动详情 base 缓存覆盖。
+
 ### Changed
 
+- 公开配置、公开活动列表和公开活动详情 base 可进入速度层缓存；后台、权限、session、身份网络、`/api/me/summary`、报名 token、openid、手机号和管理 token 不缓存。
+- 公开活动 payload 拆分为公共 base 与当前设备态 hydrate，缓存只复用所有访客一致的部分，报名状态、感兴趣状态和活动编辑权限仍按请求实时计算。
+- 公开活动缓存采用版本号失效和短 TTL / stale 回退，不使用 Redis pattern 删除；活动发布、复核、撤回、取消、结束、报名数、感兴趣数、反馈展示、举报下架和配置更新都会 bump 相关版本。
 - 小程序发起活动页富文本编辑器优化：编辑区随内容行数和图片数量动态增高，并开启图片尺寸、工具栏和缩放能力。
 - 小程序富文本工具栏移除低频引用按钮，新增撤销 / 重做，保留正文、H1、基础样式、列表、分隔线、图片和清空等高频操作。
 - 正文图片上传规则调整：浏览器和小程序端仍保留压缩处理，压缩后大小阈值从约 1MB 放宽到 10MB，服务端同步执行 10MB 兜底校验。

@@ -107,6 +107,10 @@ async function cachedGet(path, cacheKey, ttlMs = 60 * 1000) {
   return data;
 }
 
+function publicBootstrap() {
+  return cachedGet("/api/public/bootstrap", "public:bootstrap", 60 * 1000);
+}
+
 function readActivityTokens() {
   try {
     return JSON.parse(localStorage.getItem(ACTIVITY_TOKEN_KEY) || "{}");
@@ -603,7 +607,7 @@ function descriptionToHtml(value = "") {
 }
 
 function profileUrl(profile = {}) {
-  const publicId = profile?.hasProfile && profile?.communityId ? profile.communityId : profile?.id;
+  const publicId = profile?.communityId || profile?.id;
   return publicId ? `profile.html?id=${encodeURIComponent(publicId)}` : "";
 }
 
@@ -1236,7 +1240,9 @@ async function renderActivityLists() {
       pageSize: String(pageSize),
       sort: view === "history" ? "start-desc" : "start-asc",
     });
-    const { activities } = await api.get(`/api/activities?${params.toString()}`);
+    const { activities } = view === "upcoming" && limit && pageSize <= 3
+      ? { activities: (await publicBootstrap()).upcomingActivities || [] }
+      : await api.get(`/api/activities?${params.toString()}`);
     const visible = limit ? activities.slice(0, limit) : activities;
     if (!visible.length) {
       list.innerHTML = `

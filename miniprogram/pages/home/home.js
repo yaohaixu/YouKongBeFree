@@ -13,7 +13,6 @@ Page({
 
   onLoad() {
     share.enableShareMenu();
-    this.loadNotificationConfig();
     this.loadHome();
   },
 
@@ -24,9 +23,10 @@ Page({
   async loadHome() {
     this.setData({ loading: true, error: "" });
     try {
-      const data = await api.get("/api/activities?view=upcoming&page=1&pageSize=3&sort=start-asc");
+      const data = await api.get("/api/public/bootstrap");
       this.setData({
-        activities: (data.activities || []).map(toActivityView),
+        activities: (data.upcomingActivities || []).map(toActivityView),
+        notificationConfig: data.miniprogramConfig || null,
         loading: false
       });
     } catch (error) {

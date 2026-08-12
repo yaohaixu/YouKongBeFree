@@ -36,6 +36,11 @@
 - CloudBase 生产启动默认要求配置长随机 `SESSION_SECRET`、`IDENTITY_HASH_SALT` 和 `AI_CONFIG_ENCRYPTION_KEY`，避免线上继续使用本地 fallback 密钥。
 - 登录和服务启动会清理过期 session，降低旧登录态长期留存在存储中的风险。
 - API 和本地 Express 静态服务返回安全响应头：CSP、`X-Frame-Options`、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy`，HTTPS 环境返回 HSTS。
+- API 响应返回 `X-Cache`、`X-Cache-Driver` 和 `Server-Timing`，用于观察缓存、存储和 hydrate 耗时；慢请求日志也会记录这些字段，方便定位慢接口。
+- Redis / memory cache driver 只作为公开读速度层：第一期只缓存公开配置、公开活动列表和公开活动详情 base；后台、权限、session、身份网络、`/api/me/summary`、报名 token、openid、手机号、管理 token 和完整匿名 UUID 不进入缓存。
+- 公开活动详情缓存拆分为公共 base 与当前设备态 hydrate；报名状态、感兴趣状态和活动编辑权限每次按请求实时计算，避免把某个设备的私有状态缓存给其他访客。
+- 公开缓存失效采用版本号 bump 和短 TTL / stale 回退，不使用 Redis `KEYS` 或 pattern 删除；活动状态、隐藏、审核、举报、报名数、感兴趣数、反馈展示和公开配置变化都会更新相关版本。
+- Redis 连接和读写使用短超时；Redis 不可用时公开读接口会绕过缓存查主存储，不应影响网站可用性。
 - CloudBase Hosting 静态页补充 HTML `Content-Security-Policy` meta 和 referrer meta，提供基础浏览器侧约束。
 - 上传封面只允许 JPG、PNG、WebP、GIF，单文件最大 6MB，并同时校验扩展名、MIME、文件内容魔数和图片像素尺寸，拒绝 SVG、HTML、脚本类伪图片和小体积超大像素图片。
 - 公开资料头像使用独立 `profile-avatars/` 上传目录，单文件最大 4MB，并复用扩展名、MIME、内容魔数和图片像素校验；公开页只通过文件代理展示图片 URL，不暴露存储路径以外的身份敏感字段。
@@ -71,6 +76,7 @@
 - 编辑软锁不是数据库强事务锁；CloudBase 多实例极端并发下仍以 `activityVersion` 乐观锁作为最终防覆盖机制，后续可升级为数据库条件更新或独立协作服务。
 - 报名确认 token 目前会在同一匿名身份重复报名时刷新旧 token，但仍建议后续接入微信身份绑定或一次性短链接策略，进一步降低确认链接转发风险。
 - 当前限流和活动报名锁仍是进程内存级，CloudBase 多实例下不是全局锁；如报名量变大，应接入数据库事务、唯一索引、队列或网关 / WAF 级限流。
+- Redis 当前只用于公开读缓存；发布限流、登录限流、上传限流、举报限流和 AI 调用预算仍以后端现有逻辑为准，后续若迁移到 Redis 计数，也必须保留 Redis 故障时的数据库或进程内保守降级。
 - 当前匿名反馈的一次性提交依赖匿名身份和存储层幂等写入；用户清理浏览器本地数据或更换设备后仍可能再次提交，这是开放优先体验下的已知边界。
 - 当前反馈 AI 分析是提交时同步执行；如线上反馈量增加，建议改为异步反馈分析队列，先记录反馈再更新展示状态，避免模型响应影响提交体验。
 - 社区信用不是黑名单，但它仍然是重要安全信号；若未来扩展更高价值操作，建议通过信用策略和可解释事件时间线把高风险操作与信任度联动起来。
