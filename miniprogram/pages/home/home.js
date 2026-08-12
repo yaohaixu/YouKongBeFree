@@ -1,11 +1,27 @@
 const api = require("../../utils/api");
+const cache = require("../../utils/cache");
 const { toActivityView } = require("../../utils/format");
 const { loadReminderConfig, subscribeActivityReminder } = require("../../utils/activity-reminder");
 const share = require("../../utils/share");
 
+const BOOTSTRAP_CACHE_KEY = cache.keys.publicBootstrap();
+const BOOTSTRAP_TTL = 5 * 60 * 1000;
+
+let bootstrapMemory = null;
+let lastRefreshAt = 0;
+let refreshPromise = null;
+
+function homeView(data = {}) {
+  return {
+    activities: (data.upcomingActivities || []).map(toActivityView),
+    notificationConfig: data.miniprogramConfig || null
+  };
+}
+
 Page({
   data: {
     loading: true,
+    refreshing: false,
     error: "",
     activities: [],
     notificationConfig: null
@@ -13,27 +29,87 @@ Page({
 
   onLoad() {
     share.enableShareMenu();
-    this.loadHome();
+    this.loadHome({ preferCache: true });
   },
 
   onPullDownRefresh() {
-    this.loadHome().finally(() => wx.stopPullDownRefresh());
+    this.loadHome({ force: true }).finally(() => wx.stopPullDownRefresh());
   },
 
-  async loadHome() {
-    this.setData({ loading: true, error: "" });
+  renderHome(data, options = {}) {
+    const view = homeView(data);
+    this.setData({
+      activities: view.activities,
+      notificationConfig: view.notificationConfig,
+      loading: false,
+      refreshing: Boolean(options.refreshing),
+      error: ""
+    });
+  },
+
+  async loadHome(options = {}) {
+    const preferCache = options.preferCache !== false;
+    const force = Boolean(options.force);
+    const cached = cache.getWithMeta(BOOTSTRAP_CACHE_KEY);
+    const hasMemory = bootstrapMemory && !force;
+    const hasCache = preferCache && cached.exists && !force;
+
+    if (hasMemory) {
+      this.renderHome(bootstrapMemory, { refreshing: cached.expired });
+      if (!cached.expired && Date.now() - lastRefreshAt < BOOTSTRAP_TTL) return Promise.resolve();
+      return this.refreshHome({ silent: true });
+    }
+
+    if (hasCache) {
+      bootstrapMemory = cached.data;
+      this.renderHome(cached.data, { refreshing: cached.expired });
+      return this.refreshHome({ silent: true });
+    }
+
+    this.setData({ loading: true, refreshing: false, error: "" });
+    return this.refreshHome({ silent: false });
+  },
+
+  async refreshHome(options = {}) {
+    if (refreshPromise) return refreshPromise;
+    if (options.silent) {
+      this.setData({ refreshing: true, error: "" });
+    }
+    refreshPromise = api.get("/api/public/bootstrap")
+      .then((data) => {
+        lastRefreshAt = Date.now();
+        const publicData = cache.publicBootstrapData(data);
+        const changed = !cache.sameData(bootstrapMemory, publicData);
+        bootstrapMemory = publicData;
+        cache.set(BOOTSTRAP_CACHE_KEY, publicData, BOOTSTRAP_TTL);
+        if (changed || this.data.loading || !this.data.activities.length) {
+          this.renderHome(data);
+        } else {
+          this.setData({ refreshing: false, loading: false, error: "" });
+        }
+        return data;
+      })
+      .catch((error) => {
+        const fallback = bootstrapMemory || cache.get(BOOTSTRAP_CACHE_KEY, { allowExpired: true });
+        if (fallback) {
+          bootstrapMemory = fallback;
+          this.renderHome(fallback);
+          return fallback;
+        }
+        this.setData({
+          error: error.message || "活动读取失败",
+          loading: false,
+          refreshing: false
+        });
+        throw error;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
     try {
-      const data = await api.get("/api/public/bootstrap");
-      this.setData({
-        activities: (data.upcomingActivities || []).map(toActivityView),
-        notificationConfig: data.miniprogramConfig || null,
-        loading: false
-      });
+      return await refreshPromise;
     } catch (error) {
-      this.setData({
-        error: error.message || "活动读取失败",
-        loading: false
-      });
+      return null;
     }
   },
 
@@ -69,6 +145,7 @@ Page({
     if (!activity.id) return;
     try {
       const data = await api.post(`/api/activities/${encodeURIComponent(activity.id)}/interests`, {});
+      cache.invalidatePublicActivities(activity.id);
       this.setData({
         activities: this.data.activities.map((item) => item.id === activity.id ? toActivityView({
           ...item,

@@ -1,10 +1,13 @@
 const api = require("../../utils/api");
+const cache = require("../../utils/cache");
 const { toActivityView, stripHtml, responsiveRichTextHtml } = require("../../utils/format");
 const shareImage = require("../../utils/share-image");
 const share = require("../../utils/share");
 const registrationToken = require("../../utils/registration-token");
 
 const REPORT_REASONS = ["广告营销", "虚假活动", "违法违规", "人身攻击", "其他"];
+const ACTIVITY_TTL = 10 * 60 * 1000;
+const CONFIG_TTL = 60 * 60 * 1000;
 
 function extractInviteToken(invite = {}) {
   const text = String(invite.inviteUrl || invite.url || invite.invitePath || invite.path || "");
@@ -53,6 +56,7 @@ Page({
     interestLoading: false,
     reportSubmitting: false,
     error: "",
+    refreshing: false,
     nickname: "",
     activity: null,
     showReportForm: false,
@@ -71,35 +75,71 @@ Page({
   onLoad(options = {}) {
     share.enableShareMenu();
     this.setData({ id: options.id || "" });
-    this.loadActivity();
+    this.loadActivity({ preferCache: true });
   },
 
   onPullDownRefresh() {
-    this.loadActivity().finally(() => wx.stopPullDownRefresh());
+    this.loadActivity({ force: true }).finally(() => wx.stopPullDownRefresh());
   },
 
-  async loadActivity() {
+  async renderActivity(rawActivity, config) {
+    const activity = await attachLocalRegistration(decorateActivity(rawActivity || {}));
+    this.setData({
+      activity,
+      notificationConfig: config && config.notifications ? config.notifications : this.data.notificationConfig,
+      loading: false,
+      refreshing: false,
+      error: ""
+    });
+  },
+
+  async loadActivity(options = {}) {
     if (!this.data.id) {
       this.setData({ loading: false, error: "缺少活动 ID" });
       return;
     }
-    this.setData({ loading: true, error: "" });
+    const activityCacheKey = cache.keys.publicActivity(this.data.id);
+    const configCacheKey = cache.keys.miniprogramConfig();
+    const cachedActivity = cache.getWithMeta(activityCacheKey);
+    const cachedConfig = cache.get(configCacheKey, { allowExpired: true }) || { notifications: null };
+    const force = Boolean(options.force);
+
+    if (options.preferCache !== false && cachedActivity.exists && !force) {
+      await this.renderActivity(cachedActivity.data, cachedConfig);
+      this.setData({ refreshing: true });
+      return this.refreshActivity({ silent: true, activityCacheKey, configCacheKey });
+    }
+
+    this.setData({ loading: true, refreshing: false, error: "" });
+    return this.refreshActivity({ silent: false, activityCacheKey, configCacheKey });
+  },
+
+  async refreshActivity(options = {}) {
     try {
       const [data, config] = await Promise.all([
         api.get(`/api/activities/${encodeURIComponent(this.data.id)}`),
         api.get("/api/miniprogram/config").catch(() => ({ notifications: null }))
       ]);
-      const activity = await attachLocalRegistration(decorateActivity(data.activity || {}));
-      this.setData({
-        activity,
-        notificationConfig: config.notifications || null,
-        loading: false
-      });
+      cache.set(
+        options.activityCacheKey || cache.keys.publicActivity(this.data.id),
+        cache.publicActivityData(data.activity || {}),
+        ACTIVITY_TTL
+      );
+      cache.set(options.configCacheKey || cache.keys.miniprogramConfig(), config, CONFIG_TTL);
+      await this.renderActivity(data.activity || {}, config);
+      return data;
     } catch (error) {
+      const fallback = cache.get(options.activityCacheKey || cache.keys.publicActivity(this.data.id), { allowExpired: true });
+      if (fallback) {
+        await this.renderActivity(fallback, cache.get(options.configCacheKey || cache.keys.miniprogramConfig(), { allowExpired: true }) || {});
+        return null;
+      }
       this.setData({
         error: error.message || "活动读取失败",
-        loading: false
+        loading: false,
+        refreshing: false
       });
+      return null;
     }
   },
 
@@ -122,6 +162,8 @@ Page({
     try {
       const data = await api.post(`/api/activities/${encodeURIComponent(this.data.activity.id)}/register`, { nickname });
       registrationToken.save(data.registration, data.accessToken);
+      cache.invalidatePublicActivities(this.data.activity.id);
+      cache.removeByPrefix(cache.keys.userPrefix(cache.currentIdentityPart()));
       const activity = decorateActivity(data.activity || this.data.activity);
       this.setData({ activity, registering: false });
       const registrationId = data.registration && data.registration.id;
@@ -144,6 +186,7 @@ Page({
     this.setData({ interestLoading: true });
     try {
       const data = await api.post(`/api/activities/${encodeURIComponent(this.data.activity.id)}/interests`, {});
+      cache.invalidatePublicActivities(this.data.activity.id);
       const activity = decorateActivity(data.activity || {
         ...this.data.activity,
         interestCount: data.interestCount
@@ -356,6 +399,7 @@ Page({
         reason,
         detail: this.data.reportDetail
       });
+      cache.invalidatePublicActivities(this.data.activity.id);
       const activity = decorateActivity(data.activity || this.data.activity);
       wx.hideLoading();
       wx.showToast({ title: data.existing ? "已经反馈过" : "已提交", icon: "success" });
@@ -410,6 +454,7 @@ Page({
         wx.showLoading({ title: "移除中..." });
         try {
           const data = await api.del(`/api/activities/${encodeURIComponent(activity.id)}/co-initiators/${encodeURIComponent(identityId)}`);
+          cache.invalidatePublicActivities(activity.id);
           const nextActivity = decorateActivity(data.activity || activity);
           wx.hideLoading();
           wx.showToast({ title: "已移除", icon: "success" });

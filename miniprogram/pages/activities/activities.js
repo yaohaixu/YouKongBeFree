@@ -1,7 +1,27 @@
 const api = require("../../utils/api");
+const cache = require("../../utils/cache");
 const { toActivityView } = require("../../utils/format");
 const { loadReminderConfig, subscribeActivityReminder } = require("../../utils/activity-reminder");
 const share = require("../../utils/share");
+
+const LIST_TTL = 5 * 60 * 1000;
+const SERIES_TTL = 60 * 60 * 1000;
+
+function listQueryKey(state, page) {
+  const sort = state.view === "history" ? "start-desc" : "start-asc";
+  return cache.hashPart([
+    `view=${state.view}`,
+    `page=${page}`,
+    `pageSize=${state.pageSize}`,
+    `sort=${sort}`,
+    `sourceType=${state.sourceType || ""}`,
+    `seriesId=${state.seriesId || ""}`
+  ].join("&"));
+}
+
+function seriesCacheKey() {
+  return cache.key(["public", "activity-series", "v1"]);
+}
 
 Page({
   data: {
@@ -15,6 +35,7 @@ Page({
     loading: true,
     loadingMore: false,
     error: "",
+    refreshing: false,
     activities: [],
     notificationConfig: null
   },
@@ -27,11 +48,11 @@ Page({
     this.setData({ view, sourceType, seriesId });
     this.loadActivitySeries();
     this.loadNotificationConfig();
-    this.loadActivities({ reset: true });
+    this.loadActivities({ reset: true, preferCache: true });
   },
 
   onPullDownRefresh() {
-    this.loadActivities({ reset: true }).finally(() => wx.stopPullDownRefresh());
+    this.loadActivities({ reset: true, force: true }).finally(() => wx.stopPullDownRefresh());
   },
 
   onReachBottom() {
@@ -61,8 +82,19 @@ Page({
   },
 
   async loadActivitySeries() {
+    const key = seriesCacheKey();
+    const cached = cache.get(key, { allowExpired: true });
+    if (cached) this.renderActivitySeries(cached);
     try {
       const data = await api.get("/api/activity-series");
+      cache.set(key, data, SERIES_TTL);
+      this.renderActivitySeries(data);
+    } catch (error) {
+      if (!cached) this.setData({ seriesTabs: [{ id: "", name: "全部系列" }] });
+    }
+  },
+
+  renderActivitySeries(data = {}) {
       const series = data.series || [];
       this.setData({
         seriesTabs: [{ id: "", name: "全部系列" }].concat(series.map((item) => ({
@@ -70,9 +102,6 @@ Page({
           name: item.name || "未命名系列"
         })))
       });
-    } catch (error) {
-      this.setData({ seriesTabs: [{ id: "", name: "全部系列" }] });
-    }
   },
 
   async loadNotificationConfig() {
@@ -87,29 +116,65 @@ Page({
   async loadActivities(options = {}) {
     const reset = options.reset !== false;
     const page = reset ? 1 : this.data.page + 1;
+    const key = cache.keys.publicActivityList(listQueryKey(this.data, page));
+    const cached = cache.getWithMeta(key);
+    const force = Boolean(options.force);
+    if (reset && options.preferCache !== false && cached.exists && !force) {
+      this.renderActivities(cached.data, { reset, page });
+      if (!cached.expired) return Promise.resolve(cached.data);
+      this.setData({ refreshing: true });
+      return this.refreshActivities({ reset, page, key });
+    }
+
     this.setData(reset ? { loading: true, error: "" } : { loadingMore: true, error: "" });
+    return this.refreshActivities({ reset, page, key });
+  },
+
+  activityListPath(page) {
+    const sort = this.data.view === "history" ? "start-desc" : "start-asc";
+    const sourceQuery = this.data.view === "history" && this.data.sourceType
+      ? `&sourceType=${encodeURIComponent(this.data.sourceType)}`
+      : "";
+    const seriesQuery = this.data.seriesId ? `&seriesId=${encodeURIComponent(this.data.seriesId)}` : "";
+    return `/api/activities?view=${this.data.view}&page=${page}&pageSize=${this.data.pageSize}&sort=${sort}${sourceQuery}${seriesQuery}`;
+  },
+
+  renderActivities(data = {}, options = {}) {
+    const nextActivities = (data.activities || []).map(toActivityView);
+    const pageInfo = data.pageInfo || {};
+    this.setData({
+      page: options.page,
+      activities: options.reset ? nextActivities : this.data.activities.concat(nextActivities),
+      hasMore: Boolean(pageInfo.hasMore),
+      loading: false,
+      loadingMore: false,
+      refreshing: false,
+      error: ""
+    });
+  },
+
+  async refreshActivities(options = {}) {
     try {
-      const sort = this.data.view === "history" ? "start-desc" : "start-asc";
-      const sourceQuery = this.data.view === "history" && this.data.sourceType
-        ? `&sourceType=${encodeURIComponent(this.data.sourceType)}`
-        : "";
-      const seriesQuery = this.data.seriesId ? `&seriesId=${encodeURIComponent(this.data.seriesId)}` : "";
-      const data = await api.get(`/api/activities?view=${this.data.view}&page=${page}&pageSize=${this.data.pageSize}&sort=${sort}${sourceQuery}${seriesQuery}`);
-      const nextActivities = (data.activities || []).map(toActivityView);
-      const pageInfo = data.pageInfo || {};
-      this.setData({
-        page,
-        activities: reset ? nextActivities : this.data.activities.concat(nextActivities),
-        hasMore: Boolean(pageInfo.hasMore),
-        loading: false,
-        loadingMore: false
-      });
+      const data = await api.get(this.activityListPath(options.page));
+      cache.set(options.key, {
+        ...data,
+        activities: (data.activities || []).map(cache.publicActivityData)
+      }, LIST_TTL);
+      this.renderActivities(data, options);
+      return data;
     } catch (error) {
+      const fallback = cache.get(options.key, { allowExpired: true });
+      if (fallback) {
+        this.renderActivities(fallback, options);
+        return fallback;
+      }
       this.setData({
         error: error.message || "活动读取失败",
         loading: false,
-        loadingMore: false
+        loadingMore: false,
+        refreshing: false
       });
+      return null;
     }
   },
 
@@ -133,6 +198,7 @@ Page({
     if (!activity.id) return;
     try {
       const data = await api.post(`/api/activities/${encodeURIComponent(activity.id)}/interests`, {});
+      cache.invalidatePublicActivities(activity.id);
       this.setData({
         activities: this.data.activities.map((item) => item.id === activity.id ? toActivityView({
           ...item,

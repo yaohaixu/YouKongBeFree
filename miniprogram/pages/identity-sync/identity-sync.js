@@ -1,4 +1,11 @@
 const api = require("../../utils/api");
+const cache = require("../../utils/cache");
+
+const IDENTITY_SYNC_TTL = 2 * 60 * 1000;
+
+function identitySyncCacheKey() {
+  return cache.keys.identitySync(cache.currentIdentityPart());
+}
 
 function shortId(value = "") {
   const text = String(value || "");
@@ -81,6 +88,7 @@ Page({
     loading: true,
     syncing: false,
     error: "",
+    refreshing: false,
     identitySync: {},
     counts: {},
     countItems: [],
@@ -94,30 +102,59 @@ Page({
   onLoad(options = {}) {
     const token = extractToken(options.token || "");
     this.setData({ inviteToken: token });
-    this.loadIdentitySync().then(() => {
+    this.loadIdentitySync({ preferCache: true }).then(() => {
       if (token) this.loadInvitePreview(token);
     });
   },
 
   onPullDownRefresh() {
-    this.loadIdentitySync().finally(() => wx.stopPullDownRefresh());
+    this.loadIdentitySync({ force: true }).finally(() => wx.stopPullDownRefresh());
   },
 
-  async loadIdentitySync() {
-    this.setData({ loading: true, error: "" });
+  renderIdentitySync(data = {}) {
+    this.setData({
+      identitySync: normalizeIdentitySync(data.identitySync || {}),
+      counts: data.counts || {},
+      countItems: countsList(data.counts || {}),
+      loading: false,
+      refreshing: false,
+      error: ""
+    });
+  },
+
+  async loadIdentitySync(options = {}) {
+    const key = identitySyncCacheKey();
+    const cached = cache.getWithMeta(key);
+    const force = Boolean(options.force);
+    if (options.preferCache !== false && cached.exists && !force) {
+      this.renderIdentitySync(cached.data);
+      if (!cached.expired) return Promise.resolve(cached.data);
+      this.setData({ refreshing: true });
+      return this.refreshIdentitySync(key);
+    }
+
+    this.setData({ loading: true, refreshing: false, error: "" });
+    return this.refreshIdentitySync(key);
+  },
+
+  async refreshIdentitySync(key = identitySyncCacheKey()) {
     try {
       const data = await api.get("/api/identity-sync/me");
-      this.setData({
-        identitySync: normalizeIdentitySync(data.identitySync || {}),
-        counts: data.counts || {},
-        countItems: countsList(data.counts || {}),
-        loading: false
-      });
+      cache.set(key, data, IDENTITY_SYNC_TTL);
+      this.renderIdentitySync(data);
+      return data;
     } catch (error) {
+      const fallback = cache.get(key, { allowExpired: true });
+      if (fallback) {
+        this.renderIdentitySync(fallback);
+        return fallback;
+      }
       this.setData({
         error: error.message || "身份网络读取失败",
-        loading: false
+        loading: false,
+        refreshing: false
       });
+      return null;
     }
   },
 
@@ -127,6 +164,7 @@ Page({
     wx.showLoading({ title: "开启同步..." });
     try {
       const data = await api.post("/api/identity-sync/create", {});
+      cache.removeByPrefix(cache.keys.userPrefix(cache.currentIdentityPart()));
       wx.hideLoading();
       wx.showToast({ title: "已开启", icon: "success" });
       this.setData({
@@ -175,6 +213,7 @@ Page({
     try {
       const code = await wxLogin();
       const data = await api.post("/api/identity-sync/wechat/bind", { code, label: "微信小程序" });
+      cache.removeByPrefix(cache.keys.userPrefix(cache.currentIdentityPart()));
       wx.hideLoading();
       wx.showToast({ title: data.merged ? "已同步身份" : "已绑定微信", icon: "success" });
       this.setData({
@@ -268,6 +307,7 @@ Page({
           const data = await api.post(`/api/identity-sync/invites/${encodeURIComponent(token)}/accept`, {
             profileSource: this.data.profileSource
           });
+          cache.removeByPrefix(cache.keys.userPrefix(cache.currentIdentityPart()));
           wx.hideLoading();
           wx.showToast({ title: data.alreadyJoined ? "已同步过" : "同步完成", icon: "success" });
           this.setData({

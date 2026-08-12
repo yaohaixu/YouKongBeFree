@@ -1,12 +1,20 @@
 const api = require("../../utils/api");
+const cache = require("../../utils/cache");
 const { toRegistrationView } = require("../../utils/format");
 const registrationToken = require("../../utils/registration-token");
+
+const REGISTRATIONS_TTL = 2 * 60 * 1000;
+
+function registrationsCacheKey(page, pageSize) {
+  return cache.keys.registrations(cache.currentIdentityPart(), page, pageSize);
+}
 
 Page({
   data: {
     loading: true,
     loadingMore: false,
     error: "",
+    refreshing: false,
     page: 1,
     pageSize: 10,
     hasMore: true,
@@ -14,11 +22,11 @@ Page({
   },
 
   onLoad() {
-    this.loadRegistrations({ reset: true });
+    this.loadRegistrations({ reset: true, preferCache: true });
   },
 
   onPullDownRefresh() {
-    this.loadRegistrations({ reset: true }).finally(() => wx.stopPullDownRefresh());
+    this.loadRegistrations({ reset: true, force: true }).finally(() => wx.stopPullDownRefresh());
   },
 
   onReachBottom() {
@@ -29,9 +37,22 @@ Page({
   async loadRegistrations(options = {}) {
     const reset = options.reset !== false;
     const page = reset ? 1 : this.data.page + 1;
+    const key = registrationsCacheKey(page, this.data.pageSize);
+    const cached = cache.getWithMeta(key);
+    const force = Boolean(options.force);
+    if (reset && options.preferCache !== false && cached.exists && !force) {
+      this.renderRegistrations(cached.data, { reset, page });
+      if (!cached.expired) return Promise.resolve(cached.data);
+      this.setData({ refreshing: true });
+      return this.refreshRegistrations({ reset, page, key });
+    }
+
     this.setData(reset ? { loading: true, error: "" } : { loadingMore: true, error: "" });
+    return this.refreshRegistrations({ reset, page, key });
+  },
+
+  renderRegistrations(data = {}, options = {}) {
     try {
-      const data = await api.get(`/api/my/registrations?page=${page}&pageSize=${this.data.pageSize}`);
       const tokens = registrationToken.all();
       const nextRows = (data.registrations || []).map((item) => {
         const view = toRegistrationView(item);
@@ -44,18 +65,38 @@ Page({
       });
       const pageInfo = data.pageInfo || {};
       this.setData({
-        page,
-        registrations: reset ? nextRows : this.data.registrations.concat(nextRows),
+        page: options.page,
+        registrations: options.reset ? nextRows : this.data.registrations.concat(nextRows),
         hasMore: Boolean(pageInfo.hasMore),
         loading: false,
-        loadingMore: false
+        loadingMore: false,
+        refreshing: false,
+        error: ""
       });
     } catch (error) {
+      this.setData({ loading: false, loadingMore: false, refreshing: false });
+    }
+  },
+
+  async refreshRegistrations(options = {}) {
+    try {
+      const data = await api.get(`/api/my/registrations?page=${options.page}&pageSize=${this.data.pageSize}`);
+      cache.set(options.key, data, REGISTRATIONS_TTL);
+      this.renderRegistrations(data, options);
+      return data;
+    } catch (error) {
+      const fallback = cache.get(options.key, { allowExpired: true });
+      if (fallback) {
+        this.renderRegistrations(fallback, options);
+        return fallback;
+      }
       this.setData({
         error: error.message || "报名记录读取失败",
         loading: false,
-        loadingMore: false
+        loadingMore: false,
+        refreshing: false
       });
+      return null;
     }
   },
 
@@ -86,9 +127,11 @@ Page({
             token: item.accessToken
           } : {});
           registrationToken.forget(item.id);
+          cache.removeByPrefix(cache.keys.userPrefix(cache.currentIdentityPart()));
+          cache.invalidatePublicActivities(item.activity.id);
           wx.hideLoading();
           wx.showToast({ title: "已取消", icon: "success" });
-          this.loadRegistrations({ reset: true });
+          this.loadRegistrations({ reset: true, force: true });
         } catch (error) {
           wx.hideLoading();
           wx.showToast({ title: error.message || "取消失败", icon: "none" });

@@ -1,4 +1,5 @@
 const api = require("../../utils/api");
+const cache = require("../../utils/cache");
 
 const MAX_AVATAR_SIZE = 4 * 1024 * 1024;
 
@@ -106,6 +107,7 @@ Page({
       const data = this.data.avatarChanged && this.data.avatarTempFilePath
         ? await api.upload("/api/profile/me", this.data.avatarTempFilePath, payload, { name: "avatar" })
         : await api.put("/api/profile/me", payload);
+      cache.removeByPrefix(cache.keys.userPrefix(cache.currentIdentityPart()));
       wx.hideLoading();
       wx.showToast({ title: "已保存", icon: "success" });
       this.setData({

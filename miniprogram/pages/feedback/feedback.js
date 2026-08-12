@@ -1,4 +1,5 @@
 const api = require("../../utils/api");
+const cache = require("../../utils/cache");
 const { toActivityView } = require("../../utils/format");
 
 Page({
@@ -65,6 +66,8 @@ Page({
     wx.showLoading({ title: "提交反馈..." });
     try {
       const data = await api.post(`/api/activities/${encodeURIComponent(this.data.id)}/feedbacks`, payload);
+      cache.removeByPrefix(cache.keys.userPrefix(cache.currentIdentityPart()));
+      cache.invalidatePublicActivities(this.data.id);
       wx.hideLoading();
       wx.showToast({
         title: data.existing ? "已经提交过" : "反馈已提交",

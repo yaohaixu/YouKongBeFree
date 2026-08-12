@@ -1,4 +1,5 @@
 const api = require("../../utils/api");
+const cache = require("../../utils/cache");
 const { stripHtml, responsiveRichTextHtml } = require("../../utils/format");
 const share = require("../../utils/share");
 
@@ -768,6 +769,8 @@ Page({
         : editingId
           ? await api.request(endpoint, { method: "PUT", data: payload, header })
           : await api.post(endpoint, payload);
+      cache.invalidatePublicActivities(data.activity && data.activity.id);
+      cache.removeByPrefix(cache.keys.userPrefix(cache.currentIdentityPart()));
       saveManageToken(data.activity, data.manageToken);
       if (data.activity && data.activity.id) {
         this.setData({

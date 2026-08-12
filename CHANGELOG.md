@@ -6,6 +6,7 @@
 
 ### Added
 
+- 新增小程序统一本地缓存工具层 `miniprogram/utils/cache.js`，支持 TTL、过期元信息、环境隔离 key、身份短 hash key、stale fallback、前缀清理和公共活动 payload 清洗。
 - 新增可选服务端缓存速度层 `lib/cache-service.js`，支持 `noop`、`memory`、`redis` driver；Redis 通过 `REDIS_ENABLED=true` 或 `CACHE_DRIVER=redis` 启用，默认不缓存。
 - 新增 `GET /api/public/bootstrap` 聚合公开首屏所需的活动模块、活动系列、启用的客厅朋友、小程序配置和近期活动，PC 首页与小程序首页已接入以减少首屏瀑布流请求。
 - API 响应新增 `X-Cache`、`X-Cache-Driver` 和 `Server-Timing`，慢请求日志同步记录缓存、存储和 hydrate 耗时，便于定位 CloudBase 冷启动、查询和渲染组装瓶颈。
@@ -13,6 +14,9 @@
 
 ### Changed
 
+- 小程序首页、活动列表、活动详情、我的页面、我的报名、我的反馈和身份网络接入 stale-while-revalidate 本地缓存：有缓存时立即渲染，后台静默刷新；下拉刷新会强制请求服务端。
+- 小程序活动详情只缓存公共活动 base，报名状态、感兴趣状态、订阅状态和权限状态仍按当前设备和服务端结果校准；我的报名、我的反馈、我的页面和身份网络缓存按当前匿名身份隔离。
+- 小程序报名、取消报名、感兴趣、提交反馈、编辑资料、提交活动和身份同步等写操作会主动失效相关个人缓存、首页 / 列表缓存和活动详情缓存，避免操作后继续展示旧状态。
 - 公开配置、公开活动列表和公开活动详情 base 可进入速度层缓存；后台、权限、session、身份网络、`/api/me/summary`、报名 token、openid、手机号和管理 token 不缓存。
 - 公开活动 payload 拆分为公共 base 与当前设备态 hydrate，缓存只复用所有访客一致的部分，报名状态、感兴趣状态和活动编辑权限仍按请求实时计算。
 - 公开活动缓存采用版本号失效和短 TTL / stale 回退，不使用 Redis pattern 删除；活动发布、复核、撤回、取消、结束、报名数、感兴趣数、反馈展示、举报下架和配置更新都会 bump 相关版本。

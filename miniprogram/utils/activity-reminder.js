@@ -1,7 +1,19 @@
 const api = require("./api");
+const cache = require("./cache");
+
+const CONFIG_CACHE_KEY = cache.keys.miniprogramConfig();
+const CONFIG_TTL = 60 * 60 * 1000;
 
 async function loadReminderConfig() {
+  const cached = cache.get(CONFIG_CACHE_KEY, { allowExpired: true });
+  if (cached && cached.notifications) {
+    api.get("/api/miniprogram/config")
+      .then((data) => cache.set(CONFIG_CACHE_KEY, data, CONFIG_TTL))
+      .catch(() => {});
+    return cached.notifications || null;
+  }
   const data = await api.get("/api/miniprogram/config").catch(() => ({ notifications: null }));
+  cache.set(CONFIG_CACHE_KEY, data, CONFIG_TTL);
   return data.notifications || null;
 }
 

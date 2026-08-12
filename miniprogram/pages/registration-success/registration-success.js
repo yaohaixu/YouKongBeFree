@@ -1,4 +1,5 @@
 const api = require("../../utils/api");
+const cache = require("../../utils/cache");
 const { toActivityView } = require("../../utils/format");
 const shareImage = require("../../utils/share-image");
 const share = require("../../utils/share");
@@ -121,6 +122,8 @@ Page({
         try {
           await api.post(`/api/activities/${encodeURIComponent(activityId)}/registrations/${encodeURIComponent(registrationId)}/cancel`, token ? { token } : {});
           registrationToken.forget(registrationId);
+          cache.removeByPrefix(cache.keys.userPrefix(cache.currentIdentityPart()));
+          cache.invalidatePublicActivities(activityId);
           wx.hideLoading();
           this.setData({ cancelling: false, cancelled: true });
           wx.showToast({ title: "已取消", icon: "success" });
