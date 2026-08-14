@@ -18,10 +18,13 @@
       <text wx:if="{{activity.interestCount}}">{{activity.interestCount}} 人感兴趣</text>
     </view>
     <view class="action-row">
-      <view class="action-button primary" catchtap="handleRegisterTap">报名</view>
+      <view class="action-button primary" catchtap="handleRegisterTap"><yk-icon name="ticket" size="{{24}}" tone="light" custom-class="action-icon" />报名</view>
       <view class="secondary-action-row">
-        <view class="action-button secondary" catchtap="handleInterestTap">感兴趣</view>
-        <view class="action-button secondary" catchtap="handleReminderTap">订阅提醒</view>
+        <view class="action-button secondary {{activity.interestedByMe ? 'selected' : ''}}" catchtap="handleInterestTap">
+          <yk-icon name="{{activity.interestedByMe ? 'heart-filled' : 'heart'}}" size="{{24}}" custom-class="action-icon" />
+          {{activity.interestedByMe ? "已感兴趣" : "感兴趣"}}
+        </view>
+        <view class="action-button secondary" catchtap="handleReminderTap"><yk-icon name="bell" size="{{24}}" custom-class="action-icon" />订阅提醒</view>
       </view>
     </view>
   </view>

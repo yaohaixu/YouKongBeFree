@@ -314,7 +314,9 @@ async function generateRoomLogPoster(page, roomStatus = {}, options = {}) {
   };
   const colors = toneColors[tone] || toneColors.empty;
   const noteText = String(options.noteText || roomStatus.text || log.plainNote || "").replace(/\s+/g, " ").trim();
-  const link = roomLogsUrl(log.id || "");
+  const link = log.eventType === "activity" && log.activityId
+    ? activityUrl(log.activityId)
+    : roomLogsUrl(log.id || "");
 
   await setCanvasData(page, width, height);
   await sleep(80);

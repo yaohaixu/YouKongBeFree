@@ -5,7 +5,7 @@
       <view class="status-date">{{roomStatus.hasLog ? roomStatus.currentLog.dateLabel : "今日"}}</view>
     </view>
     <view class="status-main">
-      <view class="status-orb"><view></view></view>
+      <yk-icon name="door" size="{{94}}" frame="quick" tone="light" custom-class="status-orb" />
       <view class="status-copy">
         <view class="status-title">{{roomStatus.title}}</view>
         <view class="status-text">{{roomStatus.text || "点进值班记录，可以看看今天谁在客厅。"}}</view>
@@ -13,41 +13,48 @@
       </view>
     </view>
     <view class="status-actions">
-      <view class="button" bindtap="goManage">预约开门</view>
-      <view class="button secondary" bindtap="downloadPoster">{{shareImageLoading ? "生成中..." : "下载开门海报"}}</view>
-      <view class="button secondary" bindtap="copyLink">复制链接</view>
-      <button class="button secondary share-button" open-type="share">分享小程序链接</button>
+      <view class="button" bindtap="goManage"><yk-icon name="door" size="{{28}}" custom-class="button-icon" />有空开门</view>
+      <view class="button secondary" bindtap="downloadPoster"><yk-icon name="poster" size="{{28}}" tone="light" custom-class="button-icon" />{{shareImageLoading ? "生成中..." : "下载开门海报"}}</view>
+      <view class="button secondary" bindtap="copyLink"><yk-icon name="copy" size="{{28}}" tone="light" custom-class="button-icon" />复制链接</view>
+      <button class="button secondary share-button" open-type="share"><yk-icon name="share" size="{{28}}" tone="light" custom-class="button-icon" />分享小程序链接</button>
     </view>
   </view>
 
   <view class="section-heading">
     <view>
       <view class="section-title">值班记录</view>
-      <view class="section-subtitle">每天谁在、几点开门、有没有夜记，都留在这里。</view>
+      <view class="section-subtitle">每天谁在、几点开门、有没有夜记和客厅活动，都留在这里。</view>
     </view>
+  </view>
+
+  <view class="filter-tabs">
+    <view wx:for="{{tabs}}" wx:key="key" class="filter {{type === item.key ? 'active' : ''}}" data-type="{{item.key}}" bindtap="switchType">{{item.label}}</view>
   </view>
 
   <view wx:if="{{loading}}" class="panel muted">正在读取值班记录...</view>
   <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
   <block wx:elif="{{roomLogs.length}}">
-    <view class="room-log-card tone-{{item.tone}} {{item.highlighted ? 'highlighted' : ''}}" wx:for="{{roomLogs}}" wx:key="id">
+    <view class="room-log-card tone-{{item.tone}} {{item.highlighted ? 'highlighted' : ''}}" wx:for="{{roomLogs}}" wx:key="id" data-id="{{item.id}}" data-type="{{item.eventType}}" data-activity-id="{{item.activityId}}" bindtap="openRoomEvent">
       <view class="log-head">
         <view>
           <view class="log-date">{{item.dateLabel || "日期待定"}}</view>
-          <view class="log-title">{{item.statusLabel}}<text wx:if="{{item.titleTime}}">（{{item.titleTime}}）</text></view>
+          <view class="log-title">{{item.isActivityEvent ? item.title : item.statusLabel}}<text wx:if="{{item.titleTime}}">（{{item.titleTime}}）</text></view>
         </view>
-        <view class="log-pill">{{item.keeperName || "有空朋友"}}</view>
+        <view class="log-pill">{{item.isActivityEvent ? "活动" : (item.keeperName || "有空朋友")}}</view>
       </view>
-      <view wx:if="{{item.timingText}}" class="log-meta">客厅开门时间：{{item.timingText}}</view>
+      <view wx:if="{{item.timingText}}" class="log-meta">{{item.isActivityEvent ? "活动时间" : "客厅开门时间"}}：{{item.timingText}}<text wx:if="{{item.isActivityEvent && item.roomOpenPolicyLabel}}"> · {{item.roomOpenPolicyLabel}}</text></view>
       <view wx:if="{{item.openNote}}" class="note-block">
-        <view class="note-title">开门文字</view>
+        <view class="note-title">{{item.isActivityEvent ? "活动开门说明" : "开门文字"}}</view>
         <rich-text class="note-content" nodes="{{item.openNote}}" />
       </view>
-      <view wx:if="{{item.nightNote}}" class="note-block">
+      <view wx:if="{{item.nightNotes.length}}" class="note-block">
         <view class="note-title">夜记</view>
-        <rich-text class="note-content" nodes="{{item.nightNote}}" />
+        <view class="mini-note" wx:for="{{item.nightNotes}}" wx:for-item="note" wx:key="id">
+          <view class="mini-note-author">{{note.authorName || "有空朋友"}} · {{note.displayCreatedAt || "刚刚"}}</view>
+          <rich-text class="note-content inline-note" nodes="{{note.content}}" />
+        </view>
       </view>
-      <view wx:if="{{!item.openNote && !item.nightNote}}" class="log-empty">这一天还没有公开文字。</view>
+      <view wx:if="{{!item.openNote && !item.nightNotes.length}}" class="log-empty">{{item.isActivityEvent ? "点击查看活动详情。" : "这一天还没有公开文字。"}}</view>
     </view>
     <view wx:if="{{loadingMore}}" class="loading-more">继续读取中...</view>
     <view wx:elif="{{!hasMore}}" class="loading-more">已经到底了</view>

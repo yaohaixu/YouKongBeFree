@@ -174,6 +174,10 @@ Page({
     sourceTypeValues: ["living_room", "friend"],
     sourceTypeIndex: 0,
     selectedSourceTypeName: "有空客厅",
+    roomOpenPolicyOptions: ["公开可来", "仅报名可来"],
+    roomOpenPolicyValues: ["public", "registered"],
+    roomOpenPolicyIndex: 0,
+    selectedRoomOpenPolicyName: "公开可来",
     coverTempFilePath: "",
     coverChanged: false,
     today: "",
@@ -200,6 +204,8 @@ Page({
       initiatorContact: "",
       showRegistrationNames: false,
       showFeedbacks: true,
+      syncRoomOpenEvent: false,
+      roomOpenPolicy: "public",
       minRegistrationEnabled: false,
       minRegistrationCount: "",
       deadlineDate: "",
@@ -355,6 +361,10 @@ Page({
       "form.initiatorContact": activity.initiatorContact || "",
       "form.showRegistrationNames": Boolean(activity.showRegistrationNames),
       "form.showFeedbacks": activity.showFeedbacks !== false,
+      "form.syncRoomOpenEvent": Boolean(activity.syncRoomOpenEvent),
+      "form.roomOpenPolicy": activity.roomOpenPolicy === "registered" ? "registered" : "public",
+      roomOpenPolicyIndex: activity.roomOpenPolicy === "registered" ? 1 : 0,
+      selectedRoomOpenPolicyName: activity.roomOpenPolicy === "registered" ? "仅报名可来" : "公开可来",
       "form.minRegistrationEnabled": Boolean(activity.minRegistrationEnabled),
       "form.minRegistrationCount": activity.minRegistrationEnabled ? String(activity.minRegistrationCount || "") : "",
       "form.deadlineDate": datePart(deadline),
@@ -599,6 +609,16 @@ Page({
     });
   },
 
+  handleRoomOpenPolicyChange(event) {
+    const index = Number(event.detail.value || 0);
+    const value = this.data.roomOpenPolicyValues[index] || "public";
+    this.setData({
+      roomOpenPolicyIndex: index,
+      selectedRoomOpenPolicyName: this.data.roomOpenPolicyOptions[index] || "公开可来",
+      "form.roomOpenPolicy": value
+    });
+  },
+
   handleTemplateChange(event) {
     const nextIndex = Number(event.detail.value || 0);
     const template = nextIndex > 0 ? this.data.templates[nextIndex - 1] || null : null;
@@ -711,6 +731,8 @@ Page({
       initiatorContact: String(form.initiatorContact || "").trim(),
       showRegistrationNames: form.showRegistrationNames ? "true" : "false",
       showFeedbacks: form.showFeedbacks ? "true" : "false",
+      syncRoomOpenEvent: form.syncRoomOpenEvent ? "true" : "false",
+      roomOpenPolicy: form.syncRoomOpenEvent ? form.roomOpenPolicy || "public" : "none",
       minRegistrationEnabled: minEnabled ? "true" : "false",
       minRegistrationCount: minEnabled ? String(form.minRegistrationCount || "").trim() : "0",
       registrationDeadline,

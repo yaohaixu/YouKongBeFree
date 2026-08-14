@@ -23,8 +23,8 @@
       </view>
       <view class="hint">接受后，你可以编辑、提交发布、撤回、取消或结束活动；主发起人仍负责添加和移除共同发起人。</view>
       <view class="button-row">
-        <view wx:if="{{!profileReady}}" class="button" bindtap="goProfileEditor">先填写公开资料</view>
-        <view wx:else class="button" bindtap="acceptInvite">{{accepting ? "加入中..." : "接受邀请"}}</view>
+        <view wx:if="{{!profileReady}}" class="button" bindtap="goProfileEditor"><yk-icon name="user" size="{{28}}" tone="light" custom-class="button-icon" />先填写公开资料</view>
+        <view wx:else class="button" bindtap="acceptInvite"><yk-icon name="check" size="{{28}}" tone="light" custom-class="button-icon" />{{accepting ? "加入中..." : "接受邀请"}}</view>
       </view>
     </view>
   </view>

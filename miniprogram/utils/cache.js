@@ -189,8 +189,8 @@ const keys = {
   publicRoomLogsPrefix() {
     return key(["public", "room-logs"]);
   },
-  publicRoomLogs(page, pageSize) {
-    return key(["public", "room-logs", `p${page}`, `s${pageSize}`, "v1"]);
+  publicRoomLogs(page, pageSize, type = "all") {
+    return key(["public", "room-logs", type || "all", `p${page}`, `s${pageSize}`, "v1"]);
   },
   publicRoomStatus() {
     return key(["public", "room-status", "v1"]);

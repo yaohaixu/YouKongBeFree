@@ -22,10 +22,10 @@
       <view class="record-text">{{item.activity.location || "地点待定"}} · {{item.activity.displayTime}}</view>
       <view class="record-foot">报名时间：{{item.displayCreatedAt || "刚刚"}}</view>
       <view wx:if="{{view === 'past' && item.activity.canWriteFeedback && !item.activity.hasMyFeedback}}" class="record-actions">
-        <view class="mini-action feeling" data-id="{{item.activity.id}}" catchtap="goFeedback">写下活动感受</view>
+        <view class="mini-action feeling" data-id="{{item.activity.id}}" catchtap="goFeedback"><yk-icon name="feedback" size="{{24}}" custom-class="mini-icon" />写下活动感受</view>
       </view>
       <view wx:elif="{{item.canCancel}}" class="record-actions">
-        <view class="mini-action danger" data-item="{{item}}" catchtap="cancelRegistration">取消报名</view>
+        <view class="mini-action danger" data-item="{{item}}" catchtap="cancelRegistration"><yk-icon name="x" size="{{24}}" custom-class="mini-icon" />取消报名</view>
       </view>
     </view>
     <view wx:if="{{loadingMore}}" class="loading-more">继续读取中...</view>

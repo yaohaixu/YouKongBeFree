@@ -1,3 +1,6 @@
 {
-  "component": true
+  "component": true,
+  "usingComponents": {
+    "yk-icon": "/components/yk-icon/yk-icon"
+  }
 }

@@ -8,9 +8,7 @@
       <view class="home-chip">{{roomStatus.statusLabel}}</view>
     </view>
     <view class="room-status-main">
-      <view class="room-orb">
-        <view></view>
-      </view>
+      <yk-icon name="door" size="{{94}}" frame="quick" tone="light" custom-class="room-orb" />
       <view class="room-copy">
         <view class="title">{{roomStatus.title}}</view>
         <view class="body">{{roomStatus.text || "点进值班记录，可以看看今天谁在客厅。"}}</view>
@@ -18,26 +16,19 @@
       </view>
     </view>
     <view class="home-actions">
-      <view class="button" catchtap="goRoomLogs">看值班记录</view>
-      <view class="button secondary" catchtap="goRoomLogManage">预约开门</view>
+      <view class="button" catchtap="goRoomLogs"><yk-icon name="list" size="{{28}}" custom-class="button-icon" />看值班记录</view>
+      <view class="button secondary" catchtap="goRoomPrimaryAction"><yk-icon name="{{roomStatus.primaryAction.icon || 'door'}}" size="{{28}}" tone="light" custom-class="button-icon" />{{roomStatus.primaryAction.label || "有空开门"}}</view>
     </view>
     <view class="quick-strip">
       <view class="quick-item" bindtap="goActivities">
-        <view class="quick-icon yk-icon yk-icon-calendar">
-          <view class="icon-calendar-body"></view>
-          <view class="icon-calendar-top"></view>
-          <view class="icon-calendar-dot"></view>
-        </view>
+        <yk-icon name="calendar" size="{{58}}" frame="quick" tone="light" custom-class="quick-icon" />
         <view>
           <text>近期</text>
           <text>正在发生的活动</text>
         </view>
       </view>
       <view class="quick-item" bindtap="goEditor">
-        <view class="quick-icon yk-icon yk-icon-compose">
-          <view class="icon-sheet"></view>
-          <view class="icon-pen"></view>
-        </view>
+        <yk-icon name="compose" size="{{58}}" frame="quick" tone="light" custom-class="quick-icon" />
         <view>
           <text>发起</text>
           <text>写下一个活动想法</text>
@@ -48,7 +39,7 @@
 
   <view class="section-heading">
     <view class="section-title">近期活动</view>
-    <view class="section-more" bindtap="goActivities">全部</view>
+    <view class="section-more" bindtap="goActivities"><yk-icon name="list" size="{{22}}" custom-class="mini-icon" />全部</view>
   </view>
   <view wx:if="{{loading}}" class="panel muted">正在读取活动...</view>
   <view wx:elif="{{error}}" class="panel muted">{{error}}</view>

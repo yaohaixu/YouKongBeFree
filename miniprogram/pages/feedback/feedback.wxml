@@ -28,7 +28,7 @@
     </view>
 
     <view class="sticky-actions single">
-      <view class="button {{activity.hasEnded ? '' : 'disabled'}}" bindtap="submitFeedback">{{submitting ? "提交中..." : "提交活动感受"}}</view>
+      <view class="button {{activity.hasEnded ? '' : 'disabled'}}" bindtap="submitFeedback"><yk-icon name="send" size="{{28}}" tone="light" custom-class="button-icon" />{{submitting ? "提交中..." : "提交活动感受"}}</view>
     </view>
   </view>
 </view>

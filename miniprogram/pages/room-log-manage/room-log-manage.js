@@ -406,6 +406,10 @@ Page({
     const id = event.currentTarget.dataset.id;
     const log = this.data.roomLogs.find((item) => item.id === id);
     if (!log) return;
+    if (!log.canEditOpenNote) {
+      wx.showToast({ title: "已关门后不能编辑开门文字", icon: "none" });
+      return;
+    }
     this.fillForm(log);
     wx.pageScrollTo({ scrollTop: 0, duration: 220 });
   },

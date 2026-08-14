@@ -46,7 +46,7 @@
   }
 
   function makeButton(label, command, title = label) {
-    return `<button class="rich-tool" type="button" data-rich-command="${command}" title="${title}" aria-label="${title}">${label}</button>`;
+    return `<button class="rich-tool" type="button" data-rich-command="${command}" data-icon="${command}" title="${title}" aria-label="${title}">${label}</button>`;
   }
 
   function activeBlockTag(editor) {

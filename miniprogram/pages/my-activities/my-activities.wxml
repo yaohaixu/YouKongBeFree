@@ -4,7 +4,7 @@
     <view class="title">看这个身份发起过什么。</view>
     <view class="body">这里会同步当前身份发起的草稿、分析中和已发布活动。</view>
     <view class="button-row">
-      <view class="button" bindtap="goEditor">发起活动</view>
+      <view class="button" bindtap="goEditor"><yk-icon name="compose" size="{{28}}" tone="light" custom-class="button-icon" />发起活动</view>
     </view>
   </view>
 
@@ -46,12 +46,12 @@
           </view>
         </view>
         <view wx:if="{{item.permissions.canEdit || item.permissions.canWithdraw || item.permissions.canCancel || item.permissions.canEnd || item.permissions.canManageCoInitiators}}" class="owner-actions">
-          <view wx:if="{{item.permissions.canEdit}}" class="mini-action" data-id="{{item.id}}" catchtap="goEditor">编辑</view>
-          <view class="mini-action" data-id="{{item.id}}" catchtap="goRegistrations">报名表</view>
-          <view class="mini-action" data-id="{{item.id}}" catchtap="goActivityFeedbacks">活动感受</view>
-          <view wx:if="{{item.permissions.canWithdraw}}" class="mini-action wide" data-id="{{item.id}}" data-title="{{item.title}}" data-action="withdraw" catchtap="runActivityAction">撤回为草稿</view>
-          <view wx:if="{{item.permissions.canEnd}}" class="mini-action" data-id="{{item.id}}" data-title="{{item.title}}" data-action="end" catchtap="runActivityAction">结束活动</view>
-          <view wx:if="{{item.permissions.canCancel}}" class="mini-action danger" data-id="{{item.id}}" data-title="{{item.title}}" data-action="cancel" catchtap="runActivityAction">取消活动</view>
+          <view wx:if="{{item.permissions.canEdit}}" class="mini-action" data-id="{{item.id}}" catchtap="goEditor"><yk-icon name="edit" size="{{24}}" custom-class="mini-icon" />编辑</view>
+          <view class="mini-action" data-id="{{item.id}}" catchtap="goRegistrations"><yk-icon name="table" size="{{24}}" custom-class="mini-icon" />报名表</view>
+          <view class="mini-action" data-id="{{item.id}}" catchtap="goActivityFeedbacks"><yk-icon name="feedback" size="{{24}}" custom-class="mini-icon" />活动感受</view>
+          <view wx:if="{{item.permissions.canWithdraw}}" class="mini-action wide" data-id="{{item.id}}" data-title="{{item.title}}" data-action="withdraw" catchtap="runActivityAction"><yk-icon name="save" size="{{24}}" custom-class="mini-icon" />撤回为草稿</view>
+          <view wx:if="{{item.permissions.canEnd}}" class="mini-action" data-id="{{item.id}}" data-title="{{item.title}}" data-action="end" catchtap="runActivityAction"><yk-icon name="check" size="{{24}}" custom-class="mini-icon" />结束活动</view>
+          <view wx:if="{{item.permissions.canCancel}}" class="mini-action danger" data-id="{{item.id}}" data-title="{{item.title}}" data-action="cancel" catchtap="runActivityAction"><yk-icon name="x" size="{{24}}" custom-class="mini-icon" />取消活动</view>
         </view>
       </view>
     </view>

@@ -183,6 +183,13 @@
   margin-top: 0;
 }
 
+.room-policy-field {
+  margin-top: 18rpx;
+  border-radius: 20rpx;
+  padding: 20rpx;
+  background: #f3f5f0;
+}
+
 .cover-picker,
 .cover-preview {
   margin-top: 14rpx;

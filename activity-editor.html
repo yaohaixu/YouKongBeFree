@@ -42,14 +42,14 @@
           <form class="form-note activity-editor segmented-editor" data-activity-form>
             <div class="editor-title-row">
               <div>
-                <p class="section-kicker">单页流程</p>
-                <h3 data-activity-form-title>添加活动</h3>
-              </div>
-              <nav class="editor-stepper" aria-label="发起活动步骤" data-editor-stepper>
-                <button type="button" data-editor-step-target="basic" class="active">基本</button>
-                <button type="button" data-editor-step-target="description">介绍</button>
-                <button type="button" data-editor-step-target="registration">报名</button>
-                <button type="button" data-editor-step-target="publish">发布</button>
+              <p class="section-kicker">单页流程</p>
+              <h3 data-activity-form-title>添加活动</h3>
+            </div>
+            <nav class="editor-stepper" aria-label="发起活动步骤" data-editor-stepper>
+                <button type="button" data-editor-step-target="basic" data-yki-name="file-pen-line" class="active">基本</button>
+                <button type="button" data-editor-step-target="description" data-yki-name="book-text">介绍</button>
+                <button type="button" data-editor-step-target="registration" data-yki-name="ticket">报名</button>
+                <button type="button" data-editor-step-target="publish" data-yki-name="send">发布</button>
               </nav>
             </div>
 
@@ -125,6 +125,18 @@
                     </select>
                   </label>
                   <label data-initiator-contact-field hidden>活动发起人联系方式<input name="initiatorContact" placeholder="可填写手机号、微信号或其他联系方式" /></label>
+                  <label>是否同步为开门事件
+                    <select name="syncRoomOpenEvent" data-room-open-toggle>
+                      <option value="no" selected>不同步</option>
+                      <option value="yes">同步到首页开门状态</option>
+                    </select>
+                  </label>
+                  <label data-room-open-policy-field hidden>客厅开放方式
+                    <select name="roomOpenPolicy">
+                      <option value="public" selected>公开可来</option>
+                      <option value="registered">仅报名可来</option>
+                    </select>
+                  </label>
                 </div>
               </details>
             </fieldset>

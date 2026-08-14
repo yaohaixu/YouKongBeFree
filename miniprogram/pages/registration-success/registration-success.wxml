@@ -17,12 +17,12 @@
     </view>
 
     <view class="button-stack">
-      <view class="button" bindtap="openActivity">查看活动</view>
-      <view class="button secondary" bindtap="goMyRegistrations">查看我的报名</view>
-      <view class="button secondary" bindtap="downloadInvitationPoster">{{shareImageLoading ? "生成中..." : "下载活动邀请函"}}</view>
-      <button class="button secondary share-button" open-type="share">分享小程序链接</button>
-      <view class="button secondary" bindtap="addToCalendar">加到日历</view>
-      <view wx:if="{{activity.canWriteFeedback && !activity.hasMyFeedback && !cancelled}}" class="button feeling" bindtap="goFeedback">写下活动感受</view>
+      <view class="button" bindtap="openActivity"><yk-icon name="activity" size="{{28}}" tone="light" custom-class="button-icon" />查看活动</view>
+      <view class="button secondary" bindtap="goMyRegistrations"><yk-icon name="ticket" size="{{28}}" custom-class="button-icon" />查看我的报名</view>
+      <view class="button secondary" bindtap="downloadInvitationPoster"><yk-icon name="poster" size="{{28}}" custom-class="button-icon" />{{shareImageLoading ? "生成中..." : "下载活动邀请函"}}</view>
+      <button class="button secondary share-button" open-type="share"><yk-icon name="share" size="{{28}}" custom-class="button-icon" />分享小程序链接</button>
+      <view class="button secondary" bindtap="addToCalendar"><yk-icon name="calendar" size="{{28}}" custom-class="button-icon" />加到日历</view>
+      <view wx:if="{{activity.canWriteFeedback && !activity.hasMyFeedback && !cancelled}}" class="button feeling" bindtap="goFeedback"><yk-icon name="feedback" size="{{28}}" tone="light" custom-class="button-icon" />写下活动感受</view>
       <view wx:elif="{{activity.hasMyFeedback && !cancelled}}" class="feeling-note">已写活动感受</view>
     </view>
 
@@ -31,7 +31,7 @@
         <view class="danger-title">不能来了？</view>
         <view class="danger-body">取消后会释放名额，需要参加时可以重新报名。</view>
       </view>
-      <view class="danger-action" bindtap="cancelRegistration">{{cancelling ? "取消中..." : "取消报名"}}</view>
+      <view class="danger-action" bindtap="cancelRegistration"><yk-icon name="x" size="{{24}}" custom-class="mini-icon" />{{cancelling ? "取消中..." : "取消报名"}}</view>
     </view>
   </view>
   <canvas canvas-id="shareCanvas" class="share-canvas" style="width: {{shareCanvasWidth}}px; height: {{shareCanvasHeight}}px;"></canvas>

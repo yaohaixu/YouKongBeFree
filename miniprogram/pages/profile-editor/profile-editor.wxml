@@ -11,7 +11,7 @@
     <view class="avatar-editor" bindtap="chooseAvatar">
       <image wx:if="{{avatarTempFilePath}}" src="{{avatarTempFilePath}}" mode="aspectFill" />
       <view wx:else class="avatar-placeholder">{{avatarInitial}}</view>
-      <view class="avatar-action">更换头像</view>
+      <view class="avatar-action"><yk-icon name="image" size="{{22}}" custom-class="mini-icon" />更换头像</view>
     </view>
 
     <view class="field">
@@ -25,7 +25,7 @@
     </view>
 
     <view class="button-row">
-      <view class="button" bindtap="saveProfile">{{saving ? "保存中..." : "保存资料"}}</view>
+      <view class="button" bindtap="saveProfile"><yk-icon name="save" size="{{28}}" tone="light" custom-class="button-icon" />{{saving ? "保存中..." : "保存资料"}}</view>
     </view>
   </view>
 </view>

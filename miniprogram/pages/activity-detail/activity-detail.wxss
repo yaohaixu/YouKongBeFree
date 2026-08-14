@@ -263,6 +263,9 @@
 }
 
 .co-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
   border-radius: 999rpx;
   padding: 8rpx 16rpx;

@@ -39,9 +39,12 @@ function roomLogPath(roomLogOrId = "") {
 function roomLogShare(roomStatusOrLog = {}) {
   const log = roomStatusOrLog.currentLog || roomStatusOrLog;
   const title = roomStatusOrLog.title || (log.statusLabel ? `有空客厅${log.statusLabel}` : "有空客厅开门值班记录");
+  const path = log.eventType === "activity" && log.activityId
+    ? activityPath(log.activityId)
+    : roomLogPath(log && log.id ? log.id : "");
   return {
     title,
-    path: roomLogPath(log && log.id ? log.id : ""),
+    path,
   };
 }
 

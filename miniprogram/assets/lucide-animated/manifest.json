@@ -1,0 +1,150 @@
+{
+  "generatedAt": "2026-08-13T03:55:47.350Z",
+  "icons": [
+    {
+      "semantic": "activity",
+      "slug": "square-activity",
+      "source": "https://lucide-animated.com/r/square-activity.json"
+    },
+    {
+      "semantic": "bell",
+      "slug": "bell",
+      "source": "https://lucide-animated.com/r/bell.json"
+    },
+    {
+      "semantic": "calendar",
+      "slug": "calendar-days",
+      "source": "https://lucide-animated.com/r/calendar-days.json"
+    },
+    {
+      "semantic": "check",
+      "slug": "check",
+      "source": "https://lucide-animated.com/r/check.json"
+    },
+    {
+      "semantic": "close-door",
+      "slug": "lock-keyhole",
+      "source": "https://lucide-animated.com/r/lock-keyhole.json"
+    },
+    {
+      "semantic": "compose",
+      "slug": "square-pen",
+      "source": "https://lucide-animated.com/r/square-pen.json"
+    },
+    {
+      "semantic": "copy",
+      "slug": "copy",
+      "source": "https://lucide-animated.com/r/copy.json"
+    },
+    {
+      "semantic": "door",
+      "slug": "lock-keyhole-open",
+      "source": "https://lucide-animated.com/r/lock-keyhole-open.json"
+    },
+    {
+      "semantic": "edit",
+      "slug": "file-pen-line",
+      "source": "https://lucide-animated.com/r/file-pen-line.json"
+    },
+    {
+      "semantic": "feedback",
+      "slug": "message-square",
+      "source": "https://lucide-animated.com/r/message-square.json"
+    },
+    {
+      "semantic": "heart",
+      "slug": "heart",
+      "source": "https://lucide-animated.com/r/heart.json"
+    },
+    {
+      "semantic": "image",
+      "slug": "gallery-thumbnails",
+      "source": "https://lucide-animated.com/r/gallery-thumbnails.json"
+    },
+    {
+      "semantic": "link",
+      "slug": "link",
+      "source": "https://lucide-animated.com/r/link.json"
+    },
+    {
+      "semantic": "list",
+      "slug": "menu",
+      "source": "https://lucide-animated.com/r/menu.json"
+    },
+    {
+      "semantic": "plus",
+      "slug": "plus",
+      "source": "https://lucide-animated.com/r/plus.json"
+    },
+    {
+      "semantic": "poster",
+      "slug": "gallery-horizontal-end",
+      "source": "https://lucide-animated.com/r/gallery-horizontal-end.json"
+    },
+    {
+      "semantic": "qr",
+      "slug": "scan-text",
+      "source": "https://lucide-animated.com/r/scan-text.json"
+    },
+    {
+      "semantic": "report",
+      "slug": "badge-alert",
+      "source": "https://lucide-animated.com/r/badge-alert.json"
+    },
+    {
+      "semantic": "save",
+      "slug": "file-check",
+      "source": "https://lucide-animated.com/r/file-check.json"
+    },
+    {
+      "semantic": "send",
+      "slug": "send",
+      "source": "https://lucide-animated.com/r/send.json"
+    },
+    {
+      "semantic": "share",
+      "slug": "external-link",
+      "source": "https://lucide-animated.com/r/external-link.json"
+    },
+    {
+      "semantic": "sync",
+      "slug": "cloud-sync",
+      "source": "https://lucide-animated.com/r/cloud-sync.json"
+    },
+    {
+      "semantic": "table",
+      "slug": "layout-grid",
+      "source": "https://lucide-animated.com/r/layout-grid.json"
+    },
+    {
+      "semantic": "ticket",
+      "slug": "ticket",
+      "source": "https://lucide-animated.com/r/ticket.json"
+    },
+    {
+      "semantic": "trash",
+      "slug": "ban",
+      "source": "https://lucide-animated.com/r/ban.json"
+    },
+    {
+      "semantic": "user",
+      "slug": "user",
+      "source": "https://lucide-animated.com/r/user.json"
+    },
+    {
+      "semantic": "users",
+      "slug": "users",
+      "source": "https://lucide-animated.com/r/users.json"
+    },
+    {
+      "semantic": "wechat",
+      "slug": "message-circle",
+      "source": "https://lucide-animated.com/r/message-circle.json"
+    },
+    {
+      "semantic": "x",
+      "slug": "x",
+      "source": "https://lucide-animated.com/r/x.json"
+    }
+  ]
+}

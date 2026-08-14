@@ -1,0 +1,77 @@
+<view class="page editor-page">
+  <view class="hero compact">
+    <view class="eyebrow">{{editingId ? "编辑开门" : "预约开门"}}</view>
+    <view class="title">把今天客厅有人在这件事说清楚。</view>
+    <view class="body">开门文字会同步到首页和值班记录；夜记等客厅开门后，在记录详情里单独写。</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="panel muted">正在读取开门记录...</view>
+  <view wx:else class="form-card">
+    <view class="field">
+      <view class="field-label">轮值看门人</view>
+      <input class="input" value="{{form.keeperName}}" maxlength="40" placeholder="例如：Siry" data-field="keeperName" bindinput="handleInput" />
+    </view>
+
+    <view class="field two-columns">
+      <view>
+        <view class="field-label">计划开门日期</view>
+        <picker mode="date" value="{{form.openDate}}" start="{{today}}" data-field="openDate" bindchange="handlePickerChange">
+          <view class="select">{{form.openDate}}</view>
+        </picker>
+      </view>
+      <view>
+        <view class="field-label">计划开门时间</view>
+        <picker mode="time" value="{{form.openTime}}" data-field="openTime" bindchange="handlePickerChange">
+          <view class="select">{{form.openTime}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="field two-columns">
+      <view>
+        <view class="field-label">计划关门日期</view>
+        <picker mode="date" value="{{form.closeDate}}" start="{{form.openDate}}" data-field="closeDate" bindchange="handlePickerChange">
+          <view class="select">{{form.closeDate}}</view>
+        </picker>
+      </view>
+      <view>
+        <view class="field-label">计划关门时间</view>
+        <picker mode="time" value="{{form.closeTime}}" data-field="closeTime" bindchange="handlePickerChange">
+          <view class="select">{{form.closeTime}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="field">
+      <view class="field-label">开门文字</view>
+      <view class="field-hint">可以写客厅开门时间、今日轮值、现场有什么可以一起吃/聊/做。</view>
+      <view class="rich-toolbar">
+        <view class="tool {{!formats.header ? 'active' : ''}}" data-name="header" data-value="" bindtap="formatRichText">正文</view>
+        <view class="tool {{formats.header === 1 || formats.header === '1' ? 'active' : ''}}" data-name="header" bindtap="formatRichText">H1</view>
+        <view class="tool {{formats.bold ? 'active' : ''}}" data-name="bold" bindtap="formatRichText">B</view>
+        <view class="tool {{formats.italic ? 'active' : ''}}" data-name="italic" bindtap="formatRichText">I</view>
+        <view class="tool" data-name="list" data-value="bullet" bindtap="formatRichText">•</view>
+        <view class="tool" bindtap="insertDivider">线</view>
+        <view class="tool wide muted-tool" bindtap="undoRichText">撤销</view>
+        <view class="tool wide muted-tool" bindtap="clearRichText">清空</view>
+      </view>
+      <editor
+        id="openNoteEditor"
+        class="rich-editor"
+        style="height: {{openNoteEditorHeight}}rpx;"
+        placeholder="客厅开门时间（16:00-22:00） 今日轮值：Siry 今天客厅已经开门啦..."
+        bindready="onEditorReady"
+        bindinput="handleRichTextInput"
+        bindstatuschange="handleRichTextStatusChange"
+      />
+      <view wx:if="{{openNotePreview}}" class="rich-preview">
+        <view class="field-label">开门文字预览</view>
+        <rich-text class="rich-preview-body" nodes="{{openNotePreview}}" />
+      </view>
+    </view>
+
+    <view class="button-stack">
+      <view class="button" bindtap="submitRoomLog"><yk-icon name="save" size="{{28}}" tone="light" custom-class="button-icon" />{{submitting ? "保存中..." : "保存开门记录"}}</view>
+    </view>
+  </view>
+</view>

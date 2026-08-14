@@ -106,6 +106,21 @@ textarea {
   transition: opacity 150ms ease-out, transform 150ms ease-out, background-color 150ms ease-out;
 }
 
+.button-icon {
+  flex: 0 0 auto;
+  margin-right: 10rpx;
+}
+
+.button .button-icon {
+  color: currentColor;
+}
+
+.mini-icon {
+  flex: 0 0 auto;
+  margin-right: 8rpx;
+  color: currentColor;
+}
+
 .button::after {
   border: 0;
 }
@@ -176,184 +191,6 @@ textarea {
   color: #65706a;
   text-align: center;
   font-size: 25rpx;
-}
-
-.yk-icon {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: linear-gradient(145deg, #f7faf5, #dfe8df);
-  color: #101714;
-}
-
-.yk-icon view {
-  position: absolute;
-  box-sizing: border-box;
-}
-
-.yk-icon-compose .icon-sheet {
-  width: 34rpx;
-  height: 42rpx;
-  border: 4rpx solid currentColor;
-  border-radius: 8rpx;
-  transform: translate(-4rpx, -1rpx) rotate(-5deg);
-}
-
-.yk-icon-compose .icon-pen {
-  width: 34rpx;
-  height: 7rpx;
-  border-radius: 999rpx;
-  background: currentColor;
-  transform: translate(11rpx, 12rpx) rotate(-34deg);
-}
-
-.yk-icon-ticket .icon-ticket-body {
-  width: 44rpx;
-  height: 32rpx;
-  border: 4rpx solid currentColor;
-  border-radius: 10rpx;
-}
-
-.yk-icon-ticket .icon-ticket-line {
-  width: 4rpx;
-  height: 22rpx;
-  border-radius: 999rpx;
-  background: currentColor;
-  opacity: 0.55;
-}
-
-.yk-icon-stack .icon-card-one,
-.yk-icon-stack .icon-card-two {
-  width: 40rpx;
-  height: 30rpx;
-  border: 4rpx solid currentColor;
-  border-radius: 9rpx;
-}
-
-.yk-icon-stack .icon-card-one {
-  transform: translate(-5rpx, -6rpx);
-  opacity: 0.45;
-}
-
-.yk-icon-stack .icon-card-two {
-  transform: translate(5rpx, 7rpx);
-}
-
-.yk-icon-feedback .icon-bubble {
-  width: 43rpx;
-  height: 32rpx;
-  border: 4rpx solid currentColor;
-  border-radius: 13rpx;
-}
-
-.yk-icon-feedback .icon-tail {
-  width: 14rpx;
-  height: 14rpx;
-  border-left: 4rpx solid currentColor;
-  border-bottom: 4rpx solid currentColor;
-  transform: translate(-12rpx, 18rpx) rotate(-18deg);
-}
-
-.yk-icon-door .icon-door-body {
-  width: 36rpx;
-  height: 48rpx;
-  border: 4rpx solid currentColor;
-  border-radius: 12rpx 12rpx 7rpx 7rpx;
-  transform: perspective(70rpx) rotateY(-14deg);
-}
-
-.yk-icon-door .icon-door-gap {
-  width: 4rpx;
-  height: 38rpx;
-  border-radius: 999rpx;
-  background: currentColor;
-  opacity: 0.28;
-  transform: translate(9rpx, 2rpx);
-}
-
-.yk-icon-door .icon-door-dot {
-  width: 7rpx;
-  height: 7rpx;
-  border-radius: 999rpx;
-  background: currentColor;
-  transform: translate(8rpx, 5rpx);
-}
-
-.yk-icon-sync .icon-node {
-  width: 12rpx;
-  height: 12rpx;
-  border-radius: 999rpx;
-  background: currentColor;
-}
-
-.yk-icon-sync .node-a {
-  transform: translate(-19rpx, -14rpx);
-}
-
-.yk-icon-sync .node-b {
-  transform: translate(20rpx, -8rpx);
-}
-
-.yk-icon-sync .node-c {
-  transform: translate(-2rpx, 18rpx);
-}
-
-.yk-icon-sync .icon-line-one,
-.yk-icon-sync .icon-line-two {
-  width: 38rpx;
-  height: 4rpx;
-  border-radius: 999rpx;
-  background: currentColor;
-  opacity: 0.55;
-}
-
-.yk-icon-sync .icon-line-one {
-  transform: translate(0, -10rpx) rotate(9deg);
-}
-
-.yk-icon-sync .icon-line-two {
-  transform: translate(0, 5rpx) rotate(-39deg);
-}
-
-.yk-icon-profile .icon-head {
-  width: 22rpx;
-  height: 22rpx;
-  border: 4rpx solid currentColor;
-  border-radius: 999rpx;
-  transform: translate(0, -12rpx);
-}
-
-.yk-icon-profile .icon-shoulder {
-  width: 44rpx;
-  height: 24rpx;
-  border: 4rpx solid currentColor;
-  border-radius: 22rpx 22rpx 8rpx 8rpx;
-  transform: translate(0, 18rpx);
-}
-
-.yk-icon-calendar .icon-calendar-body {
-  width: 42rpx;
-  height: 38rpx;
-  border: 4rpx solid currentColor;
-  border-radius: 10rpx;
-}
-
-.yk-icon-calendar .icon-calendar-top {
-  width: 42rpx;
-  height: 4rpx;
-  border-radius: 999rpx;
-  background: currentColor;
-  transform: translate(0, -8rpx);
-}
-
-.yk-icon-calendar .icon-calendar-dot {
-  width: 8rpx;
-  height: 8rpx;
-  border-radius: 999rpx;
-  background: currentColor;
-  transform: translate(9rpx, 9rpx);
 }
 
 @keyframes ykPageIn {

@@ -1,0 +1,12 @@
+@import "../activity-editor/activity-editor.wxss";
+
+.editor-page {
+  padding-bottom: 80rpx;
+}
+
+.rich-editor hr,
+.rich-preview-body hr {
+  height: 1rpx;
+  border: 0;
+  background: rgba(16, 23, 20, 0.08);
+}

@@ -189,10 +189,11 @@ Page({
       cache.invalidatePublicActivities(this.data.activity.id);
       const activity = decorateActivity(data.activity || {
         ...this.data.activity,
-        interestCount: data.interestCount
+        interestCount: data.interestCount,
+        interestedByMe: data.interested === true
       });
       this.setData({ activity, interestLoading: false });
-      wx.showToast({ title: data.existing ? "已经点过啦" : "已记录感兴趣", icon: "success" });
+      wx.showToast({ title: data.interested ? "已感兴趣" : "已取消", icon: "success" });
     } catch (error) {
       this.setData({ interestLoading: false });
       wx.showToast({ title: error.message || "暂时不能记录", icon: "none" });

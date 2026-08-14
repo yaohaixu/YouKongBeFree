@@ -37,6 +37,9 @@
 }
 
 .avatar-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #4d5b53;
   font-size: 25rpx;
   font-weight: 760;

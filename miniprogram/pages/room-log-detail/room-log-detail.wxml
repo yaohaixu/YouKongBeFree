@@ -1,0 +1,77 @@
+<view class="page detail-page">
+  <view wx:if="{{loading}}" class="panel muted">正在读取值班记录...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <view wx:elif="{{roomLog}}">
+    <view class="status-card tone-{{roomLog.tone}}">
+      <view class="status-row">
+        <view>
+          <view class="status-label">{{roomLog.dateLabel || "日期待定"}}</view>
+          <view class="status-title">{{roomLog.statusLabel}}<text wx:if="{{roomLog.titleTime}}">（{{roomLog.titleTime}}）</text></view>
+          <view class="status-text">轮值：{{roomLog.keeperName || "有空朋友"}} · {{roomLog.timingText || "时间待定"}}</view>
+        </view>
+        <yk-icon name="door" size="{{86}}" frame="quick" tone="light" custom-class="status-icon" />
+      </view>
+      <view wx:if="{{roomLog.canManage}}" class="status-actions">
+        <view wx:if="{{roomLog.canOpen}}" class="button" bindtap="confirmOpen"><yk-icon name="door" size="{{28}}" custom-class="button-icon" />确认开门</view>
+        <view wx:if="{{roomLog.canClose}}" class="button secondary" bindtap="confirmClose"><yk-icon name="close-door" size="{{28}}" tone="light" custom-class="button-icon" />确认关门</view>
+        <view wx:if="{{roomLog.canDeleteExpired}}" class="button danger" bindtap="deleteExpired"><yk-icon name="trash" size="{{28}}" custom-class="button-icon" />删除过期预约</view>
+      </view>
+    </view>
+
+    <view class="section-title">开门文字</view>
+    <view class="content-card">
+      <rich-text wx:if="{{roomLog.openNote}}" class="rich-content" nodes="{{roomLog.openNote}}" />
+      <view wx:else class="muted empty-copy">这条记录还没有公开开门文字。</view>
+      <view wx:if="{{roomLog.openNoteReviewText}}" class="ai-review-line">
+        <yk-icon name="shield" size="{{24}}" custom-class="mini-icon" />
+        <text>{{roomLog.openNoteReviewText}}</text>
+      </view>
+      <view wx:if="{{roomLog.canEditOpenNote}}" class="button-row">
+        <view class="button secondary" bindtap="goEditOpenNote"><yk-icon name="edit" size="{{28}}" custom-class="button-icon" />编辑开门文字</view>
+      </view>
+    </view>
+
+    <view class="section-head-line">
+      <view>
+        <view class="section-title inline-title">夜记</view>
+        <view class="section-subtitle">来过客厅的朋友都可以写一条，编辑后会重新审核。</view>
+      </view>
+      <view wx:if="{{roomLog.canWriteNightNote}}" class="small-action" bindtap="goWriteNote"><yk-icon name="feedback" size="{{24}}" custom-class="mini-icon" />{{roomLog.myNightNote ? "编辑我的夜记" : "写夜记"}}</view>
+    </view>
+
+    <block wx:if="{{roomLog.nightNotes.length}}">
+      <view class="note-card" wx:for="{{roomLog.nightNotes}}" wx:key="id">
+        <view class="author-row">
+          <view class="author-avatar">
+            <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill" />
+            <view wx:else>{{item.avatarInitial}}</view>
+          </view>
+          <view>
+            <view class="author-name">{{item.authorName || "有空朋友"}}</view>
+            <view class="author-time">{{item.displayCreatedAt || "刚刚"}}</view>
+          </view>
+        </view>
+        <view wx:if="{{item.reviewText}}" class="ai-review-line note-review">
+          <yk-icon name="shield" size="{{22}}" custom-class="mini-icon" />
+          <text>{{item.reviewText}}</text>
+        </view>
+        <rich-text class="rich-content note-content" nodes="{{item.content}}" />
+      </view>
+    </block>
+    <view wx:else>
+      <empty-state title="还没有夜记" text="客厅开门后，来过的朋友可以在这里写下今天发生了什么。" />
+      <view wx:if="{{roomLog.canWriteNightNote}}" class="empty-note-action">
+        <view class="button feeling" bindtap="goWriteNote"><yk-icon name="feedback" size="{{28}}" tone="light" custom-class="button-icon" />{{roomLog.myNightNote ? "编辑我的夜记" : "写夜记"}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{roomLog.myNightNote && roomLog.myNightNote.status !== 'approved'}}" class="review-hint">
+      <view class="review-title">我的夜记：{{roomLog.myNightNote.statusLabel}}</view>
+      <view wx:if="{{roomLog.myNightNote.reviewText}}" class="ai-review-line">
+        <yk-icon name="shield" size="{{24}}" custom-class="mini-icon" />
+        <text>{{roomLog.myNightNote.reviewText}}</text>
+      </view>
+      <rich-text wx:if="{{roomLog.myNightNote.content}}" class="rich-content" nodes="{{roomLog.myNightNote.content}}" />
+    </view>
+  </view>
+</view>

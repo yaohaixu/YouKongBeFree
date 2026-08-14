@@ -118,6 +118,8 @@ function roomLogStatusTone(status = "") {
     opened: "open",
     scheduled: "upcoming",
     closed: "closed",
+    cancelled: "empty",
+    expired_cancelled: "empty",
     none: "empty",
   }[status] || "empty";
 }
@@ -127,6 +129,8 @@ function roomLogStatusLabel(status = "") {
     opened: "已开门",
     scheduled: "即将开门",
     closed: "已关门",
+    cancelled: "已取消",
+    expired_cancelled: "过期未开门",
     none: "今日暂无安排",
   }[status] || "即将开门";
 }
@@ -148,9 +152,28 @@ function roomLogPlainNote(log = {}) {
   return stripHtml(log.openNote || log.nightNote || "");
 }
 
+function reviewReasonText(status = "", aiStatus = "", aiReason = "", kind = "内容") {
+  const reason = stripHtml(aiReason || "");
+  if (status === "admin_review") {
+    if (reason) return `${kind}待审核：${reason}`;
+    if (aiStatus === "completed") return `${kind}待审核：AI 建议管理员确认后再展示。`;
+    return `${kind}待审核：AI 暂时没有给出通过结果，等待管理员确认。`;
+  }
+  if (status === "rejected") {
+    return reason ? `${kind}不展示：${reason}` : `${kind}不展示：管理员或 AI 判断不适合公开。`;
+  }
+  return "";
+}
+
 function roomStatusView(status = {}) {
   const currentLog = status.currentLog || {};
   const state = status.status || "none";
+  const isActivityEvent = currentLog.eventType === "activity";
+  const primaryAction = isActivityEvent && currentLog.activityId
+    ? { type: "activity", label: "查看活动", icon: "calendar" }
+    : ["opened", "closed"].includes(state) && currentLog.id
+      ? { type: "note", label: "写夜记", icon: "feedback" }
+      : { type: "manage", label: "有空开门", icon: "door" };
   return {
     ...status,
     status: state,
@@ -160,6 +183,7 @@ function roomStatusView(status = {}) {
     text: stripHtml(status.text || ""),
     currentLog: currentLog.id ? toRoomLogView(currentLog) : {},
     hasLog: Boolean(currentLog.id),
+    primaryAction,
   };
 }
 
@@ -167,21 +191,43 @@ function toRoomLogView(log = {}) {
   const openNote = responsiveRichTextHtml(log.openNote || "");
   const nightNote = responsiveRichTextHtml(log.nightNote || "");
   const status = log.status || "scheduled";
+  const eventType = log.eventType || "duty";
   const titleTime = status === "opened"
     ? roomLogTime(log.openedAt || log.scheduledOpenAt)
     : status === "closed"
       ? roomLogTime(log.closedAt || log.scheduledCloseAt)
       : roomLogTime(log.scheduledOpenAt);
+  const nightNotes = (log.nightNotes || []).map((note) => ({
+    ...note,
+    content: responsiveRichTextHtml(note.content || ""),
+    avatarUrl: note.authorProfile && note.authorProfile.avatarUrl ? note.authorProfile.avatarUrl : "",
+    avatarInitial: String(note.authorName || "有").slice(0, 1),
+    reviewText: reviewReasonText(note.status, note.aiStatus, note.aiReason, "夜记"),
+    displayCreatedAt: formatDateTime(note.updatedAt || note.createdAt)
+  }));
   return {
     ...log,
+    eventType,
+    isActivityEvent: eventType === "activity",
     status,
     tone: roomLogStatusTone(status),
-    statusLabel: log.statusLabel || roomLogStatusLabel(status),
+    statusLabel: log.statusLabel || (eventType === "activity" && status === "opened" ? "活动中" : roomLogStatusLabel(status)),
     dateLabel: roomLogDateLabel(log.scheduledOpenAt || log.dateKey || log.createdAt),
     titleTime,
     timingText: log.timingText || "",
     openNote,
     nightNote,
+    nightNotes,
+    nightNoteCount: Number(log.nightNoteCount || nightNotes.length || 0),
+    approvedNightNoteCount: Number(log.approvedNightNoteCount || nightNotes.length || 0),
+    myNightNote: log.myNightNote ? {
+      ...log.myNightNote,
+      content: responsiveRichTextHtml(log.myNightNote.content || ""),
+      avatarUrl: log.myNightNote.authorProfile && log.myNightNote.authorProfile.avatarUrl ? log.myNightNote.authorProfile.avatarUrl : "",
+      avatarInitial: String(log.myNightNote.authorName || "有").slice(0, 1),
+      reviewText: reviewReasonText(log.myNightNote.status, log.myNightNote.aiStatus, log.myNightNote.aiReason, "我的夜记"),
+      displayCreatedAt: formatDateTime(log.myNightNote.updatedAt || log.myNightNote.createdAt)
+    } : null,
     plainNote: roomLogPlainNote(log),
     hasPublicOpenNote: Boolean(openNote),
     hasPublicNightNote: Boolean(nightNote),
@@ -189,8 +235,17 @@ function toRoomLogView(log = {}) {
     nightNoteInReview: log.nightNoteStatus === "admin_review",
     openNoteRejected: log.openNoteStatus === "rejected",
     nightNoteRejected: log.nightNoteStatus === "rejected",
-    canOpen: Boolean(log.canManage && status === "scheduled"),
-    canClose: Boolean(log.canManage && status !== "closed"),
+    openNoteReviewText: reviewReasonText(log.openNoteStatus, log.openNoteAiStatus, log.openNoteAiReason, "开门文字"),
+    nightNoteReviewText: reviewReasonText(log.nightNoteStatus, log.nightNoteAiStatus, log.nightNoteAiReason, "夜记"),
+    canOpen: Boolean(log.canManage && status === "scheduled" && !log.deletedAt && !log.isHidden),
+    canClose: Boolean(log.canManage && status === "opened" && !log.deletedAt && !log.isHidden),
+    canEditOpenNote: log.canEditOpenNote !== undefined
+      ? Boolean(log.canEditOpenNote)
+      : Boolean(log.canManage && ["scheduled", "opened"].includes(status) && !log.deletedAt && !log.isHidden),
+    canWriteNightNote: log.canWriteNightNote !== undefined
+      ? Boolean(log.canWriteNightNote)
+      : ["opened", "closed"].includes(status),
+    canDeleteExpired: Boolean(log.canDeleteExpired && status === "expired_cancelled" && !log.deletedAt),
     displayUpdatedAt: formatDateTime(log.updatedAt || log.createdAt),
   };
 }

@@ -12,7 +12,7 @@
       <view class="field-label">当前活动正在被编辑</view>
       <view class="field-hint">{{editLockMessage}}</view>
       <view class="button-row">
-        <view class="button secondary" bindtap="takeoverEditLock">接管编辑</view>
+        <view class="button secondary" bindtap="takeoverEditLock"><yk-icon name="edit" size="{{28}}" custom-class="button-icon" />接管编辑</view>
       </view>
     </view>
 
@@ -21,9 +21,9 @@
         <view class="field-label">活动封面</view>
         <view wx:if="{{coverTempFilePath}}" class="cover-preview">
           <image src="{{coverTempFilePath}}" mode="aspectFill" />
-          <view class="cover-remove" bindtap="removeCover">移除</view>
+          <view class="cover-remove" bindtap="removeCover"><yk-icon name="x" size="{{22}}" custom-class="mini-icon" />移除</view>
         </view>
-        <view wx:else class="cover-picker" bindtap="chooseCover">选择封面图</view>
+        <view wx:else class="cover-picker" bindtap="chooseCover"><yk-icon name="image" size="{{30}}" custom-class="button-icon" />选择封面图</view>
       </view>
 
       <view class="field">
@@ -141,6 +141,22 @@
 
       <view class="switch-row">
         <view>
+          <view class="field-label">同步开门</view>
+          <view class="field-hint">活动时间内把客厅显示为开门事件</view>
+        </view>
+        <switch checked="{{form.syncRoomOpenEvent}}" data-field="syncRoomOpenEvent" bindchange="handleSwitch" />
+      </view>
+
+      <view wx:if="{{form.syncRoomOpenEvent}}" class="field room-policy-field">
+        <view class="field-label">开放方式</view>
+        <picker mode="selector" range="{{roomOpenPolicyOptions}}" value="{{roomOpenPolicyIndex}}" bindchange="handleRoomOpenPolicyChange">
+          <view class="select">{{selectedRoomOpenPolicyName}}</view>
+        </picker>
+        <view class="field-hint">公开可来会影响首页开门状态；仅报名可来会提示朋友先报名。</view>
+      </view>
+
+      <view class="switch-row">
+        <view>
           <view class="field-label">最低报名限度</view>
           <view class="field-hint">未达到人数会自动标记为未成团取消</view>
         </view>
@@ -213,21 +229,21 @@
       <view class="field-label">共同发起人</view>
       <view class="field-hint">可以先保存草稿再邀请。对方接受后，可以一起编辑、提交、撤回、取消或结束活动。</view>
       <view class="button-row">
-        <view class="button secondary" bindtap="createCoInvite">{{submitting ? "处理中..." : "生成协作邀请"}}</view>
-        <button wx:if="{{coInvite.token}}" class="button share-button" open-type="share">分享邀请</button>
+        <view class="button secondary" bindtap="createCoInvite"><yk-icon name="users" size="{{28}}" custom-class="button-icon" />{{submitting ? "处理中..." : "生成协作邀请"}}</view>
+        <button wx:if="{{coInvite.token}}" class="button share-button" open-type="share"><yk-icon name="share" size="{{28}}" custom-class="button-icon" />分享邀请</button>
       </view>
       <view wx:if="{{coInvite.token}}" class="invite-box">
         <view class="invite-title">协作邀请已生成</view>
         <view class="invite-url">{{coInvite.inviteUrl || coInvite.miniPath}}</view>
         <view class="button-row">
-          <view class="button secondary" bindtap="copyCoInvite">复制邀请链接</view>
+          <view class="button secondary" bindtap="copyCoInvite"><yk-icon name="copy" size="{{28}}" custom-class="button-icon" />复制邀请链接</view>
         </view>
       </view>
     </view>
 
     <view class="sticky-actions">
-      <view class="button secondary {{editLockConflict ? 'disabled' : ''}}" bindtap="submitDraft">{{submitting ? "处理中..." : "保存草稿"}}</view>
-      <view class="button {{editLockConflict ? 'disabled' : ''}}" bindtap="submitPublish">{{submitting ? "处理中..." : "提交活动"}}</view>
+      <view class="button secondary {{editLockConflict ? 'disabled' : ''}}" bindtap="submitDraft"><yk-icon name="save" size="{{28}}" custom-class="button-icon" />{{submitting ? "处理中..." : "保存草稿"}}</view>
+      <view class="button {{editLockConflict ? 'disabled' : ''}}" bindtap="submitPublish"><yk-icon name="send" size="{{28}}" tone="light" custom-class="button-icon" />{{submitting ? "处理中..." : "提交活动"}}</view>
     </view>
   </view>
 </view>

@@ -154,6 +154,11 @@
   transition: opacity 150ms ease-out, transform 150ms ease-out, background-color 150ms ease-out;
 }
 
+.action-icon {
+  margin-right: 8rpx;
+  color: currentColor;
+}
+
 .action-button:active {
   transform: scale(0.98);
   opacity: 0.88;
@@ -164,6 +169,16 @@
   background: #101714;
   color: #ffffff;
   box-shadow: 0 10rpx 22rpx rgba(16, 23, 20, 0.13);
+}
+
+.action-button.selected {
+  border-color: rgba(159, 57, 43, 0.18);
+  background: #fff1ec;
+  color: #9f392b;
+}
+
+.action-button.selected .action-icon {
+  transform: scale(1.08);
 }
 
 .action-button:disabled {

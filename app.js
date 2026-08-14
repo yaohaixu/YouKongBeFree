@@ -168,6 +168,13 @@ function rememberActivityInterest(activityId) {
   localStorage.setItem(ACTIVITY_INTEREST_KEY, JSON.stringify(interests));
 }
 
+function forgetActivityInterest(activityId) {
+  if (!activityId) return;
+  const interests = readActivityInterests();
+  delete interests[activityId];
+  localStorage.setItem(ACTIVITY_INTEREST_KEY, JSON.stringify(interests));
+}
+
 function hasActivityInterest(activity) {
   if (!activity?.id) return false;
   return Boolean(activity.interestedByMe || readActivityInterests()[activity.id]);
@@ -1120,8 +1127,9 @@ function renderInterestButton(activity = {}) {
   const interested = hasActivityInterest(activity);
   const count = Number(activity.interestCount || 0);
   return `
-    <button class="interest-button" type="button" data-interest-activity-id="${escapeHtml(activity.id)}" ${interested ? "disabled" : ""}>
-      <span>${interested ? "已感兴趣" : "感兴趣"}</span>
+    <button class="interest-button${interested ? " is-interested" : ""}" type="button" data-interest-activity-id="${escapeHtml(activity.id)}" aria-pressed="${interested ? "true" : "false"}">
+      <span class="button-leading-icon" aria-hidden="true">${window.YoukongIcons?.svg ? window.YoukongIcons.svg(interested ? "heart-filled" : "heart", { className: "button-yki" }) : ""}</span>
+      <span data-interest-label>${interested ? "已感兴趣" : "感兴趣"}</span>
       <strong data-interest-count="${escapeHtml(activity.id)}">${count}</strong>
     </button>
   `;
@@ -1261,6 +1269,9 @@ function renderRoomLogNoteBlock(log = {}, field = "openNote", options = {}) {
 function renderRoomLogRow(log = {}, options = {}) {
   const tone = roomLogStatusToneClass(log.status);
   const canManage = Boolean(log.canManage) && !options.publicMode;
+  const canEditOpenNote = Boolean(log.canEditOpenNote !== undefined
+    ? log.canEditOpenNote
+    : canManage && !log.deletedAt && !log.isHidden && !["closed", "cancelled", "expired_cancelled"].includes(log.status));
   const includePrivate = Boolean(options.includePrivate || canManage || options.reviewActions);
   const anchor = options.publicMode ? ` id="${escapeHtml(log.id || "")}"` : "";
   return `
@@ -1278,7 +1289,7 @@ function renderRoomLogRow(log = {}, options = {}) {
         ${includePrivate && log.hasAdminReviewNote ? `<p class="muted-text">有文字正在等待管理员决定是否展示。</p>` : ""}
       </div>
       <div class="row-actions">
-        ${canManage ? `<button class="button outline" type="button" data-edit-room-log="${escapeHtml(log.id)}">编辑</button>` : ""}
+        ${canEditOpenNote ? `<button class="button outline" type="button" data-edit-room-log="${escapeHtml(log.id)}">编辑</button>` : ""}
         ${canManage && log.status === "scheduled" ? `<button class="button primary" type="button" data-open-room-log="${escapeHtml(log.id)}">确认开门</button>` : ""}
         ${canManage && log.status !== "closed" ? `<button class="button outline" type="button" data-close-room-log="${escapeHtml(log.id)}">确认关门</button>` : ""}
         ${options.reviewActions ? renderRoomLogReviewButtons(log) : ""}
@@ -1428,6 +1439,10 @@ function bindRoomLogManageActions(root = document) {
   qsa("[data-edit-room-log]", root).forEach((button) => {
     button.addEventListener("click", () => {
       const log = (mePageState.roomLogs || []).find((item) => item.id === button.dataset.editRoomLog);
+      if (log && !log.canEditOpenNote) {
+        showToast("已关门后不能编辑开门文字", "error");
+        return;
+      }
       if (log && form) fillRoomLogForm(form, log);
     });
   });
@@ -1492,6 +1507,10 @@ async function initRoomLogManagePage() {
     try {
       const payload = syncRoomLogEditors(form);
       const editing = mePageState.editingRoomLog;
+      if (editing && !editing.canEditOpenNote) {
+        setMessage(message, "已关门后不能编辑开门文字，可以在详情页补写夜记。", "error");
+        return;
+      }
       const result = editing
         ? await api.put(`/api/room-logs/${encodeURIComponent(editing.id)}`, payload)
         : await api.post("/api/room-logs", payload);
@@ -1581,23 +1600,38 @@ function bindActivityInterestActions(root = document) {
       event.stopPropagation();
       const activityId = button.dataset.interestActivityId;
       if (!activityId || button.disabled) return;
-      const previousText = button.querySelector("span")?.textContent || "感兴趣";
+      const previousText = button.querySelector("[data-interest-label]")?.textContent || "感兴趣";
+      const wasInterested = button.classList.contains("is-interested") || button.getAttribute("aria-pressed") === "true";
       button.disabled = true;
-      button.querySelector("span") && (button.querySelector("span").textContent = "记录中");
+      button.querySelector("[data-interest-label]") && (button.querySelector("[data-interest-label]").textContent = "记录中");
       try {
         const result = await api.post(`/api/activities/${encodeURIComponent(activityId)}/interests`, {});
-        rememberActivityInterest(activityId);
-        button.querySelector("span") && (button.querySelector("span").textContent = "已感兴趣");
+        const interested = result.interested === true;
+        if (interested) rememberActivityInterest(activityId);
+        else forgetActivityInterest(activityId);
+        qsa("[data-interest-activity-id]").forEach((interestButton) => {
+          if (interestButton.dataset.interestActivityId !== activityId) return;
+          interestButton.classList.toggle("is-interested", interested);
+          interestButton.setAttribute("aria-pressed", interested ? "true" : "false");
+          interestButton.querySelector("[data-interest-label]") && (interestButton.querySelector("[data-interest-label]").textContent = interested ? "已感兴趣" : "感兴趣");
+          const iconHost = interestButton.querySelector(".button-leading-icon");
+          if (iconHost && window.YoukongIcons?.svg) {
+            iconHost.innerHTML = window.YoukongIcons.svg(interested ? "heart-filled" : "heart", { className: "button-yki" });
+          }
+          interestButton.disabled = false;
+        });
         addTransientMotion(button, "is-recorded", 620);
         qsa("[data-interest-count]").forEach((item) => {
           if (item.dataset.interestCount === activityId) {
             item.textContent = String(result.interestCount ?? item.textContent ?? 0);
           }
         });
-        showToast(result.existing ? "已经记录过感兴趣" : "已记录感兴趣");
+        showToast(interested ? "已记录感兴趣" : "已取消感兴趣");
       } catch (error) {
         button.disabled = false;
-        button.querySelector("span") && (button.querySelector("span").textContent = previousText);
+        button.classList.toggle("is-interested", wasInterested);
+        button.setAttribute("aria-pressed", wasInterested ? "true" : "false");
+        button.querySelector("[data-interest-label]") && (button.querySelector("[data-interest-label]").textContent = previousText);
         showToast(error.message || "暂时不能记录感兴趣");
       }
     });
@@ -2455,6 +2489,35 @@ function renderWorkspaceCard(card) {
 }
 
 function workspaceIconSvg(name = "circle") {
+  const lucideMap = {
+    activity: "calendar-days",
+    admin: "shield-check",
+    ai: "bot",
+    badge: "badge-alert",
+    create: "send",
+    eye: "eye",
+    feedback: "message-square",
+    friend: "home",
+    governance: "gavel",
+    grid: "settings",
+    key: "key",
+    logs: "clock",
+    mine: "user",
+    people: "users",
+    policy: "clipboard-check",
+    registration: "ticket",
+    report: "badge-alert",
+    room: "coffee",
+    rules: "shield-check",
+    sync: "wifi-sync",
+    template: "file-pen-line",
+    todo: "clipboard-check",
+    trust: "heart",
+  };
+  const lucideName = lucideMap[name] || name;
+  if (window.YoukongIcons?.svg) {
+    return window.YoukongIcons.svg(lucideName, { className: "workspace-yki" });
+  }
   // Admin dashboard icons use MIT-licensed GitHub Octicons paths as the base visual system.
   const icons = {
     activity: { viewBox: "0 0 24 24", body: `<path d="M6.75 0a.75.75 0 0 1 .75.75V3h9V.75a.75.75 0 0 1 1.5 0V3h2.75c.966 0 1.75.784 1.75 1.75v16a1.75 1.75 0 0 1-1.75 1.75H3.25a1.75 1.75 0 0 1-1.75-1.75v-16C1.5 3.784 2.284 3 3.25 3H6V.75A.75.75 0 0 1 6.75 0ZM21 9.5H3v11.25c0 .138.112.25.25.25h17.5a.25.25 0 0 0 .25-.25Zm-17.75-5a.25.25 0 0 0-.25.25V8h18V4.75a.25.25 0 0 0-.25-.25Z"></path>` },
@@ -2486,6 +2549,9 @@ function workspaceIconSvg(name = "circle") {
 }
 
 function workspaceCueSvg() {
+  if (window.YoukongIcons?.svg) {
+    return window.YoukongIcons.svg("chevron-right", { className: "workspace-cue-yki" });
+  }
   return `<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.19 8.5H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z"></path></svg>`;
 }
 
@@ -2668,6 +2734,7 @@ async function initActivityEditorPage() {
   bindInitiatorContactToggle(form);
   bindMinRegistrationToggle(form);
   bindSourceTypeToggle(form);
+  bindRoomOpenToggle(form);
   bindEditorCoInvite(form);
   mePageState.richEditor = window.youkongRichEditor ? window.youkongRichEditor.mount(form) : null;
   mePageState.modules = await fillModuleSelect(form.moduleId);
@@ -2849,6 +2916,22 @@ function bindMinRegistrationToggle(form) {
   sync();
 }
 
+function bindRoomOpenToggle(form) {
+  const select = qs("[data-room-open-toggle]", form);
+  const field = qs("[data-room-open-policy-field]", form);
+  if (!select || !field) return;
+  const sync = () => {
+    const shouldShow = select.value === "yes";
+    field.hidden = !shouldShow;
+    if (!shouldShow && form.roomOpenPolicy) form.roomOpenPolicy.value = "public";
+  };
+  if (select.dataset.bound !== "true") {
+    select.addEventListener("change", sync);
+    select.dataset.bound = "true";
+  }
+  sync();
+}
+
 function bindTemplateSelect(form) {
   const select = qs("[data-template-select]", form);
   if (!select) return;
@@ -2940,8 +3023,12 @@ function resetActivityForm(form) {
   if (form.minRegistrationCount) form.minRegistrationCount.value = "";
   if (form.registrationDeadline) form.registrationDeadline.value = "";
   bindMinRegistrationToggle(form);
+  if (form.syncRoomOpenEvent) form.syncRoomOpenEvent.value = "no";
+  if (form.roomOpenPolicy) form.roomOpenPolicy.value = "public";
+  bindRoomOpenToggle(form);
   qs("[data-initiator-contact-field]", form)?.setAttribute("hidden", "");
   qsa("[data-min-registration-field]", form).forEach((field) => field.setAttribute("hidden", ""));
+  qs("[data-room-open-policy-field]", form)?.setAttribute("hidden", "");
   if (form.collaboratorId) form.collaboratorId.value = "";
   const templateSelect = qs("[data-template-select]", form);
   if (templateSelect) templateSelect.value = "";
@@ -2973,6 +3060,9 @@ function fillActivityForm(form, activity) {
   if (form.minRegistrationCount) form.minRegistrationCount.value = activity.minRegistrationCount || "";
   if (form.registrationDeadline) form.registrationDeadline.value = toDatetimeLocal(activity.registrationDeadline || activity.startsAt);
   bindMinRegistrationToggle(form);
+  if (form.syncRoomOpenEvent) form.syncRoomOpenEvent.value = activity.syncRoomOpenEvent ? "yes" : "no";
+  if (form.roomOpenPolicy) form.roomOpenPolicy.value = activity.roomOpenPolicy === "registered" ? "registered" : "public";
+  bindRoomOpenToggle(form);
   form.collaboratorId.value = activity.collaboratorId || "";
   form.description.value = activity.description || "";
   window.youkongRichEditor?.setHtml(form, activity.description || "");
@@ -3284,6 +3374,7 @@ async function renderMyPendingTasks() {
   renderPendingTasks(panel, activities, {
     feedbacks: feedbackResult.feedbacks || [],
     roomLogs: roomLogResult.roomLogs || [],
+    roomDutyNotes: roomLogResult.roomDutyNotes || [],
     onRefresh: renderMyPendingTasks,
   });
 }
@@ -3710,6 +3801,8 @@ async function initAdminPage() {
     renderPendingTasks(pendingPanel, (dashboard.pending?.activities || []).slice(0, 4), {
       compact: true,
       feedbacks: (dashboard.pending?.feedbacks || []).slice(0, 4),
+      roomLogs: (dashboard.pending?.roomLogs || []).slice(0, 4),
+      roomDutyNotes: (dashboard.pending?.roomDutyNotes || []).slice(0, 4),
       onRefresh: initAdminPage,
     });
   }
@@ -6000,7 +6093,8 @@ function renderPendingTasks(container, activities = [], options = {}) {
   if (!container) return;
   const feedbacks = options.feedbacks || [];
   const roomLogs = options.roomLogs || [];
-  if (!activities.length && !feedbacks.length && !roomLogs.length) {
+  const roomDutyNotes = options.roomDutyNotes || [];
+  if (!activities.length && !feedbacks.length && !roomLogs.length && !roomDutyNotes.length) {
     container.innerHTML = `<div class="empty-state"><strong>暂无待办</strong><p>需要处理的活动或反馈会出现在这里。</p></div>`;
     revealDynamicContent(container);
     return;
@@ -6042,11 +6136,64 @@ function renderPendingTasks(container, activities = [], options = {}) {
         <div class="event-list rows">${roomLogs.map((log) => renderRoomLogRow(log, { includePrivate: true, reviewActions: true })).join("")}</div>
       </section>
     ` : "",
+    roomDutyNotes.length ? `
+      <section class="pending-task-group">
+        <div class="pending-task-head">
+          <div>
+            <span class="tag soft">多人夜记审核</span>
+            <h3>来过客厅的朋友写下的夜记</h3>
+          </div>
+          <small>${roomDutyNotes.length} 条</small>
+        </div>
+        <div class="event-list rows">${roomDutyNotes.map(renderRoomDutyNoteReviewRow).join("")}</div>
+      </section>
+    ` : "",
   ].join("");
   revealDynamicContent(container);
   bindReviewButtons(container);
   bindFeedbackReviewActions(container, options.onRefresh || (async () => {}));
   bindRoomLogReviewActions(container, options.onRefresh || (async () => {}));
+  bindRoomDutyNoteReviewActions(container, options.onRefresh || (async () => {}));
+}
+
+function renderRoomDutyNoteReviewRow(note = {}) {
+  const log = note.roomLog || {};
+  return `
+    <article class="event-row room-log-row" data-room-duty-note-id="${escapeHtml(note.id || "")}" data-room-log-id="${escapeHtml(note.roomLogId || log.id || "")}">
+      <div>
+        <div class="tag-row">
+          <span class="tag soft">${escapeHtml(note.statusLabel || "待审核")}</span>
+          <span class="tag soft">${escapeHtml(log.keeperName ? `轮值：${log.keeperName}` : "值班记录")}</span>
+          <span class="tag soft">作者：${escapeHtml(note.authorName || "有空朋友")}</span>
+        </div>
+        <h3>${escapeHtml(log.statusLabel || "开门记录")} · ${escapeHtml(log.timingText || roomLogDateLabel(log.scheduledOpenAt || log.dateKey || ""))}</h3>
+        <div class="article-content compact">${roomLogNoteHtml(note.content || "")}</div>
+        ${note.aiReason ? `<p class="muted-text">AI：${escapeHtml(note.aiReason)}</p>` : ""}
+      </div>
+      <div class="row-actions">
+        <button class="button outline" type="button" data-room-duty-note-review-action="approve">展示夜记</button>
+        <button class="button outline danger-soft" type="button" data-room-duty-note-review-action="reject">不展示夜记</button>
+      </div>
+    </article>
+  `;
+}
+
+function bindRoomDutyNoteReviewActions(root = document, after = async () => {}) {
+  qsa("[data-room-duty-note-review-action]", root).forEach((button) => {
+    button.addEventListener("click", async () => {
+      const row = button.closest("[data-room-duty-note-id]");
+      const roomLogId = row?.dataset.roomLogId || "";
+      const noteId = row?.dataset.roomDutyNoteId || "";
+      const action = button.dataset.roomDutyNoteReviewAction || "";
+      if (!roomLogId || !noteId || !action) return;
+      if (action === "reject" && !confirm("确定不展示这条夜记吗？")) return;
+      await api.post(`/api/room-logs/${encodeURIComponent(roomLogId)}/notes/${encodeURIComponent(noteId)}/review`, { action });
+      showToast("保存成功");
+      resetPagedState("roomLogs");
+      resetPagedState("publicRoomLogs");
+      await after();
+    });
+  });
 }
 
 function renderReviewTask(activity) {
@@ -6134,6 +6281,7 @@ async function renderAdminPendingTasks() {
   renderPendingTasks(panel, activities, {
     feedbacks: feedbackResult.feedbacks || [],
     roomLogs: roomLogResult.roomLogs || [],
+    roomDutyNotes: roomLogResult.roomDutyNotes || [],
     onRefresh: renderAdminPendingTasks,
   });
 }

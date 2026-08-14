@@ -34,6 +34,14 @@ Page({
     this.loadHome({ preferCache: true });
   },
 
+  onShow() {
+    if (this.loadedOnce) {
+      this.refreshRoomStatus({ silent: true });
+      return;
+    }
+    this.loadedOnce = true;
+  },
+
   onPullDownRefresh() {
     this.loadHome({ force: true }).finally(() => wx.stopPullDownRefresh());
   },
@@ -116,6 +124,34 @@ Page({
     }
   },
 
+  renderRoomStatus(data = {}) {
+    const roomStatus = roomStatusView(data.roomStatus || data);
+    this.setData({ roomStatus, refreshing: false, loading: false, error: "" });
+    const merged = {
+      ...(bootstrapMemory || cache.get(BOOTSTRAP_CACHE_KEY, { allowExpired: true }) || {}),
+      roomStatus: data.roomStatus || data,
+    };
+    if (merged.roomStatus) {
+      bootstrapMemory = merged;
+      cache.set(BOOTSTRAP_CACHE_KEY, merged, BOOTSTRAP_TTL);
+    }
+  },
+
+  async refreshRoomStatus(options = {}) {
+    if (options.silent) this.setData({ refreshing: true });
+    try {
+      const data = await api.get("/api/room-logs/status");
+      cache.set(cache.keys.publicRoomStatus(), data, 60 * 1000);
+      this.renderRoomStatus(data);
+      return data;
+    } catch (error) {
+      const fallback = cache.get(cache.keys.publicRoomStatus(), { allowExpired: true });
+      if (fallback) this.renderRoomStatus(fallback);
+      else this.setData({ refreshing: false });
+      return null;
+    }
+  },
+
   async loadNotificationConfig() {
     try {
       const notificationConfig = await loadReminderConfig();
@@ -138,7 +174,35 @@ Page({
   },
 
   goRoomLogManage() {
-    wx.navigateTo({ url: "/pages/room-log-manage/room-log-manage" });
+    wx.navigateTo({ url: "/pages/room-log-list/room-log-list" });
+  },
+
+  async goRoomPrimaryAction() {
+    const roomStatus = this.data.roomStatus || {};
+    const action = roomStatus.primaryAction || {};
+    const log = roomStatus.currentLog || {};
+    if (action.type === "activity" && log.activityId) {
+      wx.navigateTo({ url: `/pages/activity-detail/activity-detail?id=${encodeURIComponent(log.activityId)}` });
+      return;
+    }
+    if (action.type === "note" && log.id) {
+      wx.showLoading({ title: "读取中..." });
+      try {
+        const data = await api.get(`/api/room-logs/${encodeURIComponent(log.id)}`);
+        wx.hideLoading();
+        const detail = data.roomLog || {};
+        if (detail.myNightNote?.id) {
+          wx.navigateTo({ url: `/pages/room-log-detail/room-log-detail?id=${encodeURIComponent(log.id)}` });
+          return;
+        }
+        wx.navigateTo({ url: `/pages/room-note-edit/room-note-edit?id=${encodeURIComponent(log.id)}` });
+      } catch (error) {
+        wx.hideLoading();
+        wx.showToast({ title: error.message || "暂时不能写夜记", icon: "none" });
+      }
+      return;
+    }
+    this.goRoomLogManage();
   },
 
   goMe() {
@@ -161,10 +225,10 @@ Page({
         activities: this.data.activities.map((item) => item.id === activity.id ? toActivityView({
           ...item,
           interestCount: data.interestCount,
-          interestedByMe: true
+          interestedByMe: data.interested === true
         }) : item)
       });
-      wx.showToast({ title: data.existing ? "已经点过啦" : "已记录感兴趣", icon: "success" });
+      wx.showToast({ title: data.interested ? "已感兴趣" : "已取消", icon: "success" });
     } catch (error) {
       wx.showToast({ title: error.message || "暂时不能记录", icon: "none" });
     }

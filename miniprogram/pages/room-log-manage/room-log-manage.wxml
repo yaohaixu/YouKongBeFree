@@ -11,7 +11,7 @@
       <view class="strip-title">{{roomStatus.title}}</view>
       <view class="strip-text">{{roomStatus.text || "点进值班记录，可以看看今天谁在客厅。"}}</view>
     </view>
-    <view class="strip-door"><view></view></view>
+    <yk-icon name="door" size="{{76}}" frame="quick" tone="light" custom-class="strip-door" />
   </view>
 
   <view class="form-card">
@@ -20,7 +20,7 @@
         <view class="form-title">{{editingId ? "编辑开门记录" : "预约开门"}}</view>
         <view class="field-hint">{{editingId ? "保存后，会重新审核有变化的公开文字。" : "任何人都可以预约开门，方便朋友知道今天是否有人在。"}}</view>
       </view>
-      <view wx:if="{{editingId}}" class="new-link" bindtap="resetForm">新建</view>
+      <view wx:if="{{editingId}}" class="new-link" bindtap="resetForm"><yk-icon name="plus" size="{{22}}" custom-class="mini-icon" />新建</view>
     </view>
 
     <view wx:if="{{message}}" class="message">{{message}}</view>
@@ -118,9 +118,13 @@
     </view>
 
     <view class="button-stack">
-      <view class="button" bindtap="submitRoomLog">{{submitting ? "保存中..." : (editingId ? "保存开门记录" : "预约开门")}}</view>
-      <view class="button secondary" bindtap="goPublicLogs">查看值班记录</view>
-      <view class="button secondary" bindtap="downloadPoster">{{shareImageLoading ? "生成中..." : "下载开门海报"}}</view>
+      <view class="button" bindtap="submitRoomLog">
+        <yk-icon wx:if="{{editingId}}" name="save" size="{{28}}" tone="light" custom-class="button-icon" />
+        <yk-icon wx:else name="door" size="{{28}}" tone="light" custom-class="button-icon" />
+        {{submitting ? "保存中..." : (editingId ? "保存开门记录" : "预约开门")}}
+      </view>
+      <view class="button secondary" bindtap="goPublicLogs"><yk-icon name="list" size="{{28}}" custom-class="button-icon" />查看值班记录</view>
+      <view class="button secondary" bindtap="downloadPoster"><yk-icon name="poster" size="{{28}}" custom-class="button-icon" />{{shareImageLoading ? "生成中..." : "下载开门海报"}}</view>
     </view>
   </view>
 
@@ -142,6 +146,14 @@
         <text wx:if="{{item.openNoteRejected}}">开门文字不展示</text>
         <text wx:if="{{item.nightNoteRejected}}">夜记不展示</text>
       </view>
+      <view wx:if="{{item.openNoteReviewText}}" class="review-line">
+        <yk-icon name="shield" size="{{22}}" custom-class="mini-icon" />
+        <text>{{item.openNoteReviewText}}</text>
+      </view>
+      <view wx:if="{{item.nightNoteReviewText}}" class="review-line">
+        <yk-icon name="shield" size="{{22}}" custom-class="mini-icon" />
+        <text>{{item.nightNoteReviewText}}</text>
+      </view>
       <view wx:if="{{item.openNote}}" class="mine-note">
         <view class="note-title">开门文字</view>
         <rich-text class="note-content" nodes="{{item.openNote}}" />
@@ -151,9 +163,9 @@
         <rich-text class="note-content" nodes="{{item.nightNote}}" />
       </view>
       <view class="card-actions">
-        <view class="mini-action" data-id="{{item.id}}" bindtap="editLog">编辑</view>
-        <view wx:if="{{item.canOpen}}" class="mini-action primary" data-id="{{item.id}}" bindtap="confirmOpen">确认开门</view>
-        <view wx:if="{{item.canClose}}" class="mini-action secondary" data-id="{{item.id}}" bindtap="confirmClose">确认关门</view>
+        <view wx:if="{{item.canEditOpenNote}}" class="mini-action" data-id="{{item.id}}" bindtap="editLog"><yk-icon name="edit" size="{{24}}" custom-class="mini-icon" />编辑</view>
+        <view wx:if="{{item.canOpen}}" class="mini-action primary" data-id="{{item.id}}" bindtap="confirmOpen"><yk-icon name="door" size="{{24}}" tone="light" custom-class="mini-icon" />确认开门</view>
+        <view wx:if="{{item.canClose}}" class="mini-action secondary" data-id="{{item.id}}" bindtap="confirmClose"><yk-icon name="close-door" size="{{24}}" custom-class="mini-icon" />确认关门</view>
       </view>
     </view>
     <view wx:if="{{loadingMore}}" class="loading-more">继续读取中...</view>

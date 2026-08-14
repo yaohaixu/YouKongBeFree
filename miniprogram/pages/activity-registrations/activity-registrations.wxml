@@ -7,7 +7,7 @@
       <view class="title">{{activity.title || "活动报名表"}}</view>
       <view class="body">{{activity.displayTime}} · {{activity.location || "地点待定"}}</view>
       <view class="button-row">
-        <view class="button secondary" bindtap="copyRegistrationsText">复制报名名单</view>
+        <view class="button secondary" bindtap="copyRegistrationsText"><yk-icon name="copy" size="{{28}}" custom-class="button-icon" />复制报名名单</view>
       </view>
     </view>
 
@@ -27,7 +27,7 @@
           <view class="nickname">{{item.nickname || "未命名报名"}}</view>
           <view class="time">报名时间：{{item.displayCreatedAt || "刚刚"}}</view>
         </view>
-        <view class="delete-action" data-id="{{item.id}}" data-nickname="{{item.nickname}}" bindtap="deleteRegistration">删除</view>
+        <view class="delete-action" data-id="{{item.id}}" data-nickname="{{item.nickname}}" bindtap="deleteRegistration"><yk-icon name="x" size="{{22}}" custom-class="mini-icon" />删除</view>
       </view>
     </view>
     <empty-state wx:else title="还没有报名" text="有人报名后，会在这里显示昵称和报名时间。" />

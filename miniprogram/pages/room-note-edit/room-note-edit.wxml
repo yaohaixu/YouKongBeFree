@@ -1,0 +1,46 @@
+<view class="page note-page">
+  <view class="hero compact">
+    <view class="eyebrow">{{noteId ? "编辑夜记" : "写夜记"}}</view>
+    <view class="title">把今天在客厅发生的事留下来。</view>
+    <view class="body">每个人对同一条值班记录可以写一条夜记，编辑后会重新经过安全分析。</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="panel muted">正在准备夜记...</view>
+  <view wx:else>
+    <view class="context-card">
+      <view class="context-date">{{roomLog.dateLabel || "日期待定"}} · {{roomLog.statusLabel || "值班记录"}}</view>
+      <view class="context-title">{{roomLog.keeperName || "有空朋友"}}</view>
+      <view class="context-text">{{roomLog.timingText || "时间待定"}}</view>
+    </view>
+
+    <view class="form-card">
+      <view class="field-label">夜记内容</view>
+      <view class="rich-toolbar">
+        <view class="tool {{!formats.header ? 'active' : ''}}" data-name="header" data-value="" bindtap="formatRichText">正文</view>
+        <view class="tool {{formats.header === 1 || formats.header === '1' ? 'active' : ''}}" data-name="header" bindtap="formatRichText">H1</view>
+        <view class="tool {{formats.bold ? 'active' : ''}}" data-name="bold" bindtap="formatRichText">B</view>
+        <view class="tool {{formats.italic ? 'active' : ''}}" data-name="italic" bindtap="formatRichText">I</view>
+        <view class="tool" data-name="list" data-value="bullet" bindtap="formatRichText">•</view>
+        <view class="tool" bindtap="insertDivider">线</view>
+        <view class="tool wide muted-tool" bindtap="undoRichText">撤销</view>
+        <view class="tool wide muted-tool" bindtap="clearRichText">清空</view>
+      </view>
+      <editor
+        id="noteEditor"
+        class="rich-editor"
+        style="height: {{editorHeight}}rpx;"
+        placeholder="客厅已关门（00:16） 今天发生了什么、见到了谁、聊到了什么，都可以写在这里。"
+        bindready="onEditorReady"
+        bindinput="handleInput"
+        bindstatuschange="handleStatusChange"
+      />
+      <view wx:if="{{preview}}" class="rich-preview">
+        <view class="field-label">夜记预览</view>
+        <rich-text class="rich-preview-body" nodes="{{preview}}" />
+      </view>
+      <view class="button-stack">
+        <view class="button feeling" bindtap="submitNote"><yk-icon name="feedback" size="{{28}}" tone="light" custom-class="button-icon" />{{submitting ? "提交中..." : "提交夜记"}}</view>
+      </view>
+    </view>
+  </view>
+</view>

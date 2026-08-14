@@ -37,14 +37,14 @@
         <view class="hint">你已经报名过这个活动。</view>
         <view class="registered-name">报名昵称：{{activity.myRegistration.nickname || "有空朋友"}}</view>
         <view class="button-stack">
-          <view class="button secondary" bindtap="goMyRegistration">查看我的报名</view>
+          <view class="button secondary" bindtap="goMyRegistration"><yk-icon name="ticket" size="{{28}}" custom-class="button-icon" />查看我的报名</view>
         </view>
       </block>
       <block wx:elif="{{activity.canRegister}}">
         <input class="nickname-input" value="{{nickname}}" maxlength="32" placeholder="填写一个报名昵称" bindinput="handleNicknameInput" />
         <view class="hint">小程序首版只记录昵称，报名成功后会保存在当前设备里。</view>
         <view class="button-row">
-          <view class="button {{activity.canRegister ? '' : 'disabled'}}" bindtap="registerActivity">{{registering ? "报名中..." : "报名"}}</view>
+          <view class="button {{activity.canRegister ? '' : 'disabled'}}" bindtap="registerActivity"><yk-icon name="ticket" size="{{28}}" tone="light" custom-class="button-icon" />{{registering ? "报名中..." : "报名"}}</view>
         </view>
       </block>
       <view wx:else class="closed-notice">{{activity.registrationNotice}}</view>
@@ -54,9 +54,9 @@
     <view class="share-card">
       <view class="hint">可以保存活动二维码，或把小程序活动页直接分享给朋友。</view>
       <view class="button-stack">
-        <view class="button secondary" bindtap="downloadActivityQr">{{shareImageLoading ? "生成中..." : "下载活动二维码"}}</view>
-        <view class="button secondary" bindtap="copyActivityLink">复制链接</view>
-        <button class="button secondary share-button" open-type="share">分享小程序链接</button>
+        <view class="button secondary" bindtap="downloadActivityQr"><yk-icon name="qr" size="{{28}}" custom-class="button-icon" />{{shareImageLoading ? "生成中..." : "下载活动二维码"}}</view>
+        <view class="button secondary" bindtap="copyActivityLink"><yk-icon name="copy" size="{{28}}" custom-class="button-icon" />复制链接</view>
+        <button class="button secondary share-button" open-type="share"><yk-icon name="share" size="{{28}}" custom-class="button-icon" />分享小程序链接</button>
       </view>
     </view>
 
@@ -72,19 +72,19 @@
     <view wx:if="{{activity.permissions.canEdit || activity.permissions.canManageCoInitiators}}" class="section-title">发起人管理</view>
     <view wx:if="{{activity.permissions.canEdit || activity.permissions.canManageCoInitiators}}" class="manage-card">
       <view class="button-row">
-        <view wx:if="{{activity.permissions.canEdit}}" class="button secondary" bindtap="goEditor">编辑活动</view>
-        <view class="button secondary" bindtap="goRegistrations">报名表</view>
-        <view class="button secondary" bindtap="goActivityFeedbacks">活动反馈</view>
-        <view class="button secondary" bindtap="downloadFeedbackQr">反馈二维码</view>
+        <view wx:if="{{activity.permissions.canEdit}}" class="button secondary" bindtap="goEditor"><yk-icon name="edit" size="{{28}}" custom-class="button-icon" />编辑活动</view>
+        <view class="button secondary" bindtap="goRegistrations"><yk-icon name="table" size="{{28}}" custom-class="button-icon" />报名表</view>
+        <view class="button secondary" bindtap="goActivityFeedbacks"><yk-icon name="feedback" size="{{28}}" custom-class="button-icon" />活动反馈</view>
+        <view class="button secondary" bindtap="downloadFeedbackQr"><yk-icon name="qr" size="{{28}}" custom-class="button-icon" />反馈二维码</view>
       </view>
       <view wx:if="{{activity.permissions.canManageCoInitiators}}" class="button-stack">
-        <view class="button secondary" bindtap="createCoInvite">生成协作邀请</view>
-        <button wx:if="{{coInvite.token}}" class="button share-button" open-type="share">分享邀请</button>
+        <view class="button secondary" bindtap="createCoInvite"><yk-icon name="users" size="{{28}}" custom-class="button-icon" />生成协作邀请</view>
+        <button wx:if="{{coInvite.token}}" class="button share-button" open-type="share"><yk-icon name="share" size="{{28}}" custom-class="button-icon" />分享邀请</button>
       </view>
       <view wx:if="{{coInvite.token}}" class="invite-box">
         <view class="invite-title">协作邀请已生成</view>
         <view class="invite-url">{{coInvite.inviteUrl}}</view>
-        <view class="button secondary single-action" bindtap="copyCoInvite">复制邀请链接</view>
+        <view class="button secondary single-action" bindtap="copyCoInvite"><yk-icon name="copy" size="{{28}}" custom-class="button-icon" />复制邀请链接</view>
       </view>
     </view>
 
@@ -96,7 +96,7 @@
           <view wx:else>{{item.avatarInitial}}</view>
           <text>{{item.displayName || "共同发起人"}}</text>
         </view>
-        <view wx:if="{{activity.permissions.canManageCoInitiators}}" class="co-remove" data-id="{{item.id}}" data-name="{{item.displayName}}" bindtap="removeCoInitiator">移除</view>
+        <view wx:if="{{activity.permissions.canManageCoInitiators}}" class="co-remove" data-id="{{item.id}}" data-name="{{item.displayName}}" bindtap="removeCoInitiator"><yk-icon name="x" size="{{22}}" custom-class="mini-icon" />移除</view>
       </view>
     </view>
 
@@ -104,7 +104,7 @@
     <view class="report-card">
       <view class="hint">发现广告、虚假活动或其他风险，可以提交社区反馈。系统会记录并触发相应复核。</view>
       <view wx:if="{{!showReportForm}}" class="button-row">
-        <view class="button secondary" bindtap="toggleReportForm">举报这个活动</view>
+        <view class="button secondary" bindtap="toggleReportForm"><yk-icon name="report" size="{{28}}" custom-class="button-icon" />举报这个活动</view>
       </view>
       <view wx:else>
         <picker mode="selector" range="{{reportReasons}}" value="{{reportReasonIndex}}" bindchange="handleReportReasonChange">
@@ -112,8 +112,8 @@
         </picker>
         <textarea class="report-textarea" value="{{reportDetail}}" maxlength="500" auto-height placeholder="可以补充说明，也可以留空。" bindinput="handleReportDetailInput" />
         <view class="button-row">
-          <view class="button" bindtap="submitReport">{{reportSubmitting ? "提交中..." : "提交举报"}}</view>
-          <view class="button secondary" bindtap="toggleReportForm">取消</view>
+          <view class="button" bindtap="submitReport"><yk-icon name="send" size="{{28}}" tone="light" custom-class="button-icon" />{{reportSubmitting ? "提交中..." : "提交举报"}}</view>
+          <view class="button secondary" bindtap="toggleReportForm"><yk-icon name="x" size="{{28}}" custom-class="button-icon" />取消</view>
         </view>
       </view>
     </view>

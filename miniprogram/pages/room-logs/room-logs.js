@@ -7,8 +7,8 @@ const shareImage = require("../../utils/share-image");
 const ROOM_LOG_TTL = 2 * 60 * 1000;
 const STATUS_TTL = 60 * 1000;
 
-function roomLogsCacheKey(page, pageSize) {
-  return cache.keys.publicRoomLogs(page, pageSize);
+function roomLogsCacheKey(page, pageSize, type) {
+  return cache.keys.publicRoomLogs(page, pageSize, type);
 }
 
 Page({
@@ -21,6 +21,12 @@ Page({
     page: 1,
     pageSize: 10,
     hasMore: true,
+    type: "all",
+    tabs: [
+      { key: "all", label: "全部" },
+      { key: "duty", label: "值班记录" },
+      { key: "activity", label: "活动记录" }
+    ],
     roomStatus: roomStatusView({}),
     roomLogs: [],
     shareImageLoading: false,
@@ -45,6 +51,13 @@ Page({
   onReachBottom() {
     if (!this.data.hasMore || this.data.loadingMore) return;
     this.loadRoomLogs({ reset: false });
+  },
+
+  switchType(event) {
+    const type = event.currentTarget.dataset.type || "all";
+    if (type === this.data.type) return;
+    this.setData({ type, page: 1, hasMore: true, roomLogs: [], error: "" });
+    this.loadRoomLogs({ reset: true, preferCache: true });
   },
 
   renderStatus(data = {}) {
@@ -97,7 +110,7 @@ Page({
   async loadRoomLogs(options = {}) {
     const reset = options.reset !== false;
     const page = reset ? 1 : this.data.page + 1;
-    const key = roomLogsCacheKey(page, this.data.pageSize);
+    const key = roomLogsCacheKey(page, this.data.pageSize, this.data.type);
     const cached = cache.getWithMeta(key);
     const force = Boolean(options.force);
     if (reset && options.preferCache !== false && cached.exists && !force) {
@@ -112,7 +125,7 @@ Page({
 
   async refreshRoomLogs(options = {}) {
     try {
-      const data = await api.get(`/api/room-logs?page=${options.page}&pageSize=${this.data.pageSize}`);
+      const data = await api.get(`/api/room-logs?page=${options.page}&pageSize=${this.data.pageSize}&type=${encodeURIComponent(this.data.type || "all")}`);
       cache.set(options.key, data, ROOM_LOG_TTL);
       this.renderRoomLogs(data, options);
       return data;
@@ -133,7 +146,19 @@ Page({
   },
 
   goManage() {
-    wx.navigateTo({ url: "/pages/room-log-manage/room-log-manage" });
+    wx.navigateTo({ url: "/pages/room-log-list/room-log-list" });
+  },
+
+  openRoomEvent(event) {
+    const id = event.currentTarget.dataset.id;
+    const eventType = event.currentTarget.dataset.type;
+    const activityId = event.currentTarget.dataset.activityId;
+    if (eventType === "activity" && activityId) {
+      wx.navigateTo({ url: `/pages/activity-detail/activity-detail?id=${encodeURIComponent(activityId)}` });
+      return;
+    }
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/room-log-detail/room-log-detail?id=${encodeURIComponent(id)}` });
   },
 
   async runShareImageTask(task) {
@@ -158,8 +183,12 @@ Page({
   },
 
   copyLink() {
+    const log = this.data.roomStatus.currentLog || {};
+    const link = log.eventType === "activity" && log.activityId
+      ? shareImage.activityUrl(log.activityId)
+      : shareImage.roomLogsUrl(log.id || "");
     wx.setClipboardData({
-      data: shareImage.roomLogsUrl(this.data.roomStatus.currentLog?.id || ""),
+      data: link,
       success: () => wx.showToast({ title: "链接已复制", icon: "success" }),
     });
   },

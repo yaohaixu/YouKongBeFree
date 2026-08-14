@@ -863,6 +863,16 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     body: {},
   });
   assert.equal(syncDuplicateInterest.existing, true);
+  assert.equal(syncDuplicateInterest.interested, false);
+  assert.equal(syncDuplicateInterest.interestCount, 0);
+  const syncReaddedInterest = await request(`/api/activities/${syncPublicActivity.activity.id}/interests`, {
+    method: "POST",
+    headers: syncBHeaders,
+    body: {},
+  });
+  assert.equal(syncReaddedInterest.existing, false);
+  assert.equal(syncReaddedInterest.interested, true);
+  assert.equal(syncReaddedInterest.interestCount, 1);
   const syncMyRegistrations = await request("/api/my/registrations?page=1&pageSize=20", { headers: syncBHeaders });
   assert.ok(syncMyRegistrations.registrations.some((item) => item.id === syncARegistration.registration.id));
   const syncMe = await request("/api/identity-sync/me", { headers: syncBHeaders });
@@ -908,11 +918,24 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   }, roomKeeper.token);
   assert.equal(roomLogReview.roomLog.status, "scheduled");
   assert.equal(roomLogReview.roomLog.openNoteStatus, "admin_review");
+  assert.equal(roomLogReview.roomLog.openNoteAiStatus, "disabled");
+  assert.match(roomLogReview.roomLog.openNoteAiReason, /AI 未启用|管理员审核/);
   assert.equal(roomLogReview.roomLog.openNote.includes("测试夜谈"), true);
   const roomLogVisitorHeaders = { "X-YK-Client-Id": `${testClientId}_room_visitor`, "X-YK-Fingerprint": "fp_room_visitor" };
   const publicRoomLogBeforeReview = await request(`/api/room-logs/${roomLogReview.roomLog.id}`, { headers: roomLogVisitorHeaders });
   assert.equal(publicRoomLogBeforeReview.roomLog.openNote, "");
   assert.equal(publicRoomLogBeforeReview.roomLog.hasOpenNote, true);
+  const earlyNoteResponse = await fetch(`${baseUrl}/api/room-logs/${roomLogReview.roomLog.id}/notes`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+      "X-YK-Client-Id": `${testClientId}_room_note_writer`,
+      "X-YK-Fingerprint": "fp_room_note_writer",
+    },
+    body: JSON.stringify({ content: "<p>还没开门就想写夜记。</p>" }),
+  });
+  assert.equal(earlyNoteResponse.status, 400);
   const roomStatusAfterCreate = await request("/api/room-logs/status");
   assert.equal(roomStatusAfterCreate.roomStatus.status, "scheduled");
   assert.equal(roomStatusAfterCreate.roomStatus.currentLog.id, roomLogReview.roomLog.id);
@@ -921,21 +944,194 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
   const openedRoomLog = await request(`/api/room-logs/${roomLogReview.roomLog.id}/open`, { method: "POST", body: {} }, roomKeeper.token);
   assert.equal(openedRoomLog.roomLog.status, "opened");
   assert.equal(openedRoomLog.roomStatus.status, "opened");
+  const roomNoteWriterHeaders = {
+    "X-YK-Client-Id": `${testClientId}_room_note_writer`,
+    "X-YK-Fingerprint": "fp_room_note_writer",
+  };
+  const roomNote = await request(`/api/room-logs/${roomLogReview.roomLog.id}/notes`, {
+    method: "POST",
+    headers: roomNoteWriterHeaders,
+    body: { content: "<p>我也来客厅坐了一会儿，补一条多人夜记。</p>" },
+  });
+  assert.equal(roomNote.roomNote.status, "admin_review");
+  const updatedRoomNote = await request(`/api/room-logs/${roomLogReview.roomLog.id}/notes/${roomNote.roomNote.id}`, {
+    method: "PUT",
+    headers: roomNoteWriterHeaders,
+    body: { content: "<p>我也来客厅坐了一会儿，编辑后重新进入审核。</p>" },
+  });
+  assert.equal(updatedRoomNote.roomNote.id, roomNote.roomNote.id);
+  assert.equal(updatedRoomNote.roomNote.status, "admin_review");
+  assert.ok(updatedRoomNote.roomNote.editedAt);
+  const otherNoteUpdateResponse = await fetch(`${baseUrl}/api/room-logs/${roomLogReview.roomLog.id}/notes/${roomNote.roomNote.id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+      "X-YK-Client-Id": `${testClientId}_room_note_other`,
+      "X-YK-Fingerprint": "fp_room_note_other",
+    },
+    body: JSON.stringify({ content: "<p>尝试改别人的夜记。</p>" }),
+  });
+  assert.equal(otherNoteUpdateResponse.status, 403);
   const closedRoomLog = await request(`/api/room-logs/${roomLogReview.roomLog.id}/close`, {
     method: "POST",
     body: { nightNote: "<p>客厅已关门，今天测试很顺。</p>" },
   }, roomKeeper.token);
   assert.equal(closedRoomLog.roomLog.status, "closed");
   assert.equal(closedRoomLog.roomLog.nightNoteStatus, "admin_review");
+  const closedRoomLogOwnerView = await request(`/api/room-logs/${roomLogReview.roomLog.id}`, {}, roomKeeper.token);
+  assert.equal(closedRoomLogOwnerView.roomLog.canWriteNightNote, true);
+  assert.equal(closedRoomLogOwnerView.roomLog.canEditOpenNote, false);
+  const closedRoomLogVisitorView = await request(`/api/room-logs/${roomLogReview.roomLog.id}`, { headers: roomLogVisitorHeaders });
+  assert.equal(closedRoomLogVisitorView.roomLog.canWriteNightNote, true);
+  assert.equal(closedRoomLogVisitorView.roomLog.canEditOpenNote, false);
+  const closedOpenNoteEditResponse = await fetch(`${baseUrl}/api/room-logs/${roomLogReview.roomLog.id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+      "X-YK-Client-Id": testClientId,
+      "X-YK-Fingerprint": "fp_smoke_test",
+      Authorization: `Bearer ${roomKeeper.token}`,
+    },
+    body: JSON.stringify({
+      keeperName: "Smoke 看门人",
+      scheduledOpenAt: roomLogReview.roomLog.scheduledOpenAt,
+      scheduledCloseAt: roomLogReview.roomLog.scheduledCloseAt,
+      openNote: "<p>关门后尝试修改开门文字。</p>",
+    }),
+  });
+  assert.equal(closedOpenNoteEditResponse.status, 400);
+  const afterCloseNoteHeaders = {
+    "X-YK-Client-Id": `${testClientId}_room_note_after_close`,
+    "X-YK-Fingerprint": "fp_room_note_after_close",
+  };
+  const afterCloseNote = await request(`/api/room-logs/${roomLogReview.roomLog.id}/night-notes`, {
+    method: "POST",
+    headers: afterCloseNoteHeaders,
+    body: { content: "<p>关门之后也可以补写一条夜记。</p>" },
+  });
+  assert.equal(afterCloseNote.roomNote.status, "admin_review");
+  const updatedAfterCloseNote = await request(`/api/room-logs/${roomLogReview.roomLog.id}/night-notes/${afterCloseNote.roomNote.id}`, {
+    method: "POST",
+    headers: afterCloseNoteHeaders,
+    body: { content: "<p>关门之后也可以补写一条夜记，编辑后仍然走审核。</p>" },
+  });
+  assert.equal(updatedAfterCloseNote.roomNote.id, afterCloseNote.roomNote.id);
+  assert.equal(updatedAfterCloseNote.roomNote.status, "admin_review");
+  assert.ok(updatedAfterCloseNote.roomNote.editedAt);
   const roomLogPending = await request("/api/room-logs?all=true&noteStatus=admin_review&page=1&pageSize=10", {}, admin.token);
   assert.ok(roomLogPending.roomLogs.some((item) => item.id === roomLogReview.roomLog.id));
+  assert.ok(roomLogPending.roomDutyNotes.some((item) => item.id === roomNote.roomNote.id));
   const approvedOpenNote = await request(`/api/room-logs/${roomLogReview.roomLog.id}/review`, {
     method: "POST",
     body: { field: "openNote", action: "approve" },
   }, admin.token);
   assert.equal(approvedOpenNote.roomLog.openNoteStatus, "approved");
+  const approvedRoomNote = await request(`/api/room-logs/${roomLogReview.roomLog.id}/notes/${roomNote.roomNote.id}/review`, {
+    method: "POST",
+    body: { action: "approve" },
+  }, admin.token);
+  assert.equal(approvedRoomNote.roomNote.status, "approved");
   const approvedPublicRoomLog = await request(`/api/room-logs/${roomLogReview.roomLog.id}`, { headers: roomLogVisitorHeaders });
   assert.match(approvedPublicRoomLog.roomLog.openNote, /测试夜谈/);
+  assert.ok(approvedPublicRoomLog.roomLog.nightNotes.some((item) => /编辑后重新进入审核/.test(item.content)));
+  const roomLogOwnerIdentityId = roomLogReview.roomLog.identityId;
+  const roomLogOwnerNetworkId = roomLogReview.roomLog.identityNetworkId || "";
+  const expiredRoomLogId = `roomlog_smoke_expired_${Date.now()}`;
+  await store.insert("roomDutyLogs", {
+    id: expiredRoomLogId,
+    dateKey: localDateInput(-2),
+    keeperName: "过期未开门测试",
+    scheduledOpenAt: localDateTimeFromNow(-2, 20, 0),
+    scheduledCloseAt: localDateTimeFromNow(-1, 1, 0),
+    openedAt: "",
+    closedAt: "",
+    status: "scheduled",
+    openNote: "",
+    nightNote: "",
+    openNoteStatus: "approved",
+    nightNoteStatus: "approved",
+    hasAdminReviewNote: false,
+    isHidden: false,
+    identityId: roomLogOwnerIdentityId,
+    identityNetworkId: roomLogOwnerNetworkId,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+  const openedForgotCloseId = `roomlog_smoke_autoclose_${Date.now()}`;
+  const forgottenCloseAt = localDateTimeFromNow(-1, 1, 0);
+  await store.insert("roomDutyLogs", {
+    id: openedForgotCloseId,
+    dateKey: localDateInput(-2),
+    keeperName: "忘记关门测试",
+    scheduledOpenAt: localDateTimeFromNow(-2, 20, 0),
+    scheduledCloseAt: forgottenCloseAt,
+    openedAt: localDateTimeFromNow(-2, 20, 20),
+    closedAt: "",
+    status: "opened",
+    openNote: "",
+    nightNote: "",
+    openNoteStatus: "approved",
+    nightNoteStatus: "approved",
+    hasAdminReviewNote: false,
+    isHidden: false,
+    identityId: roomLogOwnerIdentityId,
+    identityNetworkId: roomLogOwnerNetworkId,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+  await request("/api/room-logs/status");
+  const expiredStored = await store.findById("roomDutyLogs", expiredRoomLogId);
+  assert.equal(expiredStored.status, "expired_cancelled");
+  assert.equal(expiredStored.isHidden, true);
+  const autoClosedStored = await store.findById("roomDutyLogs", openedForgotCloseId);
+  assert.equal(autoClosedStored.status, "closed");
+  assert.equal(autoClosedStored.closedAt, forgottenCloseAt);
+  assert.equal(autoClosedStored.closeReason, "auto");
+  assert.ok(autoClosedStored.autoClosedAt);
+  const publicRoomLogsAfterLifecycle = await request("/api/room-logs?type=duty&page=1&pageSize=50");
+  assert.equal(publicRoomLogsAfterLifecycle.roomLogs.some((item) => item.id === expiredRoomLogId), false);
+  const myRoomLogsWithExpired = await request("/api/my/room-logs?page=1&pageSize=50", {}, roomKeeper.token);
+  assert.ok(myRoomLogsWithExpired.roomLogs.some((item) => item.id === expiredRoomLogId && item.canDeleteExpired));
+  const deletedExpiredRoomLog = await request(`/api/room-logs/${expiredRoomLogId}`, { method: "DELETE", body: {} }, roomKeeper.token);
+  assert.equal(deletedExpiredRoomLog.ok, true);
+  const deletedExpiredStored = await store.findById("roomDutyLogs", expiredRoomLogId);
+  assert.ok(deletedExpiredStored.deletedAt);
+  const myRoomLogsAfterDelete = await request("/api/my/room-logs?page=1&pageSize=50", {}, roomKeeper.token);
+  assert.equal(myRoomLogsAfterDelete.roomLogs.some((item) => item.id === expiredRoomLogId), false);
+  const adminExpiredRoomLogs = await request("/api/room-logs?all=true&status=expired_cancelled&page=1&pageSize=50", {}, admin.token);
+  assert.ok(adminExpiredRoomLogs.roomLogs.some((item) => item.id === expiredRoomLogId && item.deletedAt));
+  const conflictRoomLogA = await request("/api/room-logs", {
+    method: "POST",
+    body: {
+      keeperName: "并发开门A",
+      scheduledOpenAt: localDateTimeFromNow(1, 20, 0),
+      scheduledCloseAt: localDateTimeFromNow(1, 23, 0),
+    },
+  }, roomKeeper.token);
+  const conflictRoomLogB = await request("/api/room-logs", {
+    method: "POST",
+    body: {
+      keeperName: "并发开门B",
+      scheduledOpenAt: localDateTimeFromNow(1, 20, 30),
+      scheduledCloseAt: localDateTimeFromNow(1, 23, 30),
+    },
+  }, roomKeeper.token);
+  await request(`/api/room-logs/${conflictRoomLogA.roomLog.id}/open`, { method: "POST", body: {} }, roomKeeper.token);
+  const conflictOpenResponse = await fetch(`${baseUrl}/api/room-logs/${conflictRoomLogB.roomLog.id}/open`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+      "X-YK-Client-Id": testClientId,
+      "X-YK-Fingerprint": "fp_smoke_test",
+      Authorization: `Bearer ${roomKeeper.token}`,
+    },
+    body: JSON.stringify({}),
+  });
+  assert.equal(conflictOpenResponse.status, 409);
+  await request(`/api/room-logs/${conflictRoomLogA.roomLog.id}/close`, { method: "POST", body: {} }, roomKeeper.token);
   const aiSettingsUpdate = await request("/api/ai/settings", {
     method: "PUT",
     body: { callStrategy: { ruleConfidenceMax: 55, firstActivityCount: 4 } },
@@ -1486,13 +1682,23 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     body: {},
   });
   assert.equal(interest.existing, false);
+  assert.equal(interest.interested, true);
   assert.equal(duplicateInterest.existing, true);
-  assert.equal(duplicateInterest.interestCount, 1);
+  assert.equal(duplicateInterest.interested, false);
+  assert.equal(duplicateInterest.interestCount, 0);
   const interestedActivity = await request(`/api/activities/${created.activity.id}`, {
     headers: { "X-YK-Client-Id": `${testClientId}_interest` },
   });
-  assert.equal(interestedActivity.activity.interestedByMe, true);
-  assert.equal(interestedActivity.activity.interestCount, 1);
+  assert.equal(interestedActivity.activity.interestedByMe, false);
+  assert.equal(interestedActivity.activity.interestCount, 0);
+  const readdedInterest = await request(`/api/activities/${created.activity.id}/interests`, {
+    method: "POST",
+    headers: { "X-YK-Client-Id": `${testClientId}_interest` },
+    body: {},
+  });
+  assert.equal(readdedInterest.existing, false);
+  assert.equal(readdedInterest.interested, true);
+  assert.equal(readdedInterest.interestCount, 1);
 
   const publicNamesActivity = await createActivity(member.token, {
     title: "报名昵称公示测试活动",
@@ -1892,7 +2098,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
     assert.match(themeSwitchAfterClick.label, /黑夜模式/);
     assert.equal(themeSwitchAfterClick.cycling, true);
     await page.goto(`${baseUrl}/me.html`);
-    await page.waitForSelector("[data-workspace-cards] .workspace-icon svg[data-octicon='true']");
+    await page.waitForSelector("[data-workspace-cards] .workspace-icon svg[data-yki-icon]");
     await page.waitForFunction(() => document.querySelector("[data-my-pending-section]")?.hidden === true);
     const openWorkspaceMotionState = await page.evaluate(() => {
       const cards = [...document.querySelectorAll("[data-workspace-cards] .workspace-card")];
@@ -1901,13 +2107,13 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
       const firstIconStyle = firstIcon ? getComputedStyle(firstIcon) : null;
       return {
         cardCount: cards.length,
-        iconCount: document.querySelectorAll("[data-workspace-cards] .workspace-icon svg[data-octicon='true']").length,
+        iconCount: document.querySelectorAll("[data-workspace-cards] .workspace-icon svg[data-yki-icon]").length,
         cueCount: document.querySelectorAll("[data-workspace-cards] .workspace-card-cue svg").length,
         toneCount: document.querySelectorAll("[data-workspace-cards] .workspace-card[data-card-tone]").length,
         labels: cards.map((card) => card.querySelector(".workspace-card-top > span:not(.workspace-icon):not(.workspace-card-cue)")?.textContent.trim()),
 	        hrefs: cards.map((card) => card.getAttribute("href")),
 	        iconTransition: firstIconStyle?.transitionProperty || "",
-	        iconFill: firstCard?.querySelector(".workspace-icon svg") ? getComputedStyle(firstCard.querySelector(".workspace-icon svg")).fill : "",
+	        iconStroke: firstCard?.querySelector(".workspace-icon svg") ? getComputedStyle(firstCard.querySelector(".workspace-icon svg")).stroke : "",
 	        hasSyncPanel: Boolean(document.querySelector("[data-identity-sync-summary] .identity-sync-card")),
 	        hasFeedbackPanel: Boolean(document.querySelector("[data-my-feedbacks]")),
 	        pendingHidden: document.querySelector("[data-my-pending-section]")?.hidden,
@@ -1920,7 +2126,7 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
 	    assert.deepEqual(openWorkspaceMotionState.labels, ["我的报名", "我的反馈", "身份网络", "有空开门", "发起活动", "我发起的活动"]);
 	    assert.deepEqual(openWorkspaceMotionState.hrefs, ["#my-registrations", "my-feedbacks.html", "identity-sync.html", "room-log-manage.html", "activity-editor.html", "my-activities.html"]);
 	    assert.match(openWorkspaceMotionState.iconTransition, /transform/);
-	    assert.notEqual(openWorkspaceMotionState.iconFill, "none");
+	    assert.notEqual(openWorkspaceMotionState.iconStroke, "none");
 	    assert.equal(openWorkspaceMotionState.hasSyncPanel, false);
 	    assert.equal(openWorkspaceMotionState.hasFeedbackPanel, false);
 	    assert.equal(openWorkspaceMotionState.pendingHidden, true);
@@ -1962,20 +2168,20 @@ test("api and browser smoke flow", { timeout: 90000 }, async () => {
         iconCount: document.querySelectorAll(".admin-module-group .workspace-icon svg").length,
         cueCount: document.querySelectorAll(".admin-module-group .workspace-card-cue svg").length,
         toneCount: document.querySelectorAll(".admin-module-group .workspace-card[data-card-tone]").length,
-        octiconCount: document.querySelectorAll(".admin-module-group .workspace-icon svg[data-octicon='true']").length,
+        animatedIconCount: document.querySelectorAll(".admin-module-group .workspace-icon svg[data-yki-icon]").length,
         hasGroupedSurface: Boolean(group),
         iconTransition: getComputedStyle(icon).transitionProperty,
-        svgFill: getComputedStyle(svg).fill,
+        svgStroke: getComputedStyle(svg).stroke,
       };
     });
     assert.ok(adminMotionState.groupCount >= 5);
     assert.ok(adminMotionState.iconCount >= 10);
-    assert.equal(adminMotionState.octiconCount, adminMotionState.iconCount);
+    assert.equal(adminMotionState.animatedIconCount, adminMotionState.iconCount);
     assert.equal(adminMotionState.cueCount, adminMotionState.iconCount);
     assert.equal(adminMotionState.toneCount, adminMotionState.iconCount);
     assert.equal(adminMotionState.hasGroupedSurface, true);
     assert.match(adminMotionState.iconTransition, /transform/);
-    assert.notEqual(adminMotionState.svgFill, "none");
+    assert.notEqual(adminMotionState.svgStroke, "none");
     await assertNoHorizontalOverflow(page, `${baseUrl}/index.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/whitepaper.html`);
     await assertNoHorizontalOverflow(page, `${baseUrl}/about.html`);

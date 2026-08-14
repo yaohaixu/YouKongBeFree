@@ -1,0 +1,1 @@
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" height="24" stroke="#101714" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" ><rect height="14" rx="2" width="18" x="3" y="3" /> {["M4 21h1", "M9 21h1", "M14 21h1", "M19 21h1"].map((d, index) => ( <path d={d} /> ))} </svg>

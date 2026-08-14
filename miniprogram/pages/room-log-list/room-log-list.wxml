@@ -1,0 +1,56 @@
+<view class="page room-list-page">
+  <view class="hero compact">
+    <view class="eyebrow">有空开门</view>
+    <view class="title">我的值班记录。</view>
+    <view class="body">预约开门、确认开门和关门在这里处理；夜记在对应记录详情里单独写。</view>
+    <view class="button-row">
+      <view class="button" bindtap="goCreate"><yk-icon name="door" size="{{28}}" tone="light" custom-class="button-icon" />新增开门</view>
+      <view class="button secondary" bindtap="goPublicLogs"><yk-icon name="list" size="{{28}}" custom-class="button-icon" />公开记录</view>
+    </view>
+  </view>
+
+  <view class="status-strip tone-{{roomStatus.tone}}" bindtap="goPublicLogs">
+    <view>
+      <view class="strip-label">{{roomStatus.statusLabel}}</view>
+      <view class="strip-title">{{roomStatus.title}}</view>
+      <view class="strip-text">{{roomStatus.text || "点进公开值班记录，可以看看今天谁在客厅。"}}</view>
+    </view>
+    <yk-icon name="door" size="{{76}}" frame="quick" tone="light" custom-class="strip-icon" />
+  </view>
+
+  <view class="section-title">我创建的开门记录</view>
+  <view wx:if="{{loading}}" class="panel muted">正在读取我的值班记录...</view>
+  <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
+  <block wx:elif="{{roomLogs.length}}">
+    <view class="log-card tone-{{item.tone}}" wx:for="{{roomLogs}}" wx:key="id" data-id="{{item.id}}" bindtap="openLog">
+      <view class="log-head">
+        <view>
+          <view class="log-date">{{item.dateLabel || "日期待定"}} · {{item.statusLabel}}</view>
+          <view class="log-title">{{item.keeperName || "有空朋友"}}</view>
+        </view>
+        <view class="log-pill">{{item.timingText || "时间待定"}}</view>
+      </view>
+      <view class="log-meta">
+        <text wx:if="{{item.openNoteInReview}}">开门文字待审核</text>
+        <text wx:if="{{item.openNoteRejected}}">开门文字不展示</text>
+        <text wx:if="{{item.approvedNightNoteCount}}">{{item.approvedNightNoteCount}} 条夜记</text>
+        <text wx:if="{{item.canDeleteExpired}}">可删除</text>
+        <text wx:if="{{!item.openNoteInReview && !item.openNoteRejected && !item.approvedNightNoteCount && !item.canDeleteExpired}}">点击查看和管理这条记录</text>
+      </view>
+      <view wx:if="{{item.openNoteReviewText}}" class="review-line">
+        <yk-icon name="shield" size="{{22}}" custom-class="mini-icon" />
+        <text>{{item.openNoteReviewText}}</text>
+      </view>
+      <view wx:if="{{item.openNote}}" class="note-preview">
+        <rich-text nodes="{{item.openNote}}" />
+      </view>
+      <view class="card-actions">
+        <view class="card-cue">查看详情</view>
+        <view wx:if="{{item.canDeleteExpired}}" class="delete-cue" data-id="{{item.id}}" catchtap="deleteExpired"><yk-icon name="trash" size="{{22}}" custom-class="mini-icon" />删除</view>
+      </view>
+    </view>
+    <view wx:if="{{loadingMore}}" class="loading-more">继续读取中...</view>
+    <view wx:elif="{{!hasMore}}" class="loading-more">已经到底了</view>
+  </block>
+  <empty-state wx:else title="还没有值班记录" text="如果你今天会在客厅，可以先预约开门。" />
+</view>

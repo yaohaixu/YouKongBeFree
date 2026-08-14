@@ -1,0 +1,3 @@
+<view class="yk-icon custom-class frame-{{frame}} tone-{{tone}}" style="width: {{size}}rpx; height: {{size}}rpx;">
+  <image class="yk-icon-image" src="{{iconSrc}}" mode="aspectFit" />
+</view>

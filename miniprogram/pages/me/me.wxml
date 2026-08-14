@@ -17,101 +17,64 @@
   <view wx:if="{{loading}}" class="panel muted">正在读取我的信息...</view>
   <view wx:elif="{{error}}" class="panel muted">{{error}}</view>
   <view wx:else>
-    <view class="stats">
-      <view class="stat">
-        <text class="num">{{dashboard.summary.total || 0}}</text>
-        <text>我发起的活动</text>
+    <view class="section-title first-section">最近活动</view>
+    <block wx:if="{{recentEvents.length}}">
+      <view class="timeline-card" wx:for="{{recentEvents}}" wx:key="id" data-url="{{item.url}}" bindtap="openRecent">
+        <yk-icon name="{{item.icon}}" size="{{66}}" frame="entry" tone="{{item.tone}}" custom-class="timeline-icon" />
+        <view class="timeline-content">
+          <view class="timeline-top">
+            <view class="timeline-title">{{item.title}}</view>
+            <view class="timeline-status">{{item.statusLabel}}</view>
+          </view>
+          <view class="timeline-text">{{item.subtitle || "和客厅有关的一件事"}}</view>
+          <view class="timeline-time">{{item.displayTime}}</view>
+        </view>
       </view>
-      <view class="stat">
-        <text class="num">{{registrations.length || 0}}</text>
-        <text>最近报名</text>
-      </view>
-      <view class="stat">
-        <text class="num">{{identitySync.counts.devices || 1}}</text>
-        <text>同步设备</text>
+    </block>
+    <view wx:else class="panel empty-recent">
+      <view class="empty-title">最近还没有和客厅约好的事</view>
+      <view class="empty-text">可以先看看活动，或者预约一次开门。</view>
+      <view class="button-row">
+        <view class="button secondary" data-url="/pages/activities/activities" bindtap="openEntry"><yk-icon name="activity" size="{{28}}" custom-class="button-icon" />看看活动</view>
+        <view class="button secondary" data-url="/pages/room-log-list/room-log-list" bindtap="openEntry"><yk-icon name="door" size="{{28}}" custom-class="button-icon" />有空开门</view>
       </view>
     </view>
 
     <view class="entry-list">
       <view class="entry-card primary-entry" data-url="/pages/activity-editor/activity-editor" bindtap="openEntry">
-        <view class="entry-icon yk-icon yk-icon-compose">
-          <view class="icon-sheet"></view>
-          <view class="icon-pen"></view>
-        </view>
+        <yk-icon name="compose" size="{{76}}" frame="entry" tone="primary" custom-class="entry-icon" />
         <view class="entry-content">
           <view class="entry-title">发起活动</view>
           <view class="entry-text">写下一个新的活动想法</view>
         </view>
         <view class="entry-arrow">›</view>
       </view>
-      <view class="entry-card" data-url="/pages/registrations/registrations" bindtap="openEntry">
-        <view class="entry-icon yk-icon yk-icon-ticket">
-          <view class="icon-ticket-body"></view>
-          <view class="icon-ticket-line"></view>
-        </view>
+      <view class="entry-card" data-url="/pages/room-log-list/room-log-list" bindtap="openEntry">
+        <yk-icon name="door" size="{{76}}" frame="entry" tone="rose" custom-class="entry-icon" />
         <view class="entry-content">
-          <view class="entry-title">我的报名</view>
-          <view class="entry-text">查看当前身份参加过的活动</view>
-        </view>
-        <view class="entry-arrow">›</view>
-      </view>
-      <view class="entry-card" data-url="/pages/my-activities/my-activities" bindtap="openEntry">
-        <view class="entry-icon yk-icon yk-icon-stack">
-          <view class="icon-card-one"></view>
-          <view class="icon-card-two"></view>
-        </view>
-        <view class="entry-content">
-          <view class="entry-title">我的活动</view>
-          <view class="entry-text">管理这个身份发起过的活动</view>
+          <view class="entry-title">有空开门</view>
+          <view class="entry-text">预约开门、确认关门和查看我的值班记录</view>
         </view>
         <view class="entry-arrow">›</view>
       </view>
       <view class="entry-card" data-url="/pages/my-feedbacks/my-feedbacks" bindtap="openEntry">
-        <view class="entry-icon yk-icon yk-icon-feedback">
-          <view class="icon-bubble"></view>
-          <view class="icon-tail"></view>
-        </view>
+        <yk-icon name="feedback" size="{{76}}" frame="entry" tone="blue" custom-class="entry-icon" />
         <view class="entry-content">
           <view class="entry-title">我的反馈</view>
           <view class="entry-text">回看写过的匿名活动反馈</view>
         </view>
         <view class="entry-arrow">›</view>
       </view>
-      <view class="entry-card" data-url="/pages/room-log-manage/room-log-manage" bindtap="openEntry">
-        <view class="entry-icon yk-icon yk-icon-door">
-          <view class="icon-door-body"></view>
-          <view class="icon-door-gap"></view>
-          <view class="icon-door-dot"></view>
-        </view>
-        <view class="entry-content">
-          <view class="entry-title">有空开门</view>
-          <view class="entry-text">预约开门、确认关门和写夜记</view>
-        </view>
-        <view class="entry-arrow">›</view>
-      </view>
-      <view class="entry-card" data-url="/pages/identity-sync/identity-sync" bindtap="openEntry">
-        <view class="entry-icon yk-icon yk-icon-sync">
-          <view class="icon-line-one"></view>
-          <view class="icon-line-two"></view>
-          <view class="icon-node node-a"></view>
-          <view class="icon-node node-b"></view>
-          <view class="icon-node node-c"></view>
-        </view>
-        <view class="entry-content">
-          <view class="entry-title">同步设备</view>
-          <view class="entry-text">把手机和电脑连成同一身份</view>
-        </view>
-        <view class="entry-arrow">›</view>
-      </view>
     </view>
 
-    <view class="section-title">最近报名</view>
-    <block wx:if="{{registrations.length}}">
-      <view class="panel registration" wx:for="{{registrations}}" wx:key="id">
-        <view class="registration-title">{{item.activity.title}}</view>
-        <view class="muted">{{item.activity.location}} · {{item.activity.statusLabel}}</view>
+    <view class="section-title">常用入口</view>
+    <view class="bottom-grid">
+      <view class="bottom-entry" wx:for="{{bottomEntries}}" wx:key="title" data-url="{{item.url}}" bindtap="openEntry">
+        <yk-icon name="{{item.icon}}" size="{{62}}" frame="entry" tone="{{item.tone}}" custom-class="bottom-icon" />
+        <view class="bottom-title">{{item.title}}</view>
+        <view class="bottom-text">{{item.text}}</view>
+        <view class="bottom-meta">{{item.meta}}</view>
       </view>
-    </block>
-    <view wx:else class="panel muted">这个设备还没有报名记录。</view>
+    </view>
   </view>
 </view>

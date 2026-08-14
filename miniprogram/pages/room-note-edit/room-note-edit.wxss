@@ -1,0 +1,39 @@
+@import "../activity-editor/activity-editor.wxss";
+
+.note-page {
+  padding-bottom: 88rpx;
+}
+
+.context-card {
+  margin-bottom: 22rpx;
+  border: 1rpx solid rgba(16, 23, 20, 0.08);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  background: #fcfcfa;
+  box-shadow: 0 10rpx 26rpx rgba(20, 28, 23, 0.045);
+}
+
+.context-date {
+  color: #69746d;
+  font-size: 23rpx;
+  font-weight: 760;
+}
+
+.context-title {
+  margin-top: 8rpx;
+  color: #101714;
+  font-size: 34rpx;
+  font-weight: 860;
+}
+
+.context-text {
+  margin-top: 8rpx;
+  color: #536158;
+  font-size: 25rpx;
+}
+
+.button.feeling {
+  background: #a24d2b;
+  color: #ffffff;
+  box-shadow: 0 10rpx 22rpx rgba(162, 77, 43, 0.16);
+}

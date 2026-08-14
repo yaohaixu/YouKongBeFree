@@ -27,20 +27,12 @@
 }
 
 .identity-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 74rpx;
   height: 74rpx;
   border-radius: 22rpx;
-  background: linear-gradient(145deg, #eef5ef, #dfe8dc);
-  color: #101714;
-  font-size: 25rpx;
-  font-weight: 850;
 }
 
 .identity-icon.wechat {
-  background: #e1f1e4;
   color: #1f6a3b;
 }
 

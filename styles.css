@@ -410,6 +410,202 @@ button {
   transform: translateX(120%);
 }
 
+.has-yki-icon {
+  gap: 7px;
+}
+
+.yk-button-icon {
+  display: inline-grid;
+  width: 1.12em;
+  height: 1.12em;
+  flex: 0 0 auto;
+  place-items: center;
+  color: currentColor;
+}
+
+.yk-button-icon .yk-animated-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.nav-button .yk-button-icon,
+.interest-button .yk-button-icon,
+.table-action .yk-button-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.button.primary .yk-button-icon,
+.button.green .yk-button-icon,
+.button.dark .yk-button-icon,
+.button.river .yk-button-icon {
+  opacity: 0.94;
+}
+
+.button:disabled .yk-button-icon,
+.button[aria-disabled="true"] .yk-button-icon,
+.table-action:disabled .yk-button-icon {
+  opacity: 0.62;
+}
+
+.yk-animated-icon {
+  display: block;
+  overflow: visible;
+  fill: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+}
+
+.yk-animated-icon * {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.yk-motion-draw,
+.yk-motion-trail {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.yk-motion-loader {
+  transform-origin: 12px 12px;
+}
+
+.yk-motion-dot {
+  stroke-linecap: round;
+}
+
+.yk-animated-icon.is-animating .yk-motion-draw {
+  animation: yki-draw 560ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-slide {
+  animation: yki-slide 360ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-pop,
+.yk-animated-icon.is-animating.yk-motion-pop {
+  animation: yki-pop 360ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-ring,
+.yk-animated-icon.is-animating.yk-motion-ring {
+  animation: yki-ring 520ms ease-in-out both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-eye {
+  animation: yki-eye 500ms ease-in-out both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-hand {
+  animation: yki-clock-hand 620ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-minute {
+  animation: yki-clock-minute 620ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-steam {
+  animation: yki-steam 620ms ease-out both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-steam:nth-child(2) {
+  animation-delay: 70ms;
+}
+
+.yk-animated-icon.is-animating .yk-motion-steam:nth-child(3) {
+  animation-delay: 130ms;
+}
+
+.yk-animated-icon.is-animating .yk-motion-copy-front {
+  animation: yki-copy-front 420ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-copy-back {
+  animation: yki-copy-back 420ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-pen {
+  animation: yki-pen 500ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-line {
+  animation: yki-line 420ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-dot {
+  animation: yki-dot 420ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-wave {
+  animation: yki-wave 520ms ease-in-out both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-door {
+  animation: yki-door 520ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-loader {
+  animation: yki-loader 720ms linear both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-unlock {
+  animation: yki-unlock 500ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-scan {
+  animation: yki-scan 560ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-send {
+  animation: yki-send 520ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-trail {
+  animation: yki-trail 520ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-spin,
+.yk-animated-icon.is-animating.yk-motion-spin {
+  animation: yki-spin 620ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-spark {
+  animation: yki-spark 560ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-ticket-left {
+  animation: yki-ticket-left 420ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-ticket-right {
+  animation: yki-ticket-right 420ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-lid {
+  animation: yki-lid 460ms ease-in-out both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-undo {
+  animation: yki-undo 560ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating .yk-motion-upload {
+  animation: yki-upload 520ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.yk-animated-icon.is-animating.yk-motion-heart,
+.yk-animated-icon.is-animating .yk-motion-heart {
+  animation: yki-heart 420ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.button.motion-press .yk-button-icon .yk-animated-icon,
+.table-action.motion-press .yk-button-icon .yk-animated-icon,
+.interest-button.motion-press .yk-button-icon .yk-animated-icon {
+  animation: yki-button-press 220ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
 .button:active {
   transform: translateY(0);
 }
@@ -1472,6 +1668,28 @@ select:disabled {
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
   background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+}
+
+.interest-button.is-interested {
+  border-color: color-mix(in srgb, #b23b63 44%, var(--line));
+  background: color-mix(in srgb, #b23b63 12%, var(--panel));
+  color: #7f2443;
+}
+
+.interest-button .button-leading-icon,
+.button-leading-icon {
+  display: inline-grid;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: currentColor;
+}
+
+.button-yki,
+.button-leading-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .interest-button:disabled {
@@ -6493,14 +6711,21 @@ html[data-theme="light"] body.product-surface .row-actions .muted-text {
 .rich-tool {
   min-width: 38px;
   height: 34px;
-  display: inline-grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: color-mix(in srgb, var(--panel) 86%, transparent);
   color: var(--ink);
   cursor: pointer;
   transition: transform 180ms var(--ease-out), border-color 180ms var(--ease-out), background 180ms var(--ease-out);
+}
+
+.rich-tool .yk-button-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .rich-tool:hover,
@@ -9312,12 +9537,15 @@ html[data-theme="light"] body:has(main[data-admin-badge-policy-page]) .badge-loc
   transform: rotate(-18deg) scale(0.9);
 }
 
-.workspace-icon svg[data-octicon="true"] {
+.workspace-icon svg[data-octicon="true"],
+.workspace-icon .yk-animated-icon {
   width: 19px;
   height: 19px;
-  fill: currentColor;
-  stroke: none;
   transform-origin: 50% 50%;
+}
+
+.workspace-icon .yk-animated-icon {
+  stroke: currentColor;
 }
 
 .workspace-card:hover .workspace-icon,
@@ -10049,6 +10277,338 @@ html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-my-pending] .eve
   }
 }
 
+@keyframes yki-draw {
+  0% {
+    opacity: 0;
+    stroke-dashoffset: 1;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes yki-slide {
+  0% {
+    transform: translateX(-2px);
+    opacity: 0.68;
+  }
+  55% {
+    transform: translateX(2px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes yki-pop {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.72;
+  }
+  55% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes yki-ring {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  22% {
+    transform: rotate(12deg);
+  }
+  46% {
+    transform: rotate(-10deg);
+  }
+  68% {
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes yki-eye {
+  0%,
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  45% {
+    transform: scaleY(0.18);
+    opacity: 0.45;
+  }
+}
+
+@keyframes yki-clock-hand {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(92deg);
+  }
+}
+
+@keyframes yki-clock-minute {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(185deg);
+  }
+}
+
+@keyframes yki-steam {
+  0% {
+    transform: translateY(2px);
+    opacity: 0.25;
+  }
+  55% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes yki-copy-front {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  55% {
+    transform: translate(-2px, -2px);
+  }
+}
+
+@keyframes yki-copy-back {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  55% {
+    transform: translate(2px, 2px);
+  }
+}
+
+@keyframes yki-pen {
+  0% {
+    transform: translate(-1px, 1px) rotate(-8deg);
+  }
+  55% {
+    transform: translate(2px, -2px) rotate(6deg);
+  }
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+}
+
+@keyframes yki-line {
+  0% {
+    transform: scaleX(0.58);
+    opacity: 0.58;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes yki-dot {
+  0% {
+    transform: scale(0.45);
+    opacity: 0.35;
+  }
+  54% {
+    transform: scale(1.26);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes yki-wave {
+  0%,
+  100% {
+    transform: skewX(0deg) translateX(0);
+  }
+  45% {
+    transform: skewX(-8deg) translateX(1px);
+  }
+  70% {
+    transform: skewX(5deg) translateX(-1px);
+  }
+}
+
+@keyframes yki-door {
+  0%,
+  100% {
+    transform: perspective(80px) rotateY(0deg);
+  }
+  55% {
+    transform: perspective(80px) rotateY(-26deg);
+  }
+}
+
+@keyframes yki-loader {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes yki-unlock {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  55% {
+    transform: translate(-1px, -2px) rotate(-10deg);
+  }
+}
+
+@keyframes yki-scan {
+  0%,
+  100% {
+    transform: translateY(-3px);
+    opacity: 0.58;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 1;
+  }
+}
+
+@keyframes yki-send {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  55% {
+    transform: translate(3px, -3px) scale(0.88);
+  }
+}
+
+@keyframes yki-trail {
+  0% {
+    opacity: 0;
+    stroke-dashoffset: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes yki-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(180deg);
+  }
+}
+
+@keyframes yki-spark {
+  0% {
+    transform: scale(0.86) rotate(-10deg);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(1.12) rotate(8deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes yki-ticket-left {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  55% {
+    transform: translateX(-2px);
+  }
+}
+
+@keyframes yki-ticket-right {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  55% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes yki-lid {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  45% {
+    transform: translateY(-2px) rotate(-8deg);
+  }
+}
+
+@keyframes yki-undo {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  55% {
+    transform: translate(1px, -1px) rotate(14deg);
+  }
+}
+
+@keyframes yki-upload {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  55% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes yki-heart {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes yki-button-press {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  45% {
+    transform: translateY(1px) scale(0.92);
+  }
+}
+
 @keyframes interest-confirm {
   0% {
     transform: scale(1);
@@ -10433,6 +10993,9 @@ html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-my-pending] .eve
 
 .editor-stepper button {
   min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
   border-radius: 999px;
   padding: 6px 12px;
@@ -10448,6 +11011,11 @@ html[data-theme="dark"] body:has(main[data-me-dashboard]) [data-my-pending] .eve
 .editor-stepper button.active {
   background: var(--black);
   color: var(--inverse);
+}
+
+.editor-stepper button .yk-button-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .editor-section {
@@ -10964,6 +11532,14 @@ html[data-theme="dark"] .identity-profile-choice {
   body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card::before,
   body:has(main[data-me-dashboard]) [data-workspace-cards] .workspace-card::after,
   .workspace-icon::after {
+    animation: none !important;
+  }
+
+  .yk-animated-icon,
+  .yk-animated-icon *,
+  .button.motion-press .yk-button-icon .yk-animated-icon,
+  .table-action.motion-press .yk-button-icon .yk-animated-icon,
+  .interest-button.motion-press .yk-button-icon .yk-animated-icon {
     animation: none !important;
   }
 

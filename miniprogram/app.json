@@ -7,6 +7,10 @@
     "pages/registration-success/registration-success",
     "pages/feedback/feedback",
     "pages/room-logs/room-logs",
+    "pages/room-log-list/room-log-list",
+    "pages/room-log-edit/room-log-edit",
+    "pages/room-log-detail/room-log-detail",
+    "pages/room-note-edit/room-note-edit",
     "pages/room-log-manage/room-log-manage",
     "pages/identity-sync/identity-sync",
     "pages/profile-editor/profile-editor",
@@ -26,6 +30,9 @@
     "backgroundColor": "#f3f0e8",
     "backgroundTextStyle": "dark"
   },
+  "usingComponents": {
+    "yk-icon": "/components/yk-icon/yk-icon"
+  },
   "tabBar": {
     "color": "#6d756f",
     "selectedColor": "#101714",
@@ -34,14 +41,20 @@
     "list": [
       {
         "pagePath": "pages/home/home",
+        "iconPath": "assets/tabbar/home.png",
+        "selectedIconPath": "assets/tabbar/home-active.png",
         "text": "首页"
       },
       {
         "pagePath": "pages/activities/activities",
+        "iconPath": "assets/tabbar/activities.png",
+        "selectedIconPath": "assets/tabbar/activities-active.png",
         "text": "活动"
       },
       {
         "pagePath": "pages/me/me",
+        "iconPath": "assets/tabbar/me.png",
+        "selectedIconPath": "assets/tabbar/me-active.png",
         "text": "我的"
       }
     ]

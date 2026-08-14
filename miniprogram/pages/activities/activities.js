@@ -203,10 +203,10 @@ Page({
         activities: this.data.activities.map((item) => item.id === activity.id ? toActivityView({
           ...item,
           interestCount: data.interestCount,
-          interestedByMe: true
+          interestedByMe: data.interested === true
         }) : item)
       });
-      wx.showToast({ title: data.existing ? "已经点过啦" : "已记录感兴趣", icon: "success" });
+      wx.showToast({ title: data.interested ? "已感兴趣" : "已取消", icon: "success" });
     } catch (error) {
       wx.showToast({ title: error.message || "暂时不能记录", icon: "none" });
     }

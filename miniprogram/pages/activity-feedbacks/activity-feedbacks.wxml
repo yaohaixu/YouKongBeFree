@@ -7,9 +7,9 @@
       <view class="title">{{activity.title || "活动反馈"}}</view>
       <view class="body">{{activity.displayTime || "时间待定"}} · {{activity.location || "地点待定"}}</view>
       <view class="button-row">
-        <view class="button secondary" bindtap="downloadFeedbackQr">{{qrLoading ? "生成中..." : "下载反馈二维码"}}</view>
-        <view class="button secondary" bindtap="copyFeedbacksText">{{exporting ? "整理中..." : "复制反馈文本"}}</view>
-        <view class="button secondary" bindtap="openActivity">返回活动</view>
+        <view class="button secondary" bindtap="downloadFeedbackQr"><yk-icon name="qr" size="{{28}}" custom-class="button-icon" />{{qrLoading ? "生成中..." : "下载反馈二维码"}}</view>
+        <view class="button secondary" bindtap="copyFeedbacksText"><yk-icon name="copy" size="{{28}}" custom-class="button-icon" />{{exporting ? "整理中..." : "复制反馈文本"}}</view>
+        <view class="button secondary" bindtap="openActivity"><yk-icon name="activity" size="{{28}}" custom-class="button-icon" />返回活动</view>
       </view>
     </view>
 
@@ -62,7 +62,11 @@
             data-action="{{item.reviewAction}}"
             data-label="{{item.reviewActionText}}"
             bindtap="reviewFeedback"
-          >{{reviewLoadingId === item.id ? "处理中..." : item.reviewActionText}}</view>
+          >
+            <yk-icon wx:if="{{item.reviewActionDanger}}" name="x" size="{{24}}" custom-class="mini-icon" />
+            <yk-icon wx:else name="check" size="{{24}}" custom-class="mini-icon" />
+            {{reviewLoadingId === item.id ? "处理中..." : item.reviewActionText}}
+          </view>
         </view>
       </view>
       <view wx:if="{{loadingMore}}" class="loading-more">继续读取中...</view>
